@@ -1,0 +1,38 @@
+import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
+import { RedisService } from '../redis/redis.service';
+
+@Injectable()
+export class RateLimitMiddleware implements NestMiddleware {
+  constructor(private redis: RedisService) {}
+
+  async use(req: Request, res: Response, next: NextFunction) {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const key = `rate_limit:${ip}`;
+    const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000');
+    const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100');
+
+    try {
+      const client = this.redis.getClient();
+      const count = await client.incr(key);
+      if (count === 1) {
+        await client.pexpire(key, windowMs);
+      }
+
+      if (count > maxRequests) {
+        return res.status(429).json({
+          message: 'Too many requests, please try again later',
+        });
+      }
+
+      res.setHeader('X-RateLimit-Limit', maxRequests);
+      res.setHeader('X-RateLimit-Remaining', Math.max(0, maxRequests - count));
+      return next();
+    } catch {
+      // Redis may be offline in local/demo environments; keep APIs available.
+      res.setHeader('X-RateLimit-Limit', maxRequests);
+      res.setHeader('X-RateLimit-Remaining', maxRequests);
+      return next();
+    }
+  }
+}
