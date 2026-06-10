@@ -112,19 +112,6 @@ export async function getSupplierDetail(id: string) {
   return FALLBACK_SUPPLIERS.find((item) => item.id === id) || null;
 }
 
-// ─── LEGACY BACKEND FETCH (kept for backward compat) ───
-const BACKEND_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
-export async function fetchBackend<T>(path: string): Promise<T | null> {
-  try {
-    const response = await fetch(`${BACKEND_BASE}/api${path}`, { cache: 'no-store' });
-    if (!response.ok) return null;
-    return (await response.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
 // ─── FALLBACK DATA (for demo/offline) ───
 const CATEGORIES = ['casting', 'forging', 'fabrication', 'machining', 'wire-drawing'] as const;
 const LOCATIONS = ['Ahmedabad, Gujarat', 'Pune, Maharashtra', 'Chennai, Tamil Nadu', 'Mumbai, Maharashtra', 'Bengaluru, Karnataka', 'Rajkot, Gujarat', 'Coimbatore, Tamil Nadu', 'Ludhiana, Punjab', 'Delhi NCR', 'Jamshedpur, Jharkhand'];

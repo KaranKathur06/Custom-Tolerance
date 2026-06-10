@@ -48,6 +48,11 @@ const UPLOAD_RULES: Record<string, { maxSize: number; allowedTypes: string[]; ma
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     maxFiles: 20,
   },
+  'factory-photos': {
+    maxSize: 10 * 1024 * 1024,
+    allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    maxFiles: 20,
+  },
 };
 
 export async function POST(request: Request) {

@@ -12,7 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useTaxonomyRegistry } from '@/lib/marketplace/use-taxonomy-registry';
+import {
+  fetchCitiesByState,
+  fetchCountries,
+  fetchStatesByCountry,
+  type CityOption,
+  type CountryOption,
+  type StateOption,
+} from '@/lib/marketplace/location-registry';
 import {
   SELLER_ONBOARDING_STEPS,
   getSellerOnboardingProgress,
@@ -27,6 +34,7 @@ import {
   buildSupplierProfileDataFromDraft,
   calculateSupplierProfileCompletion,
 } from '@/lib/marketplace/supplier-profile-completion';
+import { uploadSupplierFile } from '@/lib/supplier/upload-file';
 
 const STEP_ICONS: Record<SellerOnboardingStepKey, typeof Building2> = {
   company_information: Building2,
@@ -50,8 +58,7 @@ type CapabilityRow = {
 
 export default function SellerOnboardingPage() {
   const router = useRouter();
-  const { isAuthenticated, profile, loading: authLoading, user } = useAuth();
-  const { data: taxonomy } = useTaxonomyRegistry();
+  const { isAuthenticated, profile, loading: authLoading, user, supabase } = useAuth();
 
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [onboardingState, setOnboardingState] = useState<Partial<SellerOnboardingState>>({
@@ -62,6 +69,35 @@ export default function SellerOnboardingPage() {
   const [otpSending, setOtpSending] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [capabilityRows, setCapabilityRows] = useState<CapabilityRow[]>([]);
+  const [countries, setCountries] = useState<CountryOption[]>([]);
+  const [states, setStates] = useState<StateOption[]>([]);
+  const [cities, setCities] = useState<CityOption[]>([]);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    void fetchCountries(supabase).then(setCountries).catch(() => setCountries([]));
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!supabase || !values.countryId) {
+      setStates([]);
+      return;
+    }
+    void fetchStatesByCountry(supabase, values.countryId as string)
+      .then(setStates)
+      .catch(() => setStates([]));
+  }, [supabase, values.countryId]);
+
+  useEffect(() => {
+    if (!supabase || !values.stateId) {
+      setCities([]);
+      return;
+    }
+    void fetchCitiesByState(supabase, values.stateId as string)
+      .then(setCities)
+      .catch(() => setCities([]));
+  }, [supabase, values.stateId]);
 
   useEffect(() => {
     void (async () => {
@@ -214,19 +250,53 @@ export default function SellerOnboardingPage() {
     ]);
   };
 
-  const addDocument = (documentType: string, fileUrl: string) => {
+  const addDocument = (documentType: string, fileUrl: string, storagePath?: string) => {
     const docs = Array.isArray(values.documents) ? [...(values.documents as object[])] : [];
-    docs.push({ documentType, fileUrl });
+    docs.push({ documentType, fileUrl, storagePath });
     updateField('documents', docs);
     if (documentType === 'gst_certificate') updateField('gstCertificate', true);
     if (documentType === 'pan_card') updateField('panCard', true);
     if (documentType === 'company_registration') updateField('companyRegistration', true);
   };
 
-  const addFactoryPhoto = (category: string, fileUrl: string) => {
+  const addFactoryPhoto = (category: string, fileUrl: string, storagePath?: string) => {
     const photos = Array.isArray(values.factoryPhotos) ? [...(values.factoryPhotos as object[])] : [];
-    photos.push({ category, fileUrl });
+    photos.push({ category, fileUrl, storagePath });
     updateField('factoryPhotos', photos);
+  };
+
+  const handleDocumentUpload = async (documentType: string, file: File) => {
+    const key = `doc-${documentType}`;
+    setUploadingKey(key);
+    try {
+      const result = await uploadSupplierFile({
+        file,
+        bucket: 'verification-docs',
+        entityType: documentType,
+      });
+      addDocument(documentType, result.publicUrl, result.storagePath);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
+  const handleFactoryPhotoUpload = async (category: string, file: File) => {
+    const key = `photo-${category}`;
+    setUploadingKey(key);
+    try {
+      const result = await uploadSupplierFile({
+        file,
+        bucket: 'factory-photos',
+        entityType: category,
+      });
+      addFactoryPhoto(category, result.publicUrl, result.storagePath);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingKey(null);
+    }
   };
 
   if (authLoading) {
@@ -332,19 +402,19 @@ export default function SellerOnboardingPage() {
                 <Field label="Country *">
                   <select className="w-full rounded-lg border px-3 py-2 text-sm" value={(values.countryId as string) || ''} onChange={(e) => updateField('countryId', e.target.value)}>
                     <option value="">Select country</option>
-                    {(taxonomy?.countries || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </Field>
                 <Field label="State *">
                   <select className="w-full rounded-lg border px-3 py-2 text-sm" value={(values.stateId as string) || ''} onChange={(e) => updateField('stateId', e.target.value)}>
                     <option value="">Select state</option>
-                    {(taxonomy?.states || []).filter((s) => !values.countryId || s.countryId === values.countryId).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {states.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </Field>
                 <Field label="City *">
                   <select className="w-full rounded-lg border px-3 py-2 text-sm" value={(values.cityId as string) || ''} onChange={(e) => updateField('cityId', e.target.value)}>
                     <option value="">Select city</option>
-                    {(taxonomy?.cities || []).filter((c) => !values.stateId || c.stateId === values.stateId).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </Field>
                 <Field label="Full Address *"><Textarea value={(values.fullAddress as string) || ''} onChange={(e) => updateField('fullAddress', e.target.value)} rows={2} /></Field>
@@ -417,12 +487,26 @@ export default function SellerOnboardingPage() {
                 ].map((doc) => (
                   <div key={doc.type} className="flex items-center justify-between rounded-lg border p-3">
                     <span className="text-sm font-medium">{doc.label}</span>
-                    <Button variant="outline" size="sm" onClick={() => addDocument(doc.type, `https://storage.example.com/${doc.type}.pdf`)}>
-                      <Upload className="mr-1 h-4 w-4" /> Upload
-                    </Button>
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleDocumentUpload(doc.type, file);
+                          e.target.value = '';
+                        }}
+                      />
+                      <Button variant="outline" size="sm" asChild disabled={uploadingKey === `doc-${doc.type}`}>
+                        <span>
+                          {uploadingKey === `doc-${doc.type}` ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
+                          Upload
+                        </span>
+                      </Button>
+                    </label>
                   </div>
                 ))}
-                <p className="text-xs text-slate-500">Connect Supabase Storage for production file uploads.</p>
               </div>
             )}
 
@@ -432,9 +516,24 @@ export default function SellerOnboardingPage() {
                 {FACTORY_MEDIA_CATEGORIES.map((cat) => (
                   <div key={cat} className="flex items-center justify-between rounded-lg border p-3">
                     <span className="text-sm capitalize">{cat.replace('_', ' ')}</span>
-                    <Button variant="outline" size="sm" onClick={() => addFactoryPhoto(cat, `https://storage.example.com/factory/${cat}.jpg`)}>
-                      <Upload className="mr-1 h-4 w-4" /> Add Photo
-                    </Button>
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleFactoryPhotoUpload(cat, file);
+                          e.target.value = '';
+                        }}
+                      />
+                      <Button variant="outline" size="sm" asChild disabled={uploadingKey === `photo-${cat}`}>
+                        <span>
+                          {uploadingKey === `photo-${cat}` ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
+                          Add Photo
+                        </span>
+                      </Button>
+                    </label>
                   </div>
                 ))}
                 <p className="text-sm text-slate-500">

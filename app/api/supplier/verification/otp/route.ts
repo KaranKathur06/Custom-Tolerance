@@ -38,13 +38,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: { code: "INVALID_PURPOSE", message: "Only contact verification OTPs are supported" } }, { status: 400 });
   }
 
-  const serviceDb = createSupabaseServiceRoleClient();
+  const db = createSupabaseServiceRoleClient() ?? supabase;
   const rateCheck = await checkRateLimit(
-    serviceDb,
+    db,
     user.id,
-    `supplier_otp_${purpose}`,
-    RATE_LIMITS.OTP_SEND?.maxAttempts ?? 5,
-    RATE_LIMITS.OTP_SEND?.windowMinutes ?? 15,
+    RATE_LIMITS.OTP_SEND.action,
+    RATE_LIMITS.OTP_SEND.maxAttempts,
+    RATE_LIMITS.OTP_SEND.windowMinutes,
   );
   if (!rateCheck.allowed) {
     return NextResponse.json(
