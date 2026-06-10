@@ -92,6 +92,11 @@ export const API_ROUTES = {
   OTP_SEND: '/api/otp/send',
   OTP_VERIFY: '/api/otp/verify',
 
+  // Email verification (signup OTP)
+  VERIFY_EMAIL_SEND: '/api/auth/verify-email/send',
+  VERIFY_EMAIL_RESEND: '/api/auth/verify-email/resend',
+  VERIFY_EMAIL_VERIFY: '/api/auth/verify-email/verify',
+
   // Products
   PRODUCTS: '/api/products',
   PRODUCT_DETAIL: (slug: string) => `/api/products/${slug}`,

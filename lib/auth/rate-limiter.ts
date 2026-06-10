@@ -120,6 +120,8 @@ export const RATE_LIMITS = {
   LOGIN: { action: 'login', maxAttempts: 5, windowMinutes: 15 },
   OTP_SEND: { action: 'otp_send', maxAttempts: 3, windowMinutes: 10 },
   OTP_VERIFY: { action: 'otp_verify', maxAttempts: 5, windowMinutes: 10 },
+  SIGNUP_OTP_SEND: { action: 'signup_otp_send', maxAttempts: 5, windowMinutes: 30 },
+  SIGNUP_OTP_VERIFY: { action: 'signup_otp_verify', maxAttempts: 10, windowMinutes: 30 },
   PASSWORD_RESET: { action: 'password_reset', maxAttempts: 3, windowMinutes: 60 },
   API_GENERAL: { action: 'api_general', maxAttempts: 100, windowMinutes: 1 },
   FILE_UPLOAD: { action: 'file_upload', maxAttempts: 20, windowMinutes: 10 },

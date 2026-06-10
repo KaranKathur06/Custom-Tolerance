@@ -37,7 +37,7 @@ const PROTECTED_PREFIXES = [
   "/admin",
 ];
 
-const AUTH_ROUTES = ["/login", "/register"];
+const AUTH_ROUTES = ["/login", "/register", "/verify-email"];
 
 function normalizeEdgeRole(role: unknown): string {
   if (typeof role !== "string" || !role) return "";
@@ -160,8 +160,26 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Unverified users may access /verify-email to complete OTP
+  const isVerifyEmailRoute = pathname === "/verify-email";
+  if (isVerifyEmailRoute) {
+    if (user?.email_confirmed_at) {
+      const role = normalizeEdgeRole(
+        user.app_metadata?.role ?? user.user_metadata?.role ?? "",
+      );
+      let dashboardUrl = "/dashboard";
+      if (role === "seller" || role === "manufacturer" || role === "distributor") {
+        dashboardUrl = "/seller/dashboard";
+      } else if (role === "buyer") {
+        dashboardUrl = "/buyer/dashboard";
+      }
+      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+    }
+    return response;
+  }
+
   // Authenticated user on login/register — send to home route (not verify trap)
-  if (isAuthRoute && user && !signedOutQuery) {
+  if (isAuthRoute && user && !signedOutQuery && !isVerifyEmailRoute) {
     const role = normalizeEdgeRole(
       user.app_metadata?.role ?? user.user_metadata?.role ?? "",
     );
@@ -204,5 +222,6 @@ export const config = {
     "/admin/:path*",
     "/login",
     "/register",
+    "/verify-email",
   ],
 };

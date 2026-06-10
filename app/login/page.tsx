@@ -63,7 +63,7 @@ function LoginForm() {
       })
       if (authError) {
         if (authError.message.includes("Email not confirmed")) {
-          setError("Please verify your email first. Check your inbox.")
+          router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`)
           return
         }
         setError(authError.message); return

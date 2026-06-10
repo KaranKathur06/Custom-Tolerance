@@ -15,7 +15,6 @@ export default function RegisterPage() {
   const { supabase } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState({
     name: "", companyName: "", email: "", phone: "", password: "", confirmPassword: "", role: "buyer",
   })
@@ -47,7 +46,6 @@ export default function RegisterPage() {
             phone: formData.phone,
             role: formData.role,
           },
-          emailRedirectTo: `${window.location.origin}/login`,
         },
       })
 
@@ -60,7 +58,13 @@ export default function RegisterPage() {
         return
       }
 
-      setSuccess(true)
+      void fetch("/api/auth/verify-email/ack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      })
+
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&sent=1`)
     } catch (err: any) {
       setError(err?.message || "Registration failed. Please try again.")
     } finally {
@@ -75,40 +79,6 @@ export default function RegisterPage() {
       options: { redirectTo: `${window.location.origin}/marketplace` },
     })
     if (oauthError) setError(oauthError.message)
-  }
-
-  // Success state — email verification required
-  if (success) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#f8fafc] p-6">
-        <div className="w-full max-w-md text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
-            <Mail className="h-10 w-10 text-emerald-600" />
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-3">Verify Your Email</h1>
-          <p className="text-sm text-slate-600 mb-2">
-            We&apos;ve sent a verification link to <strong className="text-slate-900">{formData.email}</strong>
-          </p>
-          <p className="text-sm text-slate-500 mb-8">
-            Click the link in the email to activate your {BRAND.name} account. Check your spam folder if you don&apos;t see it.
-          </p>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 text-left text-sm text-slate-600 mb-6">
-            <p className="font-bold text-slate-900 mb-2">What happens next?</p>
-            <ol className="list-decimal list-inside space-y-1.5">
-              <li>Verify your email address</li>
-              <li>Login to your account</li>
-              <li>Complete company onboarding</li>
-              <li>Start sourcing or selling</li>
-            </ol>
-          </div>
-          <Link href="/login">
-            <Button className="bg-gradient-to-r from-[#1e3a8a] to-[#3b82f6] text-white font-bold rounded-xl h-11 px-8">
-              Go to Login
-            </Button>
-          </Link>
-        </div>
-      </div>
-    )
   }
 
   return (
