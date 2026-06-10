@@ -1,7 +1,7 @@
 /**
  * POST /api/auth/verify-email/send
  * Triggers Supabase signup OTP email after registration.
- * Uses supabase.auth.resend({ type: 'signup' }) — Supabase generates the OTP.
+ * Uses supabase.auth.signInWithOtp() — Supabase generates and delivers the OTP.
  */
 
 import { NextRequest } from "next/server";
@@ -24,6 +24,7 @@ import {
   jsonResponseWithCookies,
 } from "@/lib/auth/route-handler-client";
 import { authLog } from "@/lib/auth/auth-logger";
+import { deliverSignupVerificationOtp } from "@/lib/auth/supabase-signup-otp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -125,15 +126,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error: resendError } = await supabase.auth.resend({
-      type: "signup",
+    const { error: sendError } = await deliverSignupVerificationOtp(
+      supabase,
       email,
-    });
+      "signin_otp",
+    );
 
-    if (resendError) {
-      authLog("verify_email_send", "resend failed", {
+    if (sendError) {
+      authLog("verify_email_send", "signInWithOtp failed", {
         email: maskEmail(email),
-        message: resendError.message,
+        message: sendError.message,
       });
 
       await logSecurityEvent(serviceDb, {
@@ -143,7 +145,7 @@ export async function POST(request: NextRequest) {
         ipAddress: ip,
         userAgent,
         sessionFingerprint,
-        details: { message: resendError.message },
+        details: { message: sendError.message },
         severity: "warning",
       });
 

@@ -46,6 +46,8 @@ export default function RegisterPage() {
             phone: formData.phone,
             role: formData.role,
           },
+          // OTP-only verification — no magic link redirect; template uses {{ .Token }}
+          emailRedirectTo: undefined,
         },
       })
 

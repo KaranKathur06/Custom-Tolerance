@@ -1,6 +1,6 @@
 /**
  * POST /api/auth/verify-email/resend
- * Resend signup OTP with 60-second cooldown protection.
+ * Resend signup OTP via signInWithOtp with 60-second cooldown protection.
  */
 
 import { NextRequest } from "next/server";
@@ -22,6 +22,7 @@ import {
   getSessionFingerprint,
   jsonResponseWithCookies,
 } from "@/lib/auth/route-handler-client";
+import { deliverSignupVerificationOtp } from "@/lib/auth/supabase-signup-otp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -123,10 +124,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error: resendError } = await supabase.auth.resend({
-      type: "signup",
+    const { error: resendError } = await deliverSignupVerificationOtp(
+      supabase,
       email,
-    });
+      "signin_otp",
+    );
 
     if (resendError) {
       return jsonResponseWithCookies(

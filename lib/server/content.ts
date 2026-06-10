@@ -28,6 +28,14 @@ type Capability = {
   heroSubtitle?: string | null;
 };
 
+type Industry = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  icon?: string | null;
+};
+
 const fallbackBanners: Banner[] = [
   {
     id: 'fallback-1',
@@ -93,6 +101,57 @@ const fallbackCapabilities: Capability[] = [
   },
 ];
 
+const fallbackIndustries: Industry[] = [
+  {
+    id: 'automotive',
+    name: 'Automotive',
+    slug: 'automotive',
+    description: 'Precision components and assemblies for automotive OEMs and tier suppliers.',
+  },
+  {
+    id: 'aerospace',
+    name: 'Aerospace',
+    slug: 'aerospace',
+    description: 'Certified manufacturing partners for aerospace and aviation programs.',
+  },
+  {
+    id: 'defense',
+    name: 'Defense',
+    slug: 'defense',
+    description: 'Secure sourcing for defense-grade metal fabrication and machining.',
+  },
+  {
+    id: 'medical',
+    name: 'Medical',
+    slug: 'medical',
+    description: 'Medical device and healthcare equipment manufacturing suppliers.',
+  },
+  {
+    id: 'electronics',
+    name: 'Electronics',
+    slug: 'electronics',
+    description: 'Enclosures, heat sinks, and precision parts for electronics manufacturing.',
+  },
+  {
+    id: 'industrial-machinery',
+    name: 'Industrial Machinery',
+    slug: 'industrial-machinery',
+    description: 'Heavy equipment and industrial machinery component suppliers.',
+  },
+  {
+    id: 'energy',
+    name: 'Energy',
+    slug: 'energy',
+    description: 'Power generation and energy sector metal sourcing.',
+  },
+  {
+    id: 'construction',
+    name: 'Construction',
+    slug: 'construction',
+    description: 'Structural and architectural metalwork for construction projects.',
+  },
+];
+
 export async function getHeroBanners(): Promise<Banner[]> {
   try {
     const supabase = createSupabaseServerClient();
@@ -142,6 +201,32 @@ export async function getCapabilities(): Promise<Capability[]> {
     }));
   } catch {
     return fallbackCapabilities;
+  }
+}
+
+export async function getIndustries(): Promise<Industry[]> {
+  try {
+    const supabase = createSupabaseServerClient();
+    if (!supabase) return fallbackIndustries;
+
+    const { data, error } = await supabase
+      .from('taxonomy')
+      .select('id, name, slug, icon, description')
+      .eq('type', 'industry')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    if (error || !data || data.length === 0) return fallbackIndustries;
+
+    return data.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      slug: item.slug,
+      description: item.description || '',
+      icon: item.icon,
+    }));
+  } catch {
+    return fallbackIndustries;
   }
 }
 

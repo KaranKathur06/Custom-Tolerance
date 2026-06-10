@@ -160,6 +160,20 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Block unverified users from protected routes — redirect to OTP verification
+  const isOAuthUser = Boolean(
+    user?.app_metadata?.provider && user.app_metadata.provider !== "email",
+  );
+  const emailUnverified = Boolean(user && !user.email_confirmed_at && !isOAuthUser);
+
+  if (emailUnverified && isProtected && !pathname.startsWith("/onboarding")) {
+    const verifyUrl = new URL("/verify-email", request.url);
+    if (user?.email) {
+      verifyUrl.searchParams.set("email", user.email);
+    }
+    return NextResponse.redirect(verifyUrl);
+  }
+
   // Unverified users may access /verify-email to complete OTP
   const isVerifyEmailRoute = pathname === "/verify-email";
   if (isVerifyEmailRoute) {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
   Bell, Building2, ChevronDown, Cog, Factory, FlaskConical,
   GitBranch, LayoutDashboard, LogOut, Menu, Package, Search,
@@ -19,6 +19,8 @@ import { getAuthenticatedNavItems, getOnboardingHref } from '@/lib/marketplace/a
 import { NavbarNotificationBell } from '@/components/marketplace/NavbarNotificationBell';
 import { useTaxonomyRegistry } from '@/lib/marketplace/use-taxonomy-registry';
 import type { TaxonomyNode } from '@/lib/marketplace/taxonomy';
+import { ProgressiveDisclosureLinks } from '@/components/navigation/ProgressiveDisclosureLinks';
+import type { DisclosureMenuKind } from '@/config/navigation-disclosure';
 
 // ─── Icon Registry ───
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -51,11 +53,15 @@ function MegaPanel({
   loading,
   hrefPrefix,
   onClose,
+  disclosureKind,
+  menuKey,
 }: {
   items: TaxonomyNode[];
   loading: boolean;
   hrefPrefix: string;
   onClose: () => void;
+  disclosureKind?: DisclosureMenuKind;
+  menuKey?: string;
 }) {
   if (loading) {
     return (
@@ -81,32 +87,46 @@ function MegaPanel({
     );
   }
 
+  const renderLink = (item: TaxonomyNode) => (
+    <Link
+      href={`${hrefPrefix}${item.slug}`}
+      className="group flex items-start gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-slate-50"
+      onClick={onClose}
+    >
+      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors group-hover:bg-blue-50 group-hover:text-blue-600">
+        <TaxIcon name={item.icon} className="h-[18px] w-[18px]" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] font-semibold text-slate-800 group-hover:text-blue-700">
+          {item.name}
+        </div>
+        {item.description && (
+          <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-slate-400 group-hover:text-slate-500">
+            {item.description}
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+
   return (
     <div className="mx-auto max-w-7xl px-8 py-5">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3 lg:grid-cols-4">
-        {items.map((item) => (
-          <Link
-            key={item.id}
-            href={`${hrefPrefix}${item.slug}`}
-            className="group flex items-start gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-slate-50"
-            onClick={onClose}
-          >
-            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors group-hover:bg-blue-50 group-hover:text-blue-600">
-              <TaxIcon name={item.icon} className="h-[18px] w-[18px]" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold text-slate-800 group-hover:text-blue-700">
-                {item.name}
-              </div>
-              {item.description && (
-                <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-slate-400 group-hover:text-slate-500">
-                  {item.description}
-                </p>
-              )}
-            </div>
-          </Link>
-        ))}
-      </div>
+      {disclosureKind ? (
+        <ProgressiveDisclosureLinks
+          items={items}
+          hrefPrefix={hrefPrefix}
+          kind={disclosureKind}
+          onLinkClick={onClose}
+          resetKey={menuKey}
+          renderItem={renderLink}
+        />
+      ) : (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3 lg:grid-cols-4">
+          {items.map((item) => (
+            <div key={item.id}>{renderLink(item)}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -119,32 +139,58 @@ function MobileAccordion({
   items,
   loading,
   hrefPrefix,
+  disclosureKind,
 }: {
   label: string;
   items: TaxonomyNode[];
   loading: boolean;
   hrefPrefix: string;
+  disclosureKind?: DisclosureMenuKind;
 }) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
+
   return (
     <div className="border-b border-slate-100">
       <button
         type="button"
         className="flex w-full items-center justify-between px-3 py-3 text-sm font-semibold text-slate-900"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={panelId}
       >
         {label}
         <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
-        <div className="grid gap-0.5 px-3 pb-3">
+        <div id={panelId} className="px-3 pb-3">
           {loading && <div className="px-2 py-2 text-xs text-slate-400">Loading...</div>}
-          {items.map((item) => (
-            <Link key={item.id} href={`${hrefPrefix}${item.slug}`} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-700 hover:bg-slate-50">
-              <TaxIcon name={item.icon} className="h-3.5 w-3.5 text-slate-400" />
-              {item.name}
-            </Link>
-          ))}
+          {!loading && disclosureKind ? (
+            <ProgressiveDisclosureLinks
+              items={items}
+              hrefPrefix={hrefPrefix}
+              kind={disclosureKind}
+              gridClassName="grid gap-0.5"
+              renderItem={(item) => (
+                <Link
+                  href={`${hrefPrefix}${item.slug}`}
+                  className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  <TaxIcon name={item.icon} className="h-3.5 w-3.5 text-slate-400" />
+                  {item.name}
+                </Link>
+              )}
+            />
+          ) : (
+            <div className="grid gap-0.5">
+              {items.map((item) => (
+                <Link key={item.id} href={`${hrefPrefix}${item.slug}`} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  <TaxIcon name={item.icon} className="h-3.5 w-3.5 text-slate-400" />
+                  {item.name}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -426,6 +472,8 @@ export function Header() {
               loading={taxLoading}
               hrefPrefix={MENUS[key].prefix}
               onClose={closeMenu}
+              disclosureKind={key === 'capabilities' || key === 'industries' ? key : undefined}
+              menuKey={activeMenu === key ? key : undefined}
             />
           </div>
         ))}
@@ -450,8 +498,8 @@ export function Header() {
             <Link href="/" className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">Home</Link>
             <Link href="/marketplace" className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">Marketplace</Link>
 
-            <MobileAccordion label="Capabilities" items={capabilities} loading={taxLoading} hrefPrefix="/capabilities/" />
-            <MobileAccordion label="Industries" items={industries} loading={taxLoading} hrefPrefix="/industries/" />
+            <MobileAccordion label="Capabilities" items={capabilities} loading={taxLoading} hrefPrefix="/capabilities/" disclosureKind="capabilities" />
+            <MobileAccordion label="Industries" items={industries} loading={taxLoading} hrefPrefix="/industries/" disclosureKind="industries" />
             <MobileAccordion label="Products" items={categories} loading={taxLoading} hrefPrefix="/marketplace?category=" />
 
             <div className="my-3 border-t border-slate-100" />

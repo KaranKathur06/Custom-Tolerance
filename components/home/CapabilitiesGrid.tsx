@@ -1,6 +1,9 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { ProgressiveDisclosureCards } from '@/components/navigation/ProgressiveDisclosureCards';
 
 type CapabilityItem = {
   id: string;
@@ -21,10 +24,12 @@ export default function CapabilitiesGrid({ capabilities }: { capabilities: Capab
           </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {capabilities.map((capability) => (
+        <ProgressiveDisclosureCards
+          items={capabilities}
+          kind="capabilities"
+          getHref={(capability) => `/marketplace?type=suppliers&capability=${capability.slug}`}
+          renderCard={(capability) => (
             <Link
-              key={capability.id}
               href={`/marketplace?type=suppliers&capability=${capability.slug}`}
               className="group block"
             >
@@ -53,8 +58,8 @@ export default function CapabilitiesGrid({ capabilities }: { capabilities: Capab
                 </div>
               </article>
             </Link>
-          ))}
-        </div>
+          )}
+        />
       </div>
     </section>
   );

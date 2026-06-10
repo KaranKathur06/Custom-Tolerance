@@ -24,7 +24,8 @@ import {
   getSessionFingerprint,
   jsonResponseWithCookies,
 } from "@/lib/auth/route-handler-client";
-import { resetRateLimit } from "@/lib/auth/rate-limiter";
+import { checkRateLimit, RATE_LIMITS, resetRateLimit } from "@/lib/auth/rate-limiter";
+import { verifySignupOtp } from "@/lib/auth/supabase-signup-otp";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -78,6 +79,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const verifyRateLimit = await checkRateLimit(
+      serviceDb,
+      `signup_otp_verify:${email}:${ip}`,
+      RATE_LIMITS.SIGNUP_OTP_VERIFY.action,
+      RATE_LIMITS.SIGNUP_OTP_VERIFY.maxAttempts,
+      RATE_LIMITS.SIGNUP_OTP_VERIFY.windowMinutes,
+    );
+
+    if (!verifyRateLimit.allowed) {
+      return jsonResponseWithCookies(
+        {
+          error: "Too many verification attempts. Try again later.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: verifyRateLimit.retryAfterSeconds,
+        },
+        pendingCookies,
+        { status: 429 },
+      );
+    }
+
     const lockStatus = await checkVerificationLock(serviceDb, email);
     if (lockStatus.locked) {
       await logOtpEvent(serviceDb, {
@@ -109,11 +130,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "signup",
-    });
+    const { data, error: verifyError } = await verifySignupOtp(supabase, email, token);
 
     if (verifyError || !data.session) {
       const mapped = mapSupabaseOtpError(verifyError?.message ?? "Invalid token");
@@ -175,6 +192,11 @@ export async function POST(request: NextRequest) {
 
     await resetRateLimit(serviceDb, `signup_otp_send:${email}:${ip}`, "signup_otp_send");
     await resetRateLimit(serviceDb, `signup_otp_resend:${email}:${ip}`, "signup_otp_send");
+    await resetRateLimit(
+      serviceDb,
+      `signup_otp_verify:${email}:${ip}`,
+      RATE_LIMITS.SIGNUP_OTP_VERIFY.action,
+    );
 
     await logOtpEvent(serviceDb, {
       email,

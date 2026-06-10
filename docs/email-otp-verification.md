@@ -39,9 +39,9 @@ Register → /verify-email → 6-digit OTP email → Enter OTP → Auto Login �
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/auth/verify-email/send` | POST | Send OTP via `supabase.auth.resend({ type: 'signup' })` |
-| `/api/auth/verify-email/resend` | POST | Resend with cooldown + rate limit |
-| `/api/auth/verify-email/verify` | POST | `verifyOtp({ type: 'signup' })` + session cookies |
+| `/api/auth/verify-email/send` | POST | Send OTP via `supabase.auth.signInWithOtp()` |
+| `/api/auth/verify-email/resend` | POST | Resend via `signInWithOtp` + cooldown + rate limit |
+| `/api/auth/verify-email/verify` | POST | `verifySignupOtp()` (signup + email types) + session cookies |
 | `/api/auth/verify-email/ack` | POST | Record signUp-triggered send (no duplicate email) |
 
 ## Frontend Components
@@ -57,14 +57,7 @@ Register → /verify-email → 6-digit OTP email → Enter OTP → Auto Login �
 
 ### 1. Confirm Email Template → OTP
 
-In **Authentication → Email Templates → Confirm signup**, replace the magic link with the OTP token:
-
-```html
-<h2>Verify your CustomTolerance account</h2>
-<p>Your verification code is:</p>
-<h1 style="font-size: 32px; letter-spacing: 8px;">{{ .Token }}</h1>
-<p>This code expires in 10 minutes. Do not share it.</p>
-```
+In **Authentication → Email Templates → Confirm signup**, paste the branded template from `supabase/templates/confirm-signup-otp.html` (uses `{{ .Token }}` for the 6-digit OTP — no confirmation button).
 
 ### 2. OTP Expiry
 
