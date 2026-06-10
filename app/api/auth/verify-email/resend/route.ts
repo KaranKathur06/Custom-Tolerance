@@ -46,75 +46,6 @@ export async function POST(request: NextRequest) {
     const sessionFingerprint = getSessionFingerprint(request);
     const userAgent = request.headers.get("user-agent");
 
-    const serviceDb = createSupabaseServiceRoleClient();
-    if (!serviceDb) {
-      return jsonResponseWithCookies(
-        { error: "Service unavailable." },
-        pendingCookies,
-        { status: 503 },
-      );
-    }
-
-    const userLookup = await lookupUserByEmail(serviceDb, email);
-    if (!userLookup) {
-      return jsonResponseWithCookies(
-        { error: "No account found for this email." },
-        pendingCookies,
-        { status: 404 },
-      );
-    }
-
-    if (userLookup.emailConfirmed) {
-      return jsonResponseWithCookies(
-        { error: "Email already verified.", code: "ALREADY_VERIFIED" },
-        pendingCookies,
-        { status: 400 },
-      );
-    }
-
-    const cooldown = await checkResendCooldown(serviceDb, email);
-    if (!cooldown.allowed) {
-      await logOtpEvent(serviceDb, {
-        email,
-        eventType: "otp_resend_blocked",
-        userId: userLookup.id,
-        ipAddress: ip,
-        userAgent,
-        sessionFingerprint,
-        metadata: { cooldownRemaining: cooldown.cooldownRemaining },
-      });
-
-      return jsonResponseWithCookies(
-        {
-          error: `Resend available in ${cooldown.cooldownRemaining}s.`,
-          code: "RESEND_COOLDOWN",
-          cooldownRemaining: cooldown.cooldownRemaining,
-        },
-        pendingCookies,
-        { status: 429 },
-      );
-    }
-
-    const rateLimit = await checkRateLimit(
-      serviceDb,
-      `signup_otp_resend:${email}:${ip}`,
-      RATE_LIMITS.SIGNUP_OTP_SEND.action,
-      RATE_LIMITS.SIGNUP_OTP_SEND.maxAttempts,
-      RATE_LIMITS.SIGNUP_OTP_SEND.windowMinutes,
-    );
-
-    if (!rateLimit.allowed) {
-      return jsonResponseWithCookies(
-        {
-          error: "Too many resend requests. Try again later.",
-          code: "RATE_LIMITED",
-          retryAfterSeconds: rateLimit.retryAfterSeconds,
-        },
-        pendingCookies,
-        { status: 429 },
-      );
-    }
-
     const supabase = createMutableRouteHandlerSupabaseClient(request, pendingCookies);
     if (!supabase) {
       return jsonResponseWithCookies(
@@ -122,6 +53,75 @@ export async function POST(request: NextRequest) {
         pendingCookies,
         { status: 503 },
       );
+    }
+
+    const serviceDb = createSupabaseServiceRoleClient();
+    let userId: string | undefined;
+
+    if (serviceDb) {
+      const userLookup = await lookupUserByEmail(serviceDb, email);
+      if (!userLookup) {
+        return jsonResponseWithCookies(
+          { error: "No account found for this email." },
+          pendingCookies,
+          { status: 404 },
+        );
+      }
+
+      userId = userLookup.id;
+
+      if (userLookup.emailConfirmed) {
+        return jsonResponseWithCookies(
+          { error: "Email already verified.", code: "ALREADY_VERIFIED" },
+          pendingCookies,
+          { status: 400 },
+        );
+      }
+
+      const cooldown = await checkResendCooldown(serviceDb, email);
+      if (!cooldown.allowed) {
+        await logOtpEvent(serviceDb, {
+          email,
+          eventType: "otp_resend_blocked",
+          userId,
+          ipAddress: ip,
+          userAgent,
+          sessionFingerprint,
+          metadata: { cooldownRemaining: cooldown.cooldownRemaining },
+        });
+
+        return jsonResponseWithCookies(
+          {
+            error: `Resend available in ${cooldown.cooldownRemaining}s.`,
+            code: "RESEND_COOLDOWN",
+            cooldownRemaining: cooldown.cooldownRemaining,
+          },
+          pendingCookies,
+          { status: 429 },
+        );
+      }
+
+      const rateLimit = await checkRateLimit(
+        serviceDb,
+        `signup_otp_resend:${email}:${ip}`,
+        RATE_LIMITS.SIGNUP_OTP_SEND.action,
+        RATE_LIMITS.SIGNUP_OTP_SEND.maxAttempts,
+        RATE_LIMITS.SIGNUP_OTP_SEND.windowMinutes,
+      );
+
+      if (!rateLimit.allowed) {
+        return jsonResponseWithCookies(
+          {
+            error: "Too many resend requests. Try again later.",
+            code: "RATE_LIMITED",
+            retryAfterSeconds: rateLimit.retryAfterSeconds,
+          },
+          pendingCookies,
+          { status: 429 },
+        );
+      }
+    } else {
+      console.warn("[verify-email/resend] SUPABASE_SERVICE_ROLE_KEY missing — rate limits skipped");
     }
 
     const { error: resendError } = await deliverSignupVerificationOtp(
@@ -138,26 +138,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await recordOtpSent(serviceDb, email);
+    if (serviceDb) {
+      await recordOtpSent(serviceDb, email);
 
-    await logOtpEvent(serviceDb, {
-      email,
-      eventType: "otp_resent",
-      userId: userLookup.id,
-      ipAddress: ip,
-      userAgent,
-      sessionFingerprint,
-    });
+      await logOtpEvent(serviceDb, {
+        email,
+        eventType: "otp_resent",
+        userId,
+        ipAddress: ip,
+        userAgent,
+        sessionFingerprint,
+      });
 
-    await logSecurityEvent(serviceDb, {
-      eventType: "signup_otp_resent",
-      email,
-      userId: userLookup.id,
-      ipAddress: ip,
-      userAgent,
-      sessionFingerprint,
-      details: { maskedEmail: maskEmail(email) },
-    });
+      await logSecurityEvent(serviceDb, {
+        eventType: "signup_otp_resent",
+        email,
+        userId,
+        ipAddress: ip,
+        userAgent,
+        sessionFingerprint,
+        details: { maskedEmail: maskEmail(email) },
+      });
+    }
 
     return jsonResponseWithCookies(
       {

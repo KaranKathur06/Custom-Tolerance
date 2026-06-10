@@ -7,7 +7,9 @@ import {
   getCollapseLabel,
   getDefaultVisibleCount,
   getExpandLabel,
+  getFeaturedSlugs,
   NAVIGATION_DISCLOSURE,
+  type DisclosureLayout,
   type DisclosureMenuKind,
 } from "@/config/navigation-disclosure";
 import { splitDisclosureItems, sortWithFeaturedSlugs } from "@/lib/navigation/disclosure-utils";
@@ -21,6 +23,7 @@ type ProgressiveDisclosureCardsProps<T extends { id: string; slug: string; name:
   getHref: (item: T) => string;
   gridClassName?: string;
   expandClassName?: string;
+  layout?: DisclosureLayout;
 };
 
 export function ProgressiveDisclosureCards<T extends { id: string; slug: string; name: string }>({
@@ -30,22 +33,20 @@ export function ProgressiveDisclosureCards<T extends { id: string; slug: string;
   getHref,
   gridClassName = "grid gap-6 sm:grid-cols-2 lg:grid-cols-3",
   expandClassName,
+  layout = "cardGrid",
 }: ProgressiveDisclosureCardsProps<T>) {
   const [expanded, setExpanded] = useState(false);
   const isMobile = useIsMobileViewport();
   const panelId = useId();
 
-  const featuredSlugs =
-    kind === "capabilities"
-      ? NAVIGATION_DISCLOSURE.FEATURED_CAPABILITY_SLUGS
-      : NAVIGATION_DISCLOSURE.FEATURED_INDUSTRY_SLUGS;
+  const featuredSlugs = getFeaturedSlugs(kind);
 
   const sortedItems = useMemo(
     () => sortWithFeaturedSlugs(items, featuredSlugs),
     [items, featuredSlugs],
   );
 
-  const visibleCount = getDefaultVisibleCount(kind, isMobile);
+  const visibleCount = getDefaultVisibleCount(kind, isMobile, layout);
   const { visible, hidden, hasMore } = useMemo(
     () => splitDisclosureItems(sortedItems, visibleCount),
     [sortedItems, visibleCount],

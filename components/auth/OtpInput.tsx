@@ -8,8 +8,9 @@ import {
   type KeyboardEvent,
 } from "react";
 import { cn } from "@/lib/utils";
+import { OTP_CONFIG } from "@/lib/auth/verification-security";
 
-const OTP_LENGTH = 6;
+const OTP_LENGTH = OTP_CONFIG.LENGTH;
 
 type OtpInputProps = {
   value: string;
@@ -101,7 +102,7 @@ export function OtpInput({
     <div
       className="flex items-center justify-center gap-2 sm:gap-3"
       role="group"
-      aria-label="6-digit verification code"
+      aria-label={`${OTP_LENGTH}-digit verification code`}
     >
       {Array.from({ length: OTP_LENGTH }).map((_, index) => (
         <input

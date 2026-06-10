@@ -59,15 +59,31 @@ Register → /verify-email → 6-digit OTP email → Enter OTP → Auto Login �
 
 In **Authentication → Email Templates → Confirm signup**, paste the branded template from `supabase/templates/confirm-signup-otp.html` (uses `{{ .Token }}` for the 6-digit OTP — no confirmation button).
 
-### 2. OTP Expiry
+### 2. OTP Length (Critical)
+
+In **Authentication → Providers → Email**, set **OTP length to 6 digits**.
+
+If Supabase sends 8-digit codes (e.g. `17297962`) while the app expects 6, verification will always fail after the 503 fix. The app uses `OTP_CONFIG.LENGTH = 6` everywhere.
+
+### 3. OTP Expiry
 
 In **Authentication → Providers → Email**, set OTP expiry to **600 seconds (10 minutes)**.
 
-### 3. Site URL
+### 4. Vercel Environment Variables (Required for security layer)
+
+| Variable | Required for verify | Purpose |
+|----------|---------------------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | `verifyOtp` + session cookies |
+| `SUPABASE_SERVICE_ROLE_KEY` | Recommended | Rate limits, audit logs, user lookup |
+
+Without `SUPABASE_SERVICE_ROLE_KEY`, verification still works via the anon client, but rate limiting and audit logging are disabled.
+
+### 5. Site URL
 
 Ensure **Site URL** matches production (`https://customtolerance.com`). No redirect URL needed for OTP flow.
 
-### 4. Keep Unchanged
+### 6. Keep Unchanged
 
 - **Reset password** template — still uses `{{ .ConfirmationURL }}`
 - **Invite user** template — still uses magic link

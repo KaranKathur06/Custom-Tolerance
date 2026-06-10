@@ -11,6 +11,7 @@ import {
 import { BRAND } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { OtpInput, OTP_LENGTH_EXPORT } from "@/components/auth/OtpInput";
+import { OTP_CONFIG } from "@/lib/auth/verification-security";
 import { cn } from "@/lib/utils";
 
 type EmailVerificationCardProps = {
@@ -89,7 +90,7 @@ export function EmailVerificationCard({
             Verify Your Email Address
           </h1>
           <p className="mt-2 text-center text-sm text-slate-600">
-            We&apos;ve sent a 6-digit verification code to:
+            We&apos;ve sent a {OTP_CONFIG.LENGTH}-digit verification code to:
           </p>
           <p className="mt-1 text-center text-sm font-bold text-slate-900">
             {email}

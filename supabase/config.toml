@@ -5,3 +5,8 @@ project_id = "lrfvfvxfjpowskzqebar"
 
 [db]
 major_version = 15
+
+# Signup email OTP — must match OTP_CONFIG.LENGTH in lib/auth/verification-security.ts
+[auth.email]
+otp_length = 6
+otp_expiry = 600

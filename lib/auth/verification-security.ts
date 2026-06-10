@@ -7,11 +7,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const OTP_CONFIG = {
+  /** Must match Supabase Dashboard → Auth → Email → OTP length (default 6) */
+  LENGTH: 6,
   EXPIRY_MINUTES: 10,
   MAX_ATTEMPTS: 5,
   RESEND_COOLDOWN_SECONDS: 60,
   LOCKOUT_MINUTES: 15,
 } as const;
+
+export function normalizeOtpToken(raw: unknown): string {
+  return String(raw ?? "").replace(/\D/g, "").slice(0, OTP_CONFIG.LENGTH);
+}
+
+export function isValidOtpToken(token: string): boolean {
+  return token.length === OTP_CONFIG.LENGTH && /^\d+$/.test(token);
+}
 
 export type OtpEventType =
   | "otp_sent"

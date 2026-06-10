@@ -7,7 +7,8 @@ import {
   getCollapseLabel,
   getDefaultVisibleCount,
   getExpandLabel,
-  NAVIGATION_DISCLOSURE,
+  getFeaturedSlugs,
+  type DisclosureLayout,
   type DisclosureMenuKind,
 } from "@/config/navigation-disclosure";
 import { splitDisclosureItems, sortWithFeaturedSlugs } from "@/lib/navigation/disclosure-utils";
@@ -21,6 +22,7 @@ type ProgressiveDisclosureLinksProps<T extends { id: string; slug: string; name:
   onLinkClick?: () => void;
   renderItem: (item: T) => React.ReactNode;
   gridClassName?: string;
+  layout?: DisclosureLayout;
   /** Reset expand state when parent menu closes */
   resetKey?: string | number;
 };
@@ -32,15 +34,13 @@ export function ProgressiveDisclosureLinks<T extends { id: string; slug: string;
   onLinkClick,
   renderItem,
   gridClassName,
+  layout = "megaMenu",
   resetKey,
 }: ProgressiveDisclosureLinksProps<T>) {
   const [expanded, setExpanded] = useState(false);
   const isMobile = useIsMobileViewport();
   const panelId = useId();
-  const featuredSlugs =
-    kind === "capabilities"
-      ? NAVIGATION_DISCLOSURE.FEATURED_CAPABILITY_SLUGS
-      : NAVIGATION_DISCLOSURE.FEATURED_INDUSTRY_SLUGS;
+  const featuredSlugs = getFeaturedSlugs(kind);
 
   useEffect(() => {
     setExpanded(false);
@@ -51,7 +51,7 @@ export function ProgressiveDisclosureLinks<T extends { id: string; slug: string;
     [items, featuredSlugs],
   );
 
-  const visibleCount = getDefaultVisibleCount(kind, isMobile);
+  const visibleCount = getDefaultVisibleCount(kind, isMobile, layout);
   const { visible, hidden, hasMore } = useMemo(
     () => splitDisclosureItems(sortedItems, visibleCount),
     [sortedItems, visibleCount],

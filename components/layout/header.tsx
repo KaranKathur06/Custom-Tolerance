@@ -66,7 +66,7 @@ function MegaPanel({
   if (loading) {
     return (
       <div className="mx-auto grid max-w-7xl grid-cols-3 gap-4 px-8 py-6">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex items-start gap-3 rounded-lg p-3">
             <div className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-slate-200" />
             <div className="flex-1 space-y-2">
@@ -472,7 +472,7 @@ export function Header() {
               loading={taxLoading}
               hrefPrefix={MENUS[key].prefix}
               onClose={closeMenu}
-              disclosureKind={key === 'capabilities' || key === 'industries' ? key : undefined}
+              disclosureKind={key}
               menuKey={activeMenu === key ? key : undefined}
             />
           </div>
@@ -500,7 +500,7 @@ export function Header() {
 
             <MobileAccordion label="Capabilities" items={capabilities} loading={taxLoading} hrefPrefix="/capabilities/" disclosureKind="capabilities" />
             <MobileAccordion label="Industries" items={industries} loading={taxLoading} hrefPrefix="/industries/" disclosureKind="industries" />
-            <MobileAccordion label="Products" items={categories} loading={taxLoading} hrefPrefix="/marketplace?category=" />
+            <MobileAccordion label="Products" items={categories} loading={taxLoading} hrefPrefix="/marketplace?category=" disclosureKind="products" />
 
             <div className="my-3 border-t border-slate-100" />
 
