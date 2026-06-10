@@ -5,12 +5,12 @@ import { StatusBadge } from '@/components/ops/shared/StatusBadge';
 import { Search, Filter, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const mockLogs = [
-  { id: 'AL-901', user: 'admin@metalhub.io', action: 'user.suspend', resource: 'users', resourceId: 'U-003', detail: 'Suspended user Amit Patel — policy violation', ip: '122.162.x.x', time: '10 min ago' },
-  { id: 'AL-900', user: 'admin@metalhub.io', action: 'listing.approve', resource: 'listings', resourceId: 'L-4821', detail: 'Approved listing: Copper Cathode Grade A', ip: '122.162.x.x', time: '1 hr ago' },
-  { id: 'AL-899', user: 'moderator@metalhub.io', action: 'listing.reject', resource: 'listings', resourceId: 'L-4819', detail: 'Rejected listing: Brass Rods — suspicious pricing', ip: '49.36.x.x', time: '3 hrs ago' },
-  { id: 'AL-898', user: 'admin@metalhub.io', action: 'role.assign', resource: 'ops_roles', resourceId: 'R-005', detail: 'Assigned moderator role to support@metalhub.io', ip: '122.162.x.x', time: '5 hrs ago' },
-  { id: 'AL-897', user: 'finance@metalhub.io', action: 'payment.refund', resource: 'payments', resourceId: 'P-342', detail: 'Refund ₹15,000 for order cancellation', ip: '103.21.x.x', time: '8 hrs ago' },
-  { id: 'AL-896', user: 'admin@metalhub.io', action: 'supplier.verify', resource: 'suppliers', resourceId: 'S-089', detail: 'Verified supplier: SAIL Distributors', ip: '122.162.x.x', time: '1 day ago' },
+  { id: 'AL-901', user: 'admin@customtolerance.com', action: 'user.suspend', resource: 'users', resourceId: 'U-003', detail: 'Suspended user Amit Patel — policy violation', ip: '122.162.x.x', time: '10 min ago' },
+  { id: 'AL-900', user: 'admin@customtolerance.com', action: 'listing.approve', resource: 'listings', resourceId: 'L-4821', detail: 'Approved listing: Copper Cathode Grade A', ip: '122.162.x.x', time: '1 hr ago' },
+  { id: 'AL-899', user: 'moderator@customtolerance.com', action: 'listing.reject', resource: 'listings', resourceId: 'L-4819', detail: 'Rejected listing: Brass Rods — suspicious pricing', ip: '49.36.x.x', time: '3 hrs ago' },
+  { id: 'AL-898', user: 'admin@customtolerance.com', action: 'role.assign', resource: 'ops_roles', resourceId: 'R-005', detail: 'Assigned moderator role to support@customtolerance.com', ip: '122.162.x.x', time: '5 hrs ago' },
+  { id: 'AL-897', user: 'finance@customtolerance.com', action: 'payment.refund', resource: 'payments', resourceId: 'P-342', detail: 'Refund ₹15,000 for order cancellation', ip: '103.21.x.x', time: '8 hrs ago' },
+  { id: 'AL-896', user: 'admin@customtolerance.com', action: 'supplier.verify', resource: 'suppliers', resourceId: 'S-089', detail: 'Verified supplier: SAIL Distributors', ip: '122.162.x.x', time: '1 day ago' },
 ];
 
 const actionColors: Record<string, string> = {

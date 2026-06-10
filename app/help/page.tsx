@@ -1,8 +1,10 @@
 import ComingSoonPage from "@/components/coming-soon/ComingSoonPage"
 import { comingSoonRoutes } from "@/config/comingSoonRoutes"
 
+import { brandPageTitle } from '@/config/brand';
+
 export const metadata = {
-  title: "Help Center | MetalHub",
+  title: brandPageTitle("Help Center"),
 }
 
 export default function HelpComingSoon() {

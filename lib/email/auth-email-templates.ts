@@ -1,3 +1,5 @@
+import { BRAND } from "@/config/brand";
+
 export type AuthEmailTemplateKey =
   | "confirm_signup_otp"
   | "welcome"
@@ -21,28 +23,28 @@ export type AuthEmailTemplateDefinition = {
 export const AUTH_EMAIL_TEMPLATES: Record<AuthEmailTemplateKey, AuthEmailTemplateDefinition> = {
   confirm_signup_otp: {
     key: "confirm_signup_otp",
-    subject: "Verify Your MetalHub Account",
-    preheader: "Use this one-time code to verify your MetalHub account.",
+    subject: `Verify Your ${BRAND.name} Account`,
+    preheader: `Use this one-time code to verify your ${BRAND.name} account.`,
     ctaLabel: "Verify account",
     securityNotice: "This code expires soon. Do not share it with anyone.",
   },
   welcome: {
     key: "welcome",
-    subject: "Welcome to MetalHub - India's Industrial Procurement Network",
+    subject: `Welcome to ${BRAND.name} - ${BRAND.tagline}`,
     preheader: "Your supplier network and procurement workspace is ready.",
-    ctaLabel: "Open MetalHub",
+    ctaLabel: `Open ${BRAND.name}`,
     securityNotice: "Review your company profile and security settings before inviting teammates.",
   },
   forgot_password: {
     key: "forgot_password",
     subject: "Reset Your Password Securely",
-    preheader: "Use this secure link to reset your MetalHub password.",
+    preheader: `Use this secure link to reset your ${BRAND.name} password.`,
     ctaLabel: "Reset password",
     securityNotice: "If you did not request a reset, secure your account immediately.",
   },
   password_changed: {
     key: "password_changed",
-    subject: "Your MetalHub Password Was Changed",
+    subject: `Your ${BRAND.name} Password Was Changed`,
     preheader: "This is a security confirmation for your account.",
     ctaLabel: "Review account",
     securityNotice: "If you did not make this change, rotate credentials and review active sessions.",
@@ -50,28 +52,28 @@ export const AUTH_EMAIL_TEMPLATES: Record<AuthEmailTemplateKey, AuthEmailTemplat
   email_changed: {
     key: "email_changed",
     subject: "Your Email Address Was Updated",
-    preheader: "Your MetalHub sign-in email has changed.",
+    preheader: `Your ${BRAND.name} sign-in email has changed.`,
     ctaLabel: "Review account",
     securityNotice: "If you did not authorize this change, investigate immediately.",
   },
   phone_changed: {
     key: "phone_changed",
     subject: "Your Phone Number Was Updated",
-    preheader: "Your MetalHub phone number has been changed.",
+    preheader: `Your ${BRAND.name} phone number has been changed.`,
     ctaLabel: "Review account",
     securityNotice: "If you did not authorize this change, review account security.",
   },
   identity_linked: {
     key: "identity_linked",
     subject: "New Login Method Added",
-    preheader: "A new identity provider was linked to your MetalHub account.",
+    preheader: `A new identity provider was linked to your ${BRAND.name} account.`,
     ctaLabel: "Review account",
     securityNotice: "Only keep sign-in methods you recognize and actively use.",
   },
   identity_unlinked: {
     key: "identity_unlinked",
     subject: "Login Method Removed",
-    preheader: "A login identity was removed from your MetalHub account.",
+    preheader: `A login identity was removed from your ${BRAND.name} account.`,
     ctaLabel: "Review account",
     securityNotice: "Confirm your remaining sign-in methods still allow secure account access.",
   },
@@ -94,4 +96,3 @@ export const AUTH_EMAIL_TEMPLATES: Record<AuthEmailTemplateKey, AuthEmailTemplat
 export function getAuthEmailTemplate(key: AuthEmailTemplateKey) {
   return AUTH_EMAIL_TEMPLATES[key];
 }
-

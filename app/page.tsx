@@ -7,6 +7,7 @@ import HeroCarousel from '@/components/home/HeroCarousel';
 import CapabilitiesGrid from '@/components/home/CapabilitiesGrid';
 import { getCapabilities, getHeroBanners } from '@/lib/server/content';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
+import { BRAND } from '@/config/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -162,7 +163,7 @@ export default async function HomePage() {
       <section className="bg-slate-50 py-24">
         <div className="container">
           <div className="mx-auto mb-16 max-w-2xl text-center">
-            <h2 className="mb-4 text-3xl font-bold tracking-tight">How MetalHub Works</h2>
+            <h2 className="mb-4 text-3xl font-bold tracking-tight">How {BRAND.name} Works</h2>
             <p className="text-lg text-muted-foreground">
               Launch sourcing and sales flows in one unified marketplace built for B2B industrial trade.
             </p>

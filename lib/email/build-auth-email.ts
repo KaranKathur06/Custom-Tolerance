@@ -1,4 +1,5 @@
 import { getAuthEmailTemplate, type AuthEmailTemplateKey } from "./auth-email-templates";
+import { BRAND } from "@/config/brand";
 
 export type AuthEmailRenderInput = {
   templateKey: AuthEmailTemplateKey;
@@ -54,7 +55,7 @@ export function buildAuthEmail(input: AuthEmailRenderInput) {
     : "";
   const supportLine = input.supportEmail
     ? `Support: ${input.supportEmail}`
-    : "Support: support@metalhub.example";
+    : `Support: ${BRAND.supportEmail}`;
   const expiryLine = input.expiryNotice ?? "This message may expire for security reasons.";
 
   const html = `
@@ -64,8 +65,8 @@ export function buildAuthEmail(input: AuthEmailRenderInput) {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;">
       <tr>
         <td style="padding:24px 28px;background:linear-gradient(135deg,#1c1917,#44403c);color:#fafaf9;">
-          <div style="font-size:22px;font-weight:700;letter-spacing:0.3px;">MetalHub</div>
-          <div style="margin-top:6px;font-size:13px;color:#d6d3d1;">Industrial procurement network</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:0.3px;">${BRAND.name}</div>
+          <div style="margin-top:6px;font-size:13px;color:#d6d3d1;">${BRAND.tagline}</div>
         </td>
       </tr>
       <tr>
@@ -91,7 +92,7 @@ export function buildAuthEmail(input: AuthEmailRenderInput) {
 `.trim();
 
   const text = [
-    "MetalHub",
+    BRAND.name,
     template.subject,
     "",
     input.recipientName ? `Hello ${input.recipientName},` : "Hello,",
@@ -106,7 +107,7 @@ export function buildAuthEmail(input: AuthEmailRenderInput) {
     "",
     `Security notice: ${template.securityNotice}`,
     input.expiryNotice ?? "This message may expire for security reasons.",
-    input.supportEmail ? `Support: ${input.supportEmail}` : "Support: support@metalhub.example",
+    input.supportEmail ? `Support: ${input.supportEmail}` : `Support: ${BRAND.supportEmail}`,
   ]
     .filter(Boolean)
     .join("\n");

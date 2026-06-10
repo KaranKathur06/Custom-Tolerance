@@ -1,11 +1,12 @@
 /**
- * Metal Hub — Server-Side Content Fetchers
+ * CustomTolerance — Server-Side Content Fetchers
  *
  * Fetches banners, capabilities, and taxonomy data directly from Supabase.
  * No legacy NestJS proxy — all data comes from the database.
  */
 
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
+import { BRAND } from '@/config/brand';
 
 type Banner = {
   id: string;
@@ -31,7 +32,7 @@ const fallbackBanners: Banner[] = [
   {
     id: 'fallback-1',
     title: 'Source From Verified Metal Suppliers',
-    subtitle: 'Compare trusted suppliers, request quotes, and close deals faster on MetalHub.',
+    subtitle: `Compare trusted suppliers, request quotes, and close deals faster on ${BRAND.name}.`,
     imageUrl: '/hero.png',
     ctaText: 'Explore Marketplace',
     ctaLink: '/marketplace',

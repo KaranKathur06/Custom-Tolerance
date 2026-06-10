@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Bell, ArrowLeft, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { BRAND } from "@/config/brand"
 
 interface ComingSoonPageProps {
   featureName: string
@@ -12,10 +13,10 @@ interface ComingSoonPageProps {
   backLink?: string
 }
 
-export default function ComingSoonPage({ 
-  featureName, 
-  description = "We are currently building this feature to bring you a more powerful and seamless experience on MetalHub. Join the waitlist to receive priority access the moment we launch.", 
-  backLink = "/" 
+export default function ComingSoonPage({
+  featureName,
+  description = `We are currently building this feature to bring you a more powerful and seamless experience on ${BRAND.name}. Join the waitlist to receive priority access the moment we launch.`,
+  backLink = "/"
 }: ComingSoonPageProps) {
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")

@@ -7,6 +7,7 @@ import {
   LogOut, Settings, User,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { BRAND } from '@/config/brand';
 
 export function TopBar() {
   const { toggleSidebar, sidebarCollapsed, mode, setCommandPaletteOpen } = useOps();
@@ -31,8 +32,8 @@ export function TopBar() {
           <Menu className="w-5 h-5" />
         </button>
         <div className="ops-logo">
-          <div className={`ops-logo-icon ${mode}`}>M</div>
-          <span className="ops-logo-text">MetalHub<span className="ops-logo-suffix">Ops</span></span>
+          <div className={`ops-logo-icon ${mode}`}>C</div>
+          <span className="ops-logo-text">{BRAND.name}<span className="ops-logo-suffix">Ops</span></span>
         </div>
         <ModeSwitch />
       </div>
@@ -99,7 +100,7 @@ export function TopBar() {
                 <div className="ops-avatar lg">A</div>
                 <div>
                   <p className="ops-profile-fullname">Super Admin</p>
-                  <p className="ops-profile-email">admin@metalhub.io</p>
+                  <p className="ops-profile-email">admin@{BRAND.domain}</p>
                 </div>
               </div>
               <div className="ops-dropdown-divider" />

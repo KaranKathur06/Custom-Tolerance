@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { BRAND } from '@/config/brand';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 import { resolveAuthRole, type AppRole } from '@/lib/auth/profile-role';
@@ -269,7 +270,7 @@ export function Header() {
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-8">
             {/* Logo */}
             <Link href="/" className="shrink-0 text-xl font-bold text-slate-900 lg:text-2xl">
-              MetalHub
+              {BRAND.name}
             </Link>
 
             {/* Center Nav */}
@@ -468,7 +469,7 @@ export function Header() {
                     </span>
                   )}
                   <div>
-                    <div className="text-sm font-bold text-slate-900">{profile?.full_name || 'MetalHub User'}</div>
+                    <div className="text-sm font-bold text-slate-900">{profile?.full_name || `${BRAND.name} User`}</div>
                     <div className="text-xs text-slate-500">{profile?.email}</div>
                   </div>
                 </div>

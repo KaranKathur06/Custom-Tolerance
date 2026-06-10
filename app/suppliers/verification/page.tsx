@@ -1,8 +1,10 @@
 import ComingSoonPage from "@/components/coming-soon/ComingSoonPage"
 import { comingSoonRoutes } from "@/config/comingSoonRoutes"
 
+import { brandPageTitle } from '@/config/brand';
+
 export const metadata = {
-  title: "Supplier Verification | MetalHub",
+  title: brandPageTitle("Supplier Verification"),
 }
 
 export default function VerificationComingSoon() {

@@ -6,6 +6,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { getAuthenticatedNavItems, getOnboardingHref } from "../../lib/marketplace/auth-navigation";
+import { BRAND } from "@/config/brand";
 
 function getInitials(name?: string | null, email?: string | null) {
   const source = name || email || "User";
@@ -99,7 +100,7 @@ export function AuthNavbarActions() {
             className="z-[9999] min-w-[240px] overflow-hidden rounded-xl border border-white/10 bg-zinc-950 text-white shadow-[0_16px_48px_rgba(0,0,0,0.4)] animate-in fade-in-0 zoom-in-95"
           >
             <div className="border-b border-white/10 px-4 py-3">
-              <div className="truncate text-sm font-semibold">{profile?.full_name || "MetalHub User"}</div>
+              <div className="truncate text-sm font-semibold">{profile?.full_name || `${BRAND.name} User`}</div>
               <div className="truncate text-xs text-zinc-400">{profile?.email}</div>
               {role && (
                 <span className="mt-1 inline-block rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300">

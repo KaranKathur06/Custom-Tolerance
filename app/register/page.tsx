@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { BRAND } from "@/config/brand"
 import { useRouter } from "next/navigation"
 import { Mail, Lock, User, Phone, Building2, Loader2, CheckCircle, Eye, EyeOff, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -89,7 +90,7 @@ export default function RegisterPage() {
             We&apos;ve sent a verification link to <strong className="text-slate-900">{formData.email}</strong>
           </p>
           <p className="text-sm text-slate-500 mb-8">
-            Click the link in the email to activate your MetalHub account. Check your spam folder if you don&apos;t see it.
+            Click the link in the email to activate your {BRAND.name} account. Check your spam folder if you don&apos;t see it.
           </p>
           <div className="rounded-xl border border-slate-200 bg-white p-4 text-left text-sm text-slate-600 mb-6">
             <p className="font-bold text-slate-900 mb-2">What happens next?</p>
@@ -116,7 +117,7 @@ export default function RegisterPage() {
       <div className="hidden lg:flex flex-col justify-center w-[58%] text-white p-12 relative" style={{ background: "linear-gradient(135deg, #1e3a8a, #0f172a)" }}>
         <div className="absolute inset-0 z-0 bg-cover bg-center mix-blend-overlay opacity-5 pointer-events-none" style={{ backgroundImage: "url('/placeholder-metal.jpg')" }} />
         <div className="relative z-10 flex flex-col items-start -mt-20">
-          <Link href="/" className="inline-block text-3xl font-extrabold tracking-tight mb-8 hover:opacity-90 transition-opacity">MetalHub</Link>
+          <Link href="/" className="inline-block text-3xl font-extrabold tracking-tight mb-8 hover:opacity-90 transition-opacity">{BRAND.name}</Link>
           <h1 className="text-4xl font-bold mb-6 leading-tight tracking-tight">India&apos;s Trusted<br />Metal Marketplace</h1>
           <ul className="space-y-4 text-slate-200">
             <li className="flex items-center text-lg gap-3 font-medium"><CheckCircle className="h-5 w-5 text-blue-400 shrink-0" />10K+ Verified Businesses</li>
@@ -128,7 +129,7 @@ export default function RegisterPage() {
 
       {/* RIGHT: Form */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 relative w-full overflow-y-auto lg:overflow-hidden">
-        <div className="absolute top-6 left-6 lg:hidden"><Link href="/" className="text-xl font-bold text-slate-900">MetalHub</Link></div>
+        <div className="absolute top-6 left-6 lg:hidden"><Link href="/" className="text-xl font-bold text-slate-900">{BRAND.name}</Link></div>
         <div className="w-full max-w-[470px] mt-10 lg:mt-0 pb-8 lg:pb-19">
           <div className="mb-4"><h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Create Account</h2></div>
 

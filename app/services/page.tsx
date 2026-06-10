@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { brandPageTitle } from "@/config/brand"
 
 export const metadata: Metadata = {
-  title: "Industries | Metal Hub",
+  title: brandPageTitle("Industries"),
   description: "Industries we serve with structured discovery and verified marketplace profiles.",
 }
 

@@ -338,7 +338,7 @@ export async function syncMarketplaceSupplierFromCompany(
     slug,
     short_description:
       row.description?.trim() ||
-      `${row.name} is an industrial supplier on MetalHub.`,
+      `${row.name} is an industrial supplier on CustomTolerance.`,
     logo_url: row.logo_url,
     banner_url: row.banner_url,
     city: "India",

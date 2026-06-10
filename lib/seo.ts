@@ -1,3 +1,4 @@
+import { brandPageTitle, brandSiteUrl } from '@/config/brand';
 import type { Metadata } from "next"
 
 type SearchParams = Record<string, string | string[] | undefined>
@@ -37,7 +38,7 @@ export function buildListingsMetadata(args: {
   searchParams: SearchParams
   pathname: string
 }): Metadata {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+  const siteUrl = brandSiteUrl()
 
   const search = getFirst(args.searchParams.search)
   const countryRaw = getFirst(args.searchParams.country)
@@ -58,7 +59,7 @@ export function buildListingsMetadata(args: {
   if (countries.length > 0) parts.push(`in ${countries.join(", ")}`)
   if (search) parts.push(`for ${search}`)
 
-  const title = `${parts.join(" ")} | Metal Hub`
+  const title = brandPageTitle(parts.join(" "))
   const description = `Browse ${roleLabel.toLowerCase()} with structured filters and verified marketplace profiles.`
 
   const canonical = new URL(args.pathname + buildQueryString(args.searchParams), siteUrl).toString()

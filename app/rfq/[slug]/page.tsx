@@ -1,3 +1,4 @@
+import { brandPageTitle, BRAND } from '@/config/brand';
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { RfqPublicDetailView } from "@/components/marketplace/public/RfqPublicDetail";
@@ -13,10 +14,10 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
     const rfq = await loadRfqPublicDetail(slug);
-    if (!rfq) return { title: "RFQ Not Found | MetalHub" };
+    if (!rfq) return { title: "RFQ Not Found | CustomTolerance" };
 
     return buildSeoMetadata({
-        title: `${rfq.title} | RFQ | MetalHub`,
+        title: `${rfq.title} | RFQ | CustomTolerance`,
         description: rfq.description,
         canonicalPath: `/rfq/${rfq.slug}`,
     });

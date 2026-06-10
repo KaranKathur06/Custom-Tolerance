@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useState } from "react"
+import { BRAND } from "@/config/brand";
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Mail, Lock, Loader2, CheckCircle, Eye, EyeOff, AlertCircle } from "lucide-react"
@@ -124,7 +125,7 @@ function LoginForm() {
       <div className="hidden lg:flex flex-col justify-center w-[58%] text-white p-12 relative" style={{ background: "linear-gradient(135deg, #1e3a8a, #0f172a)" }}>
         <div className="absolute inset-0 z-0 bg-cover bg-center mix-blend-overlay opacity-5 pointer-events-none" style={{ backgroundImage: "url('/placeholder-metal.jpg')" }} />
         <div className="relative z-10 flex flex-col items-start -mt-20">
-          <Link href="/" className="inline-block text-3xl font-extrabold tracking-tight mb-8 hover:opacity-90 transition-opacity">MetalHub</Link>
+          <Link href="/" className="inline-block text-3xl font-extrabold tracking-tight mb-8 hover:opacity-90 transition-opacity">{BRAND.name}</Link>
           <h1 className="text-4xl font-bold mb-6 leading-tight tracking-tight">India&apos;s Trusted<br />Metal Marketplace</h1>
           <ul className="space-y-4 text-slate-200">
             <li className="flex items-center text-lg gap-3 font-medium"><CheckCircle className="h-5 w-5 text-blue-400 shrink-0" />10K+ Verified Businesses</li>
@@ -136,10 +137,10 @@ function LoginForm() {
 
       {/* RIGHT: Form */}
       <div className="flex-1 flex flex-col items-center justify-start pt-16 p-6 relative w-full">
-        <div className="absolute top-5 left-6 lg:hidden"><Link href="/" className="text-xl font-bold text-slate-900">MetalHub</Link></div>
+        <div className="absolute top-5 left-6 lg:hidden"><Link href="/" className="text-xl font-bold text-slate-900">{BRAND.name}</Link></div>
         <div className="w-full max-w-[450px]">
           <div className="mb-6">
-            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Login to MetalHub</h2>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Login to {BRAND.name}</h2>
             {signedOut && sessionStatus !== "authenticated" ? (
               <p className="mt-2 text-sm text-slate-600">You have been signed out. Sign in again to continue.</p>
             ) : null}

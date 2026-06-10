@@ -1,3 +1,4 @@
+import { brandPageTitle, BRAND } from '@/config/brand';
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ListingPublicDetail } from "@/components/marketplace/public/ListingPublicDetail";
@@ -11,11 +12,11 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const listing = await loadListingBySlug(slug);
-  if (!listing) return { title: "Product Not Found | MetalHub" };
+  if (!listing) return { title: "Product Not Found | CustomTolerance" };
 
   return buildSeoMetadata({
-    title: listing.seo_title || `${listing.title} | MetalHub`,
-    description: listing.seo_description || listing.description || "Industrial product listing on MetalHub.",
+    title: listing.seo_title || `${listing.title} | CustomTolerance`,
+    description: listing.seo_description || listing.description || "Industrial product listing on CustomTolerance.",
     canonicalPath: `/products/${listing.slug}`,
   });
 }

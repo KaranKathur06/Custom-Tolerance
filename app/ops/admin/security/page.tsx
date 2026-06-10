@@ -14,7 +14,7 @@ const fraudAlerts = [
 ];
 
 const recentLogins = [
-  { user: 'admin@metalhub.io', ip: '122.162.x.x', location: 'Mumbai, IN', device: 'Chrome / Windows', time: '2 min ago', status: 'Success' },
+  { user: 'admin@customtolerance.com', ip: '122.162.x.x', location: 'Mumbai, IN', device: 'Chrome / Windows', time: '2 min ago', status: 'Success' },
   { user: 'rajesh@tatasteel.com', ip: '103.21.x.x', location: 'Delhi, IN', device: 'Safari / macOS', time: '15 min ago', status: 'Success' },
   { user: 'unknown@test.com', ip: '185.43.x.x', location: 'Unknown', device: 'curl/7.x', time: '1 hr ago', status: 'Failed' },
   { user: 'priya@hindalco.com', ip: '49.36.x.x', location: 'Bangalore, IN', device: 'Chrome / Android', time: '2 hrs ago', status: 'Success' },

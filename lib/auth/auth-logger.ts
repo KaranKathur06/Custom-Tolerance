@@ -11,7 +11,7 @@ export function authLog(phase: string, message: string, context?: AuthLogContext
   if (!ENABLED) return;
   console.info(
     JSON.stringify({
-      scope: "metalhub.auth",
+      scope: "customtolerance.auth",
       phase,
       message,
       ts: new Date().toISOString(),
@@ -23,7 +23,7 @@ export function authLog(phase: string, message: string, context?: AuthLogContext
 export function authWarn(phase: string, message: string, context?: AuthLogContext) {
   console.warn(
     JSON.stringify({
-      scope: "metalhub.auth",
+      scope: "customtolerance.auth",
       level: "warn",
       phase,
       message,

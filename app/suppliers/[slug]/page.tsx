@@ -1,3 +1,4 @@
+import { brandPageTitle, BRAND } from '@/config/brand';
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { SupplierPublicProfile } from "@/components/marketplace/public/SupplierPublicProfile";
@@ -19,13 +20,13 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
     const supplier = await loadSupplierPublicProfile(slug);
-    if (!supplier) return { title: "Supplier Not Found | MetalHub" };
+    if (!supplier) return { title: "Supplier Not Found | CustomTolerance" };
 
     const location = [supplier.city, supplier.state, supplier.country].filter(Boolean).join(", ");
 
     return buildSeoMetadata({
-        title: `${supplier.company_name} | Industrial Supplier | MetalHub`,
-        description: supplier.short_description ?? `${supplier.company_name} on MetalHub marketplace.`,
+        title: `${supplier.company_name} | Industrial Supplier | CustomTolerance`,
+        description: supplier.short_description ?? `${supplier.company_name} on CustomTolerance marketplace.`,
         canonicalPath: `/suppliers/${supplier.slug}`,
         imageUrl: supplier.logo_url,
     });

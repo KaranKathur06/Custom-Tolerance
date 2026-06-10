@@ -1,10 +1,11 @@
+import { brandPageTitle, BRAND } from '@/config/brand';
 import { OpsProvider } from '@/lib/ops/ops-context';
 import { TopBar } from '@/components/ops/shell/TopBar';
 import { Sidebar } from '@/components/ops/shell/Sidebar';
 import './ops.css';
 
 export const metadata = {
-  title: 'MetalHub Ops — Unified Operations Dashboard',
+  title: `${BRAND.name} Ops — Unified Operations Dashboard`,
   description: 'Enterprise control center for marketplace administration, CRM, and revenue operations.',
 };
 

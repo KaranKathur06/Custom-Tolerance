@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { MapPin, User, MessageCircle, Heart, Share2, CheckCircle, Award, Zap, Shield } from "lucide-react"
+import { BRAND } from "@/config/brand"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -270,7 +271,7 @@ Key Features:
             <CardContent className="text-sm text-muted-foreground">
               <ul className="space-y-3">
                 <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5" /> Verify seller credentials before payment</li>
-                <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5" /> Use secure payment methods via MetalHub</li>
+                <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5" /> Use secure payment methods via {BRAND.name}</li>
                 <li className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-success mt-0.5" /> Inspect products before finalizing</li>
               </ul>
             </CardContent>

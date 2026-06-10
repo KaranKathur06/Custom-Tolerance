@@ -7,6 +7,7 @@ import { Lock, Loader2, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/components/auth/AuthProvider"
+import { BRAND } from "@/config/brand"
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -56,7 +57,7 @@ export default function ResetPasswordPage() {
     <div className="flex h-screen items-center justify-center bg-[#f8fafc] p-6">
       <div className="w-full max-w-md">
         <h1 className="text-2xl font-extrabold text-slate-900 mb-2">Set New Password</h1>
-        <p className="text-sm text-slate-500 mb-6">Choose a strong password for your MetalHub account.</p>
+        <p className="text-sm text-slate-500 mb-6">Choose a strong password for your {BRAND.name} account.</p>
 
         <div className="bg-white rounded-[15px] p-6 shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-[#e5e7eb]">
           {error && (

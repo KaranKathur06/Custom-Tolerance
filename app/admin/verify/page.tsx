@@ -410,7 +410,7 @@ function AdminVerifyForm() {
         {/* Security notice */}
         <div className="mt-4 text-center text-[11px] text-slate-400">
           <Lock className="mr-1 inline h-3 w-3" />
-          Protected by MetalHub Security · Session expires in 4 hours
+          Protected by CustomTolerance Security · Session expires in 4 hours
         </div>
       </div>
     </div>

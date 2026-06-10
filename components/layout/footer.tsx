@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { BRAND, brandCopyright } from "@/config/brand"
 
 export function Footer() {
   return (
@@ -6,7 +7,7 @@ export function Footer() {
       <div className="container py-12 md:py-16">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">MetalHub</h3>
+            <h3 className="text-lg font-semibold">{BRAND.name}</h3>
             <p className="text-sm text-muted-foreground">
               India&apos;s dedicated marketplace for metal buyers and sellers.
             </p>
@@ -65,18 +66,17 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:support@metalhub.in" className="text-muted-foreground hover:text-primary">
-                  support@metalhub.in
+                <a href={`mailto:${BRAND.supportEmail}`} className="text-muted-foreground hover:text-primary">
+                  {BRAND.supportEmail}
                 </a>
               </li>
             </ul>
           </div>
         </div>
         <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2024 MetalHub. All rights reserved.</p>
+          <p>{brandCopyright()}</p>
         </div>
       </div>
     </footer>
   )
 }
-

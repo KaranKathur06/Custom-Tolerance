@@ -21,7 +21,7 @@ export const comingSoonRoutes = [
   },
   {
     path: "/about",
-    featureName: "About MetalHub",
+    featureName: "About CustomTolerance",
     description: "We are actively finalizing our corporate mission statements, investor relations, and founding team biographies. Join the waitlist for the latest global press releases.",
   },
   {
@@ -31,7 +31,7 @@ export const comingSoonRoutes = [
   },
   {
     path: "/careers",
-    featureName: "MetalHub Careers Hub",
+    featureName: "CustomTolerance Careers Hub",
     description: "We are building an incredible engineering and industrial operations team. Our official careers portal with active job descriptions is launching momentarily.",
   },
   {

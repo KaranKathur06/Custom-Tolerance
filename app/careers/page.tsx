@@ -1,8 +1,10 @@
 import ComingSoonPage from "@/components/coming-soon/ComingSoonPage"
 import { comingSoonRoutes } from "@/config/comingSoonRoutes"
 
+import { brandPageTitle } from '@/config/brand';
+
 export const metadata = {
-  title: "Careers Hub | MetalHub",
+  title: brandPageTitle("Careers Hub"),
 }
 
 export default function CareersComingSoon() {

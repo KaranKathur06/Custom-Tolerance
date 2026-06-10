@@ -1,3 +1,4 @@
+import { brandPageTitle, BRAND } from '@/config/brand';
 import type { Metadata } from 'next';
 import CapabilitiesGrid from '@/components/home/CapabilitiesGrid';
 import { getCapabilities } from '@/lib/server/content';
@@ -5,8 +6,8 @@ import { getCapabilities } from '@/lib/server/content';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Industrial Capabilities | MetalHub',
-  description: 'Explore MetalHub industrial capabilities including casting, forging, fabrication, machining, and wire drawing.',
+  title: brandPageTitle("Industrial Capabilities"),
+  description: `Explore ${BRAND.name} industrial capabilities including casting, forging, fabrication, machining, and wire drawing.`,
 };
 
 export default async function CapabilitiesPage() {

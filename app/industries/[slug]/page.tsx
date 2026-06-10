@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser-client';
+import { BRAND } from '@/config/brand';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Building2, Cog, Factory, FlaskConical, GitBranch,
@@ -144,7 +145,7 @@ export default function IndustryPage() {
             </h2>
             <div className="rounded-xl border border-slate-200 bg-white p-6">
               <p className="text-slate-600 leading-relaxed">
-                MetalHub connects buyers and verified suppliers in the <strong>{industry.name}</strong> sector.
+                {BRAND.name} connects buyers and verified suppliers in the <strong>{industry.name}</strong> sector.
                 Find manufacturers with proven capabilities, request quotes, and manage procurement workflows
                 through our enterprise-grade platform.
               </p>
