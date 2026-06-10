@@ -3,7 +3,7 @@ export type QuoteStatus = "draft" | "submitted" | "viewed" | "shortlisted" | "ac
 export type MessageThreadStatus = "open" | "archived" | "closed";
 
 export type RfqAction = "edit" | "publish" | "cancel" | "close" | "quote";
-export type QuoteAction = "edit" | "submit" | "withdraw" | "accept" | "reject" | "shortlist";
+export type QuoteAction = "edit" | "submit" | "withdraw" | "view" | "accept" | "reject" | "shortlist";
 
 export function canTransitionRfq(status: RfqStatus, action: RfqAction) {
   const transitions: Record<RfqStatus, RfqAction[]> = {
@@ -21,7 +21,7 @@ export function canTransitionRfq(status: RfqStatus, action: RfqAction) {
 export function canTransitionQuote(status: QuoteStatus, action: QuoteAction) {
   const transitions: Record<QuoteStatus, QuoteAction[]> = {
     draft: ["edit", "submit", "withdraw"],
-    submitted: ["withdraw", "shortlist", "accept", "reject"],
+    submitted: ["withdraw", "view", "shortlist", "accept", "reject"],
     viewed: ["withdraw", "shortlist", "accept", "reject"],
     shortlisted: ["accept", "reject", "withdraw"],
     accepted: [],
@@ -62,5 +62,13 @@ export function getQuoteFreshnessLabel(submittedAt?: string | null) {
   }
 
   return "Quote submitted";
+}
+
+export function canLeaveReview(
+  quoteStatus: QuoteStatus,
+  hasExistingReview: boolean,
+): boolean {
+  if (hasExistingReview) return false;
+  return quoteStatus === "accepted";
 }
 

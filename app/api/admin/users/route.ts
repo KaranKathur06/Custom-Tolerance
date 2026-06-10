@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     .from('profiles')
     .select(`
       id, full_name, email, phone, role, avatar_url,
-      verification_status, created_at, updated_at,
+      verification_status, profile_status, created_at, updated_at,
       seller_profiles(id, company_name, verification_status),
       buyer_profiles(id, company_name)
     `, { count: 'exact' });

@@ -15,6 +15,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDate } from '@/lib/utils';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { AdminAnalyticsDashboard } from '@/components/admin/AdminAnalyticsDashboard';
+import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
+import { GstVerificationPanel } from '@/components/admin/GstVerificationPanel';
+import { AdminListingModeration } from '@/components/admin/AdminListingModeration';
+import { AdminRfqModeration } from '@/components/admin/AdminRfqModeration';
+import { AdminSubscriptionManager } from '@/components/admin/AdminSubscriptionManager';
 
 type Banner = {
   id: string;
@@ -402,9 +408,9 @@ export default function AdminDashboardPage() {
               <ShieldCheck className="mr-1 h-3 w-3" /> 2FA Verified
             </Badge>
           </div>
-          <h1 className="text-4xl font-bold">Admin Marketplace Control</h1>
+          <h1 className="text-4xl font-bold">Admin Control Center</h1>
           <p className="mt-2 text-muted-foreground">
-            Manage hero banners, capabilities, and supplier approvals.
+            Marketplace analytics, moderation, verification, and CMS tools.
             {profile?.email && (
               <span className="ml-2 text-xs font-semibold text-slate-400">
                 Signed in as {profile.email}
@@ -448,12 +454,42 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="banners" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="flex h-auto flex-wrap gap-1">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="gst">GST Verification</TabsTrigger>
+          <TabsTrigger value="listings">Listings</TabsTrigger>
+          <TabsTrigger value="rfqs">RFQs</TabsTrigger>
+          <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
           <TabsTrigger value="banners">Banners</TabsTrigger>
           <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
           <TabsTrigger value="suppliers">Supplier Approvals</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="overview">
+          <AdminAnalyticsDashboard />
+        </TabsContent>
+
+        <TabsContent value="users">
+          <AdminUserManagement />
+        </TabsContent>
+
+        <TabsContent value="gst">
+          <GstVerificationPanel />
+        </TabsContent>
+
+        <TabsContent value="listings">
+          <AdminListingModeration />
+        </TabsContent>
+
+        <TabsContent value="rfqs">
+          <AdminRfqModeration />
+        </TabsContent>
+
+        <TabsContent value="subscriptions">
+          <AdminSubscriptionManager />
+        </TabsContent>
 
         <TabsContent value="banners" className="space-y-4">
           <Card>

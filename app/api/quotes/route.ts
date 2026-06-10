@@ -34,6 +34,7 @@ export async function GET(request: Request) {
     .select(
       `
       id, price, currency_code, lead_time, moq, message, status, submitted_at, created_at,
+      payment_terms, validity_days, notes, viewed_at, shortlisted_at,
       rfqs:rfq_id(id, title, slug, status)
     `,
     )
@@ -173,6 +174,10 @@ export async function POST(request: Request) {
     lead_time: typeof body.lead_time === "string" ? body.lead_time : null,
     moq: typeof body.moq === "string" ? body.moq : null,
     message: typeof body.message === "string" ? body.message : null,
+    payment_terms: typeof body.payment_terms === "string" ? body.payment_terms : null,
+    notes: typeof body.notes === "string" ? body.notes : null,
+    validity_days: typeof body.validity_days === "number" ? body.validity_days : 30,
+    attachments: Array.isArray(body.attachments) ? body.attachments : [],
     status: "submitted" as const,
     submitted_at: new Date().toISOString(),
   };

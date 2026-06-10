@@ -167,10 +167,24 @@ export async function POST(request: Request) {
       budgetMin: typeof body.budget_min === "number" ? body.budget_min : null,
       budgetMax: typeof body.budget_max === "number" ? body.budget_max : null,
       deliveryLocation: typeof body.delivery_location === "string" ? body.delivery_location : null,
+      deliveryState: typeof body.delivery_state === "string" ? body.delivery_state : null,
+      deliveryCity: typeof body.delivery_city === "string" ? body.delivery_city : null,
+      deliveryDate: typeof body.delivery_date === "string" ? body.delivery_date : null,
       deliveryTimeline: typeof body.delivery_timeline === "string" ? body.delivery_timeline : null,
       qualitySpecs: typeof body.quality_specs === "string" ? body.quality_specs : null,
       taxonomyId: typeof body.category_id === "string" ? body.category_id : null,
       industryId: typeof body.industry_id === "string" ? body.industry_id : null,
+      capabilityId: typeof body.capability_id === "string" ? body.capability_id : null,
+      materialGrade: typeof body.material_grade === "string" ? body.material_grade : null,
+      manufacturingProcess:
+        typeof body.manufacturing_process === "string" ? body.manufacturing_process : null,
+      frequency:
+        typeof body.frequency === "string" &&
+        ["one_time", "monthly", "quarterly", "annual"].includes(body.frequency)
+          ? (body.frequency as "one_time" | "monthly" | "quarterly" | "annual")
+          : "one_time",
+      moqRequired: body.moq_required === true,
+      guestToken: typeof body.guest_token === "string" ? body.guest_token : null,
       companyId: company?.id ?? null,
     });
 
