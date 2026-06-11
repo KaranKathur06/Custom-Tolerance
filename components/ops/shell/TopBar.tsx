@@ -2,28 +2,50 @@
 
 import { useOps } from '@/lib/ops/ops-context';
 import { ModeSwitch } from './ModeSwitch';
+import Link from 'next/link';
 import {
   Search, Bell, ChevronDown, Menu, Command,
-  LogOut, Settings, User, ExternalLink, CheckCircle2, ClipboardCheck, ShieldAlert,
+  LogOut, Settings, User, ExternalLink, CheckCircle2, ClipboardCheck, ShieldAlert, ArrowRight,
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { BRAND } from '@/config/brand';
+import { searchOpsRoutes } from '@/lib/ops/route-registry';
 
 export function TopBar() {
-  const { toggleSidebar, sidebarCollapsed, mode, setCommandPaletteOpen } = useOps();
+  const { toggleSidebar, mode, commandPaletteOpen, setCommandPaletteOpen } = useOps();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const commandRef = useRef<HTMLDivElement>(null);
+  const searchResults = useMemo(() => searchOpsRoutes(searchQuery), [searchQuery]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+      if (commandRef.current && !commandRef.current.contains(e.target as Node)) setCommandPaletteOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [setCommandPaletteOpen]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCommandPaletteOpen(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [setCommandPaletteOpen]);
+
+  async function signOut() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/login?signedOut=1';
+    }
+  }
 
   return (
     <header className="ops-topbar">
@@ -44,6 +66,47 @@ export function TopBar() {
           <span>Search users, listings, RFQs, payments...</span>
           <kbd className="ops-kbd"><Command className="w-3 h-3" />K</kbd>
         </button>
+        {commandPaletteOpen && (
+          <div className="ops-command-overlay">
+            <div className="ops-command-panel" ref={commandRef}>
+              <div className="ops-command-input">
+                <Search className="w-4 h-4" />
+                <input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search users, suppliers, RFQs, listings, invoices, audit logs..."
+                />
+                <kbd>Esc</kbd>
+              </div>
+              <div className="ops-command-results">
+                {searchResults.map((result) => (
+                  <Link
+                    key={`${result.scope}-${result.href}-${result.label}`}
+                    href={result.href}
+                    className="ops-command-result"
+                    onClick={() => setCommandPaletteOpen(false)}
+                  >
+                    <div>
+                      <span>{result.scope}</span>
+                      <strong>{result.label}</strong>
+                      <small>{result.description}</small>
+                    </div>
+                    <div className="ops-command-meta">
+                      <small>{result.entity}</small>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </Link>
+                ))}
+                {!searchResults.length && (
+                  <div className="ops-command-empty">
+                    No operational route found. Try users, suppliers, RFQ, payments, verification, audit, or settings.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="ops-topbar-right">
@@ -117,7 +180,7 @@ export function TopBar() {
                 <ExternalLink className="w-4 h-4" /> Command Center
               </a>
               <div className="ops-dropdown-divider" />
-              <button className="ops-dropdown-item danger">
+              <button className="ops-dropdown-item danger" onClick={signOut}>
                 <LogOut className="w-4 h-4" /> Sign Out
               </button>
             </div>
