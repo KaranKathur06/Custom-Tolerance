@@ -81,6 +81,48 @@ function AdminVerifyForm() {
 
   const isAdmin = canRequestAdminOtp(role ?? '');
 
+  // ── Super Admin OTP bypass (config flag + allowed email only) ──
+  useEffect(() => {
+    if (isSigningOut || authLoading || sessionStatus === "unknown" || !isAuthenticated) return;
+    if (!isAdmin || !profile?.email) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const statusRes = await fetch("/api/admin/otp/bypass/status", { credentials: "include" });
+        const status = (await statusRes.json()) as { bypassEligible?: boolean };
+
+        if (cancelled || !status.bypassEligible) return;
+
+        const bypassRes = await fetch("/api/admin/otp/bypass", {
+          method: "POST",
+          credentials: "include",
+        });
+
+        if (cancelled || !bypassRes.ok) return;
+
+        router.replace(redirectPath);
+        router.refresh();
+      } catch {
+        // OTP flow remains available if bypass fails
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    authLoading,
+    isAdmin,
+    isAuthenticated,
+    isSigningOut,
+    profile?.email,
+    redirectPath,
+    router,
+    sessionStatus,
+  ]);
+
   // ── Send OTP ──
   const handleSendOtp = useCallback(async () => {
     setLoading(true);

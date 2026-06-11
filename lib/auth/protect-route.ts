@@ -32,6 +32,7 @@ import {
   roleMatchesAllowed,
 } from '@/lib/auth/rbac';
 import { authLog, authWarn } from '@/lib/auth/auth-logger';
+import { isSuperAdminOtpBypassEligible } from '@/lib/auth/admin-otp-bypass';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 export type ProtectOptions = {
@@ -163,24 +164,28 @@ export async function protectApiRoute(
 
   // ── 6. Admin 2FA verification check ──
   if (options.requireAdmin2FA) {
-    const { data: adminSession } = await supabase
-      .from('admin_sessions')
-      .select('id, expires_at')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .gt('expires_at', new Date().toISOString())
-      .order('verified_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const bypassActive = isSuperAdminOtpBypassEligible(user.email, role);
 
-    if (!adminSession) {
-      return {
-        error: {
-          code: 'ADMIN_2FA_REQUIRED',
-          message: 'Admin 2FA verification required',
-        },
-        status: 403,
-      };
+    if (!bypassActive) {
+      const { data: adminSession } = await supabase
+        .from('admin_sessions')
+        .select('id, expires_at')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString())
+        .order('verified_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!adminSession) {
+        return {
+          error: {
+            code: 'ADMIN_2FA_REQUIRED',
+            message: 'Admin 2FA verification required',
+          },
+          status: 403,
+        };
+      }
     }
   }
 
