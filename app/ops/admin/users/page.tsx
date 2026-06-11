@@ -24,6 +24,7 @@ import {
   UserX,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ops/shared/StatusBadge';
+import { publishOpsEvent, type OpsEventName } from '@/lib/ops/event-layer';
 
 type UserRow = {
   id: string;
@@ -82,15 +83,17 @@ export default function UsersPage() {
     window.setTimeout(() => setToast(null), 2200);
   }
 
-  function updateUser(id: string, patch: Partial<UserRow>, message: string) {
+  function updateUser(id: string, patch: Partial<UserRow>, message: string, eventName: OpsEventName = 'user.status_changed') {
     setUsers((current) => current.map((user) => (user.id === id ? { ...user, ...patch } : user)));
     setOpenMenu(null);
+    publishOpsEvent(eventName, { entityId: id, message, metadata: patch as Record<string, string | number | boolean> });
     notify(message);
   }
 
   function removeUser(id: string) {
     setUsers((current) => current.filter((user) => user.id !== id));
     setOpenMenu(null);
+    publishOpsEvent('user.status_changed', { entityId: id, message: 'User deleted from governance queue' });
     notify('User deleted from governance queue');
   }
 
@@ -99,7 +102,10 @@ export default function UsersPage() {
     { label: 'View Activity', icon: Shield, run: (u: UserRow) => notify(`Opening activity trail for ${u.name}`) },
     { label: 'Edit User', icon: Edit3, run: (u: UserRow) => notify(`Editing ${u.name}`) },
     { label: 'Change Role', icon: UserCog, run: (u: UserRow) => setRoleModalUser(u) },
-    { label: 'Send Notification', icon: Bell, run: (u: UserRow) => notify(`Notification queued for ${u.name}`) },
+    { label: 'Send Notification', icon: Bell, run: (u: UserRow) => {
+      publishOpsEvent('user.notification_sent', { entityId: u.id, entityLabel: u.name, message: `Notification queued for ${u.name}` });
+      notify(`Notification queued for ${u.name}`);
+    } },
   ];
 
   const governanceActions = [
@@ -111,8 +117,8 @@ export default function UsersPage() {
     { label: 'Unban', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} unbanned`) },
     { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => notify(`Password reset sent to ${u.email}`) },
     { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => notify(`${u.name} will be logged out on next request`) },
-    { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`) },
-    { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`) },
+    { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`, 'user.verification_changed') },
+    { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`, 'user.verification_changed') },
     { label: 'Impersonate User', icon: UserCog, run: (u: UserRow) => notify(`Impersonation request logged for ${u.name}`) },
     { label: 'Delete', icon: Trash2, danger: true, run: (u: UserRow) => removeUser(u.id) },
   ];
@@ -178,7 +184,10 @@ export default function UsersPage() {
                   <td>
                     <div className="ops-row-actions">
                       <button className="ops-icon-btn" title="View Profile" onClick={() => notify(`Opening profile for ${user.name}`)}><Eye className="w-4 h-4" /></button>
-                      <button className="ops-icon-btn" title="Send Notification" onClick={() => notify(`Notification queued for ${user.name}`)}><Mail className="w-4 h-4" /></button>
+                      <button className="ops-icon-btn" title="Send Notification" onClick={() => {
+                        publishOpsEvent('user.notification_sent', { entityId: user.id, entityLabel: user.name, message: `Notification queued for ${user.name}` });
+                        notify(`Notification queued for ${user.name}`);
+                      }}><Mail className="w-4 h-4" /></button>
                       <div className="ops-action-menu-wrap">
                         <button className="ops-icon-btn" title="More actions" onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}>
                           <MoreVertical className="w-4 h-4" />
@@ -239,7 +248,7 @@ export default function UsersPage() {
                   key={role}
                   className={roleModalUser.role === role ? 'selected' : ''}
                   onClick={() => {
-                    updateUser(roleModalUser.id, { role }, `${roleModalUser.name} role changed to ${role}`);
+                    updateUser(roleModalUser.id, { role }, `${roleModalUser.name} role changed to ${role}`, 'user.role_changed');
                     setRoleModalUser(null);
                   }}
                 >
