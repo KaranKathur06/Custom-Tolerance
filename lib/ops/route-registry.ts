@@ -9,7 +9,8 @@ export interface OpsRouteRecord {
   scope: OpsRouteScope;
   entity: string;
   permission: string;
-  api: string;
+  dataSource: 'api' | 'client-workspace';
+  api?: string;
 }
 
 export const opsRouteRegistry: OpsRouteRecord[] = [
@@ -20,7 +21,8 @@ export const opsRouteRegistry: OpsRouteRecord[] = [
     scope: 'Admin' as const,
     entity: item.label,
     permission: `admin.${item.label.toLowerCase().replace(/\s+/g, '_')}`,
-    api: `/api/ops/admin/${item.label.toLowerCase().replace(/\s+/g, '-')}`,
+    dataSource: item.label === 'Command Center' ? 'api' as const : 'client-workspace' as const,
+    api: item.label === 'Command Center' ? '/api/ops/admin/dashboard' : undefined,
   })),
   ...crmNavItems.map((item) => ({
     label: item.label,
@@ -29,7 +31,8 @@ export const opsRouteRegistry: OpsRouteRecord[] = [
     scope: 'CRM' as const,
     entity: item.label,
     permission: `crm.${item.label.toLowerCase().replace(/\s+/g, '_')}`,
-    api: `/api/ops/crm/${item.label.toLowerCase().replace(/\s+/g, '-')}`,
+    dataSource: item.label === 'Command Center' ? 'api' as const : 'client-workspace' as const,
+    api: item.label === 'Command Center' ? '/api/ops/crm/dashboard' : undefined,
   })),
   {
     label: 'Pending GST Verification',
@@ -38,7 +41,8 @@ export const opsRouteRegistry: OpsRouteRecord[] = [
     scope: 'Admin',
     entity: 'Verification Records',
     permission: 'admin.verification',
-    api: '/api/admin/verification',
+    dataSource: 'api',
+    api: '/api/ops/verification-queue',
   },
   {
     label: 'RFQs Without Quotes',
@@ -47,7 +51,8 @@ export const opsRouteRegistry: OpsRouteRecord[] = [
     scope: 'CRM',
     entity: 'RFQs',
     permission: 'admin.rfqs',
-    api: '/api/rfqs',
+    dataSource: 'api',
+    api: '/api/admin/rfqs',
   },
   {
     label: 'Failed Payments',
@@ -56,7 +61,7 @@ export const opsRouteRegistry: OpsRouteRecord[] = [
     scope: 'Admin',
     entity: 'Payments',
     permission: 'admin.revenue',
-    api: '/api/ops/admin/finance',
+    dataSource: 'client-workspace',
   },
   {
     label: 'High Risk Suppliers',
@@ -65,6 +70,7 @@ export const opsRouteRegistry: OpsRouteRecord[] = [
     scope: 'Admin',
     entity: 'Suppliers',
     permission: 'admin.suppliers',
+    dataSource: 'api',
     api: '/api/admin/users',
   },
   {
@@ -74,7 +80,8 @@ export const opsRouteRegistry: OpsRouteRecord[] = [
     scope: 'CRM',
     entity: 'Companies',
     permission: 'crm.customers',
-    api: '/api/ops/crm/customers',
+    dataSource: 'api',
+    api: '/api/crm/leads',
   },
   {
     label: 'Audit Events',
@@ -83,7 +90,8 @@ export const opsRouteRegistry: OpsRouteRecord[] = [
     scope: 'Admin',
     entity: 'Audit Logs',
     permission: 'admin.audit',
-    api: '/api/admin/audit-logs',
+    dataSource: 'api',
+    api: '/api/admin/logs',
   },
 ];
 
