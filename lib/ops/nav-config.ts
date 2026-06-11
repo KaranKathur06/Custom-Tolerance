@@ -2,7 +2,7 @@
 import {
   LayoutDashboard, Users, Package, Shield, ShieldCheck, Lock, DollarSign,
   ScrollText, FileText, Headphones, Target, UserCircle,
-  TrendingUp, Mail, CheckSquare, Calendar, BarChart3,
+  TrendingUp, Mail, CheckSquare, Calendar, BarChart3, Settings,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -23,6 +23,7 @@ export const adminNavItems: NavItem[] = [
   { label: 'Audit Logs', href: '/ops/admin/audit', icon: ScrollText },
   { label: 'CMS', href: '/ops/admin/cms', icon: FileText },
   { label: 'Support', href: '/ops/admin/support', icon: Headphones },
+  { label: 'Settings', href: '/ops/admin/settings', icon: Settings },
 ];
 
 export const crmNavItems: NavItem[] = [

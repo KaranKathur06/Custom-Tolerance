@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
-  Bot,
   Building2,
   CheckCircle2,
   CircleDollarSign,
@@ -25,7 +24,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   Siren,
-  Sparkles,
   TrendingUp,
   UserCheck,
   Users,
@@ -78,7 +76,7 @@ const workspaceCards = [
   { title: 'Revenue Center', href: '/ops/admin/finance', icon: CircleDollarSign, meta: 'MRR, ARR, commissions, failed payments' },
   { title: 'Analytics Center', href: '/ops/crm/analytics', icon: BarChart3, meta: 'Growth, funnels, retention, conversion' },
   { title: 'Content Center', href: '/ops/admin/cms', icon: Layers3, meta: 'Listings, capabilities, homepage operations' },
-  { title: 'Platform Settings', href: '/admin/marketplace-settings', icon: Gauge, meta: 'RBAC, feature flags, marketplace controls' },
+  { title: 'Platform Settings', href: '/ops/admin/settings', icon: Gauge, meta: 'RBAC, feature flags, marketplace controls' },
   { title: 'System Health', href: '/ops/admin/security', icon: HeartPulse, meta: 'API health, uptime, live alerts, audit trails' },
 ];
 
@@ -194,9 +192,9 @@ export default function AdminCommandCenter() {
           <Search className="w-4 h-4" />
           Search suppliers, RFQs, buyers, payments, GSTIN...
         </button>
-        <button className="mos-copilot-button">
-          <Bot className="w-4 h-4" />
-          AI Copilot
+        <button className="mos-quick-action-button">
+          <Zap className="w-4 h-4" />
+          Quick Actions
         </button>
         <div className="mos-system-alert">
           <Siren className="w-4 h-4" />
@@ -299,8 +297,8 @@ export default function AdminCommandCenter() {
             ))}
           </div>
           <div className="mos-ai-strip">
-            <Sparkles className="w-4 h-4" />
-            AI recommends intervention on 11 RFQs with no supplier response after 4 hours.
+            <Clock3 className="w-4 h-4" />
+            Operations rule: escalate 11 RFQs with no supplier response after 4 hours.
           </div>
         </div>
 
@@ -399,13 +397,13 @@ export default function AdminCommandCenter() {
         </div>
       </section>
 
-      <section className="mos-copilot">
-        <Bot className="w-5 h-5" />
+      <section className="mos-quick-actions">
+        <Zap className="w-5 h-5" />
         <div>
-          <strong>AI Marketplace Copilot</strong>
-          <p>Try: show suppliers pending GST approval, RFQs without quotes, high-risk suppliers, failed payments, top converting suppliers, or today&apos;s platform revenue.</p>
+          <strong>Operations Center</strong>
+          <p>Route live work into verification, RFQ intervention, failed payments, supplier risk review, listing moderation, and platform governance queues.</p>
         </div>
-        <button>Open Copilot</button>
+        <button>Open quick actions</button>
       </section>
     </div>
   );

@@ -1,28 +1,57 @@
 'use client';
+
 import { KPICard } from '@/components/ops/shared/KPICard';
-import { Shield, AlertTriangle, Bot, Flag } from 'lucide-react';
+import { StatusBadge } from '@/components/ops/shared/StatusBadge';
+import { AlertTriangle, CheckCircle2, Eye, Flag, Shield, XCircle } from 'lucide-react';
+
+const queues = [
+  { id: 'MOD-1042', type: 'Listing', subject: 'Brass rods pricing outside tolerance band', source: 'Rajasthan Metals', status: 'Needs Review', severity: 'High' },
+  { id: 'MOD-1041', type: 'RFQ', subject: 'Duplicate CNC machining RFQ submitted 4 times', source: 'Buyer account U-204', status: 'Queued', severity: 'High' },
+  { id: 'MOD-1039', type: 'Review', subject: 'Reported review contains unsupported claim', source: 'Ahmedabad buyer', status: 'Needs Review', severity: 'Medium' },
+  { id: 'MOD-1037', type: 'Supplier Risk', subject: 'Phone number reused across three suppliers', source: 'Trust rules', status: 'Escalated', severity: 'Critical' },
+];
 
 export default function ModerationPage() {
   return (
     <div>
       <div className="ops-section-header">
         <div>
-          <h1 className="ops-section-title">AI Moderation Center</h1>
-          <p className="ops-section-subtitle">Automated content review, spam detection, and policy enforcement</p>
+          <h1 className="ops-section-title">Moderation Center</h1>
+          <p className="ops-section-subtitle">Rules-based review queues for listings, RFQs, reviews, supplier risk, and marketplace policy enforcement.</p>
         </div>
       </div>
+
       <div className="ops-kpi-grid">
-        <KPICard title="AI Reviewed (24h)" value="156" icon={Bot} variant="info" change={8} changeLabel="vs yesterday" />
-        <KPICard title="Auto-Flagged" value="12" icon={Flag} variant="warning" />
-        <KPICard title="False Positives" value="2" icon={AlertTriangle} variant="danger" />
-        <KPICard title="Accuracy Rate" value="98.7%" icon={Shield} variant="success" />
+        <KPICard title="Open Reviews" value="43" icon={Flag} variant="warning" change={-6} changeLabel="vs yesterday" />
+        <KPICard title="High Risk Queue" value="7" icon={AlertTriangle} variant="danger" />
+        <KPICard title="Resolved Today" value="29" icon={CheckCircle2} variant="success" />
+        <KPICard title="Policy SLA" value="92%" icon={Shield} variant="info" />
       </div>
+
       <div className="ops-panel">
-        <div className="ops-panel-header"><div className="ops-panel-title">AI moderation queue will be populated here</div></div>
-        <div className="ops-panel-body" style={{ padding: 40, textAlign: 'center', color: 'var(--ops-text-muted)' }}>
-          <Bot className="w-12 h-12" style={{ margin: '0 auto 12px', opacity: 0.3 }} />
-          <p>AI moderation pipeline — Phase 3 implementation</p>
-          <p style={{ fontSize: 12 }}>Duplicate detection, suspicious pricing, fake media analysis</p>
+        <div className="ops-panel-header">
+          <div>
+            <div className="ops-panel-title">Operational Moderation Queue</div>
+            <p className="ops-section-subtitle">Every item opens a real moderation workflow and audit trail.</p>
+          </div>
+        </div>
+        <div className="ops-moderation-list">
+          {queues.map((item) => (
+            <div key={item.id} className="ops-moderation-row">
+              <div>
+                <span>{item.id}</span>
+                <strong>{item.subject}</strong>
+                <small>{item.type} · {item.source}</small>
+              </div>
+              <StatusBadge status={item.status} />
+              <StatusBadge status={item.severity} />
+              <div className="ops-row-actions">
+                <button className="ops-icon-btn" title="Open"><Eye className="w-4 h-4" /></button>
+                <button className="ops-icon-btn" title="Resolve"><CheckCircle2 className="w-4 h-4" /></button>
+                <button className="ops-icon-btn" title="Reject"><XCircle className="w-4 h-4" /></button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
