@@ -97,6 +97,8 @@ function AdminVerifyForm() {
       if (!res.ok) {
         if (data.cooldownRemaining) {
           setCooldown(data.cooldownRemaining);
+        } else if (data.retryAfterSeconds) {
+          setCooldown(Math.min(data.retryAfterSeconds, 120));
         }
         setError(data.error || 'Failed to send verification code');
         return;

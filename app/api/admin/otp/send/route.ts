@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const RESEND_COOLDOWN_SECONDS = 60;
+const MAX_RATE_LIMIT_SECONDS = 120;
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || "5", 10);
 const HAS_RESEND = Boolean(process.env.RESEND_API_KEY);
 
@@ -110,18 +111,25 @@ export async function POST(req: NextRequest) {
     // Writes: service role (bypasses RLS) after RBAC, else user client (needs RLS policies)
     const db = createSupabaseServiceRoleClient() ?? supabase;
 
+    const adminOtpLimit = RATE_LIMITS.ADMIN_OTP_SEND;
     const rateLimitResult = await checkRateLimit(
       db,
-      `otp_send:${user.id}`,
-      RATE_LIMITS.OTP_SEND.action,
-      RATE_LIMITS.OTP_SEND.maxAttempts,
-      RATE_LIMITS.OTP_SEND.windowMinutes,
+      `admin_otp_send:${user.id}`,
+      adminOtpLimit.action,
+      adminOtpLimit.maxAttempts,
+      adminOtpLimit.windowMinutes,
+      adminOtpLimit.blockMinutes,
     );
 
     if (!rateLimitResult.allowed) {
+      const retrySeconds = Math.min(
+        rateLimitResult.retryAfterSeconds ?? MAX_RATE_LIMIT_SECONDS,
+        MAX_RATE_LIMIT_SECONDS,
+      );
       return NextResponse.json(
         {
-          error: `Too many requests. Try again in ${rateLimitResult.retryAfterSeconds ?? 60} seconds.`,
+          error: `Too many requests. Try again in ${retrySeconds} seconds.`,
+          retryAfterSeconds: retrySeconds,
         },
         { status: 429 },
       );

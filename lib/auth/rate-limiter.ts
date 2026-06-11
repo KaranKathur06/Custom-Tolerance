@@ -13,14 +13,16 @@ export type RateLimitResult = {
   retryAfterSeconds?: number;
 };
 
+export type RateLimitProfile = {
+  action: string;
+  maxAttempts: number;
+  windowMinutes: number;
+  /** Max block duration when limit exceeded (defaults to windowMinutes × 2) */
+  blockMinutes?: number;
+};
+
 /**
  * Check if an action is rate-limited for a given identifier.
- *
- * @param supabase - Supabase client (server-side, with service role or user context)
- * @param identifier - Unique identifier (IP address, user ID, email)
- * @param action - The action being rate-limited ('login', 'otp_send', 'api_call')
- * @param maxAttempts - Maximum allowed attempts in the window
- * @param windowMinutes - Duration of the rate-limit window in minutes
  */
 export async function checkRateLimit(
   supabase: SupabaseClient,
@@ -28,7 +30,9 @@ export async function checkRateLimit(
   action: string,
   maxAttempts: number,
   windowMinutes: number,
+  blockMinutes?: number,
 ): Promise<RateLimitResult> {
+  const blockDurationMs = (blockMinutes ?? windowMinutes * 2) * 60 * 1000;
   const now = new Date();
 
   // Find active rate limit window for this identifier + action
@@ -70,9 +74,7 @@ export async function checkRateLimit(
 
   // Window exists — check if under limit
   if (existing.attempts >= maxAttempts) {
-    // Block for double the window duration
-    const blockDuration = windowMinutes * 2 * 60 * 1000;
-    const blockedUntil = new Date(now.getTime() + blockDuration);
+    const blockedUntil = new Date(now.getTime() + blockDurationMs);
 
     await supabase
       .from('rate_limits')
@@ -82,7 +84,7 @@ export async function checkRateLimit(
     return {
       allowed: false,
       remaining: 0,
-      retryAfterSeconds: Math.ceil(blockDuration / 1000),
+      retryAfterSeconds: Math.ceil(blockDurationMs / 1000),
     };
   }
 
@@ -118,6 +120,13 @@ export async function resetRateLimit(
 
 export const RATE_LIMITS = {
   LOGIN: { action: 'login', maxAttempts: 5, windowMinutes: 15 },
+  /** Admin 2FA OTP — max 2-minute block, 5 sends per 2-minute window */
+  ADMIN_OTP_SEND: {
+    action: 'admin_otp_send',
+    maxAttempts: 5,
+    windowMinutes: 2,
+    blockMinutes: 2,
+  },
   OTP_SEND: { action: 'otp_send', maxAttempts: 3, windowMinutes: 10 },
   OTP_VERIFY: { action: 'otp_verify', maxAttempts: 5, windowMinutes: 10 },
   SIGNUP_OTP_SEND: { action: 'signup_otp_send', maxAttempts: 5, windowMinutes: 30 },
