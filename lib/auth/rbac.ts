@@ -88,6 +88,18 @@ export function resolveEffectiveRole(params: {
   appMetadataRole?: unknown;
   userMetadataRole?: unknown;
 }): string {
+  const candidates = [
+    params.profileRole,
+    params.appMetadataRole,
+    params.userMetadataRole,
+  ].map(normalizeStoredRole);
+
+  // Authorization roles are distinct from marketplace personas. If any trusted
+  // source carries an admin-grade role, do not let buyer/seller profile state
+  // mask that authorization.
+  if (candidates.some((role) => role === "super_admin")) return "super_admin";
+  if (candidates.some((role) => role === "admin")) return "admin";
+
   return (
     (typeof params.profileRole === "string" && params.profileRole
       ? normalizeStoredRole(params.profileRole)

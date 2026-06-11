@@ -32,6 +32,12 @@ export const PERMISSIONS = {
   ADMIN_ANALYTICS: 'admin.analytics',
   ADMIN_BANNERS: 'admin.banners',
   ADMIN_CAPABILITIES: 'admin.capabilities',
+  ADMIN_SUPPLIERS: 'admin.suppliers',
+  ADMIN_RFQS: 'admin.rfqs',
+  ADMIN_QUOTES: 'admin.quotes',
+  ADMIN_REVENUE: 'admin.revenue',
+  ADMIN_VERIFICATION: 'admin.verification',
+  ADMIN_CONTENT: 'admin.content',
 
   // CRM
   CRM_LEADS_LIST: 'crm.leads.list',
@@ -165,7 +171,9 @@ export const CLIENT_PERMISSION_MATRIX: Record<string, readonly string[]> = {
  */
 export function hasClientPermission(role: string | null | undefined, permission: string): boolean {
   if (!role) return false;
-  const perms = CLIENT_PERMISSION_MATRIX[role];
+  const normalizedRole = role === 'superadmin' ? 'super_admin' : role;
+  if (normalizedRole === 'super_admin') return true;
+  const perms = CLIENT_PERMISSION_MATRIX[normalizedRole];
   if (!perms) return false;
   return perms.includes(permission);
 }

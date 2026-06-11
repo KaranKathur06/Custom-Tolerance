@@ -539,3 +539,580 @@
   .ops-kpi-grid { grid-template-columns: 1fr; }
   .ops-mode-switch { display: none; }
 }
+
+/* Marketplace Operating System */
+.mos-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.mos-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background:
+    linear-gradient(135deg, rgba(20, 184, 166, 0.12), transparent 34%),
+    linear-gradient(315deg, rgba(245, 158, 11, 0.09), transparent 30%),
+    var(--ops-surface);
+}
+
+.mos-eyebrow,
+.mos-global-status,
+.mos-status-pill,
+.mos-copilot-button,
+.mos-system-alert,
+.mos-panel-header a,
+.mos-ai-strip,
+.mos-copilot {
+  display: flex;
+  align-items: center;
+}
+
+.mos-eyebrow {
+  gap: 8px;
+  color: #5eead4;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mos-hero h1 {
+  margin: 8px 0 8px;
+  color: var(--ops-text);
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 800;
+}
+
+.mos-hero p {
+  max-width: 720px;
+  color: var(--ops-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.mos-status-card {
+  min-width: 210px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 18px;
+  border: 1px solid var(--ops-border-light);
+  border-radius: var(--ops-radius-sm);
+  background: rgba(10, 14, 26, 0.72);
+}
+
+.mos-status-card span,
+.mos-status-card small,
+.mos-city-card span,
+.mos-city-metrics span,
+.mos-workspace-card span,
+.mos-supplier-row span,
+.mos-fraud-card span {
+  color: var(--ops-text-muted);
+  font-size: 12px;
+}
+
+.mos-status-card strong {
+  font-size: 26px;
+  text-transform: capitalize;
+}
+
+.mos-status-card.healthy strong { color: var(--ops-success); }
+.mos-status-card.warning strong { color: var(--ops-warning); }
+.mos-status-card.critical strong { color: var(--ops-danger); }
+
+.mos-global-status {
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-surface);
+}
+
+.mos-status-pill,
+.mos-copilot-button,
+.mos-system-alert {
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: var(--ops-radius-sm);
+  border: 1px solid var(--ops-border);
+  background: var(--ops-bg);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mos-status-pill.healthy { color: var(--ops-success); }
+.mos-status-pill.warning { color: var(--ops-warning); }
+.mos-status-pill.critical { color: var(--ops-danger); }
+
+.mos-command-input {
+  flex: 1;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-bg);
+  color: var(--ops-text-muted);
+  text-align: left;
+}
+
+.mos-copilot-button {
+  color: #5eead4;
+  cursor: pointer;
+}
+
+.mos-system-alert {
+  color: var(--ops-warning);
+}
+
+.mos-health-grid,
+.mos-workspace-grid,
+.mos-fraud-grid,
+.mos-pipeline {
+  display: grid;
+  gap: 12px;
+}
+
+.mos-health-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mos-health-card {
+  min-height: 112px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+  text-decoration: none;
+  transition: all var(--ops-transition);
+}
+
+.mos-health-card:hover,
+.mos-workspace-card:hover,
+.mos-action-item:hover,
+.mos-stage:hover,
+.mos-fraud-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--ops-border-light);
+  background: var(--ops-surface-hover);
+}
+
+.mos-health-card span {
+  color: var(--ops-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mos-health-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 26px;
+}
+
+.mos-health-card.success svg { color: var(--ops-success); }
+.mos-health-card.warning svg { color: var(--ops-warning); }
+.mos-health-card.danger svg { color: var(--ops-danger); }
+.mos-health-card.info svg { color: #38bdf8; }
+
+.mos-grid-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
+  gap: 18px;
+}
+
+.mos-panel {
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-surface);
+  overflow: hidden;
+}
+
+.mos-panel-header {
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--ops-border);
+}
+
+.mos-panel-header h2 {
+  margin: 0;
+  color: var(--ops-text);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.mos-panel-header p {
+  margin: 3px 0 0;
+  color: var(--ops-text-muted);
+  font-size: 12px;
+}
+
+.mos-panel-header a {
+  gap: 6px;
+  color: #5eead4;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mos-map-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 230px;
+  gap: 16px;
+  padding: 18px;
+}
+
+.mos-india-map {
+  position: relative;
+  min-height: 370px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background:
+    radial-gradient(circle at 45% 48%, rgba(20, 184, 166, 0.18), transparent 35%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(3, 7, 18, 0.86));
+}
+
+.mos-india-map::before {
+  content: "";
+  position: absolute;
+  inset: 34px 74px 38px 70px;
+  border: 1px solid rgba(132, 148, 167, 0.28);
+  border-radius: 45% 55% 42% 58% / 24% 28% 72% 76%;
+  transform: rotate(-8deg);
+}
+
+.mos-city-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ops-text-secondary);
+  cursor: pointer;
+  transform: translate(-8px, -8px);
+}
+
+.mos-city-node span {
+  width: 13px;
+  height: 13px;
+  border-radius: 99px;
+  border: 2px solid currentColor;
+  background: var(--ops-bg);
+  box-shadow: 0 0 18px currentColor;
+}
+
+.mos-city-node strong {
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 99px;
+  background: rgba(10, 14, 26, 0.8);
+  border: 1px solid var(--ops-border);
+}
+
+.mos-city-node.success { color: var(--ops-success); }
+.mos-city-node.warning { color: var(--ops-warning); }
+.mos-city-node.danger { color: var(--ops-danger); }
+.mos-city-node.info { color: #38bdf8; }
+.mos-city-node.active strong { color: var(--ops-text); border-color: currentColor; }
+
+.mos-city-card {
+  padding: 16px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-bg);
+}
+
+.mos-city-card h3 {
+  margin: 4px 0 12px;
+  font-size: 24px;
+}
+
+.mos-city-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mos-city-metrics div {
+  padding: 10px;
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-surface);
+}
+
+.mos-city-metrics strong {
+  display: block;
+  color: var(--ops-text);
+  font-size: 16px;
+}
+
+.mos-city-card button,
+.mos-copilot button {
+  width: 100%;
+  margin-top: 14px;
+  min-height: 36px;
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  border-radius: var(--ops-radius-sm);
+  background: rgba(20, 184, 166, 0.12);
+  color: #5eead4;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mos-action-list,
+.mos-event-stream,
+.mos-supplier-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.mos-action-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--ops-border);
+  color: var(--ops-text);
+  text-decoration: none;
+  transition: all var(--ops-transition);
+}
+
+.mos-action-item strong,
+.mos-event strong,
+.mos-workspace-card strong {
+  display: block;
+  font-size: 13px;
+}
+
+.mos-action-item span {
+  color: var(--ops-text-muted);
+  font-size: 12px;
+}
+
+.mos-action-item b {
+  min-width: 34px;
+  padding: 5px 8px;
+  border-radius: 99px;
+  background: var(--ops-bg);
+  text-align: center;
+}
+
+.mos-action-item.warning svg,
+.mos-fraud-card.warning strong { color: var(--ops-warning); }
+.mos-action-item.danger svg,
+.mos-fraud-card.danger strong { color: var(--ops-danger); }
+.mos-action-item.info svg { color: #38bdf8; }
+
+.mos-pipeline {
+  grid-template-columns: repeat(7, minmax(92px, 1fr));
+  padding: 16px;
+}
+
+.mos-stage {
+  min-height: 92px;
+  padding: 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-bg);
+  color: var(--ops-text);
+  text-decoration: none;
+  transition: all var(--ops-transition);
+}
+
+.mos-stage span {
+  color: var(--ops-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mos-stage strong {
+  display: block;
+  margin-top: 20px;
+  font-size: 28px;
+}
+
+.mos-ai-strip {
+  gap: 8px;
+  margin: 0 16px 16px;
+  padding: 11px 12px;
+  border-radius: var(--ops-radius-sm);
+  background: rgba(20, 184, 166, 0.1);
+  color: #5eead4;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mos-event {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ops-border);
+}
+
+.mos-event > span {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border-radius: 99px;
+  background: currentColor;
+  box-shadow: 0 0 14px currentColor;
+}
+
+.mos-event p {
+  margin: 2px 0 0;
+  color: var(--ops-text-muted);
+  font-size: 12px;
+}
+
+.mos-event time {
+  color: var(--ops-text-muted);
+  font-size: 11px;
+}
+
+.mos-event.success { color: var(--ops-success); }
+.mos-event.warning { color: var(--ops-warning); }
+.mos-event.danger { color: var(--ops-danger); }
+.mos-event.info { color: #38bdf8; }
+
+.mos-workspace-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 16px;
+}
+
+.mos-workspace-card {
+  min-height: 130px;
+  padding: 16px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-bg);
+  color: var(--ops-text);
+  text-decoration: none;
+  transition: all var(--ops-transition);
+}
+
+.mos-workspace-card svg {
+  color: #5eead4;
+}
+
+.mos-workspace-card strong {
+  margin: 14px 0 7px;
+}
+
+.mos-supplier-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr repeat(5, minmax(80px, 1fr));
+  gap: 10px;
+  align-items: center;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--ops-border);
+  font-size: 12px;
+}
+
+.mos-supplier-row b {
+  color: var(--ops-warning);
+}
+
+.mos-fraud-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 16px;
+}
+
+.mos-fraud-card {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-bg);
+  color: var(--ops-text);
+  text-decoration: none;
+  transition: all var(--ops-transition);
+}
+
+.mos-fraud-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 28px;
+}
+
+.mos-copilot {
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid rgba(94, 234, 212, 0.28);
+  border-radius: var(--ops-radius);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.13), rgba(59, 130, 246, 0.08));
+}
+
+.mos-copilot svg {
+  color: #5eead4;
+  flex-shrink: 0;
+}
+
+.mos-copilot p {
+  margin: 2px 0 0;
+  color: var(--ops-text-secondary);
+  font-size: 13px;
+}
+
+.mos-copilot button {
+  width: auto;
+  margin: 0 0 0 auto;
+  padding: 0 16px;
+}
+
+@media (max-width: 1200px) {
+  .mos-health-grid,
+  .mos-workspace-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mos-grid-main,
+  .mos-map-body {
+    grid-template-columns: 1fr;
+  }
+  .mos-pipeline {
+    grid-template-columns: repeat(4, minmax(92px, 1fr));
+  }
+  .mos-supplier-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .mos-hero,
+  .mos-global-status,
+  .mos-copilot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mos-health-grid,
+  .mos-workspace-grid,
+  .mos-fraud-grid,
+  .mos-pipeline {
+    grid-template-columns: 1fr;
+  }
+  .mos-hero h1 {
+    font-size: 28px;
+  }
+  .mos-india-map {
+    min-height: 300px;
+  }
+}
