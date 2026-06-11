@@ -20,8 +20,8 @@
   --ops-warning: #f59e0b;
   --ops-success: #22c55e;
   --ops-info: #3b82f6;
-  --ops-radius: 10px;
-  --ops-radius-sm: 6px;
+  --ops-radius: 12px;
+  --ops-radius-sm: 8px;
   --ops-sidebar-w: 260px;
   --ops-sidebar-collapsed: 68px;
   --ops-topbar-h: 56px;
@@ -102,7 +102,7 @@ body:has(.ops-shell) main.min-h-screen {
 .ops-logo-suffix { color: var(--ops-text-muted); font-weight: 500; }
 
 .ops-icon-btn {
-  width: 36px; height: 36px;
+  width: 40px; height: 40px;
   border-radius: 8px;
   border: 1px solid var(--ops-border);
   background: transparent;
@@ -377,6 +377,40 @@ body:has(.ops-shell) main.min-h-screen {
 .ops-panel-title { font-size: 14px; font-weight: 600; color: var(--ops-text); }
 .ops-panel-body { padding: 16px 20px; }
 
+.ops-panel table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.ops-panel table th {
+  height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--ops-border);
+  color: var(--ops-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.ops-panel table td {
+  min-height: 56px;
+  padding: 12px 16px;
+  border-bottom: 0;
+  vertical-align: middle;
+}
+
+.ops-panel table tbody tr {
+  box-shadow: inset 0 -1px 0 var(--ops-border);
+}
+
+.ops-panel table tbody tr:hover {
+  background: #151515;
+}
+
 /* ── Status Badges ── */
 .ops-status-badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -444,7 +478,7 @@ body:has(.ops-shell) main.min-h-screen {
   background: var(--ops-surface);
   border: 1px solid var(--ops-border);
   border-radius: var(--ops-radius);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.56);
   z-index: 100;
   min-width: 240px;
   animation: ops-dropdown-in 150ms ease-out;
@@ -565,7 +599,7 @@ body:has(.ops-shell) main.min-h-screen {
   gap: 20px;
   padding: 24px;
   border: 1px solid var(--ops-border);
-  border-radius: var(--ops-radius);
+  border-radius: 12px;
   background:
     linear-gradient(135deg, rgba(212, 175, 55, 0.14), transparent 34%),
     linear-gradient(315deg, rgba(255, 255, 255, 0.05), transparent 30%),
@@ -1132,6 +1166,8 @@ body:has(.ops-shell) main.min-h-screen {
 /* User governance */
 .ops-toolbar-actions,
 .ops-user-filters,
+.ops-filter-bar,
+.ops-filter-actions,
 .ops-row-actions,
 .ops-table-footer,
 .ops-table-footer div,
@@ -1158,10 +1194,146 @@ body:has(.ops-shell) main.min-h-screen {
   cursor: pointer;
 }
 
-.ops-user-filters {
-  gap: 10px;
+.ops-user-filters,
+.ops-filter-bar {
+  gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+
+.ops-filter-bar {
+  padding: 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: 12px;
+  background: var(--ops-surface);
+}
+
+.ops-filter-actions {
+  gap: 8px;
+  margin-left: auto;
+}
+
+.enterprise-select {
+  position: relative;
+  min-width: 190px;
+}
+
+.enterprise-select-trigger {
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  background: #111111;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--ops-transition), border-color var(--ops-transition), box-shadow var(--ops-transition);
+}
+
+.enterprise-select-trigger:hover,
+.enterprise-select-trigger[aria-expanded="true"] {
+  background: #161616;
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
+}
+
+.enterprise-select-trigger svg {
+  color: var(--ops-accent-admin);
+  flex-shrink: 0;
+}
+
+.enterprise-select-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 120;
+  width: min(320px, max(100%, 260px));
+  padding: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 12px;
+  background: rgba(17, 17, 17, 0.96);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(12px);
+}
+
+.enterprise-select-search {
+  position: relative;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.enterprise-select-search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ops-text-muted);
+}
+
+.enterprise-select-search input {
+  width: 100%;
+  height: 40px;
+  padding: 0 10px 0 34px;
+  border: 1px solid var(--ops-border);
+  border-radius: 8px;
+  background: #050505;
+  color: var(--ops-text);
+  outline: none;
+}
+
+.enterprise-select-options {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.enterprise-select-option {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ops-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.enterprise-select-option:hover,
+.enterprise-select-option.selected {
+  background: #1a1a1a;
+  color: var(--ops-text);
+}
+
+.enterprise-select-option strong {
+  display: block;
+  font-size: 13px;
+}
+
+.enterprise-select-option small,
+.enterprise-select-empty {
+  display: block;
+  margin-top: 3px;
+  color: var(--ops-text-muted);
+  font-size: 12px;
+}
+
+.enterprise-select-option svg {
+  color: var(--ops-accent-admin);
+  flex-shrink: 0;
+}
+
+.enterprise-select-empty {
+  padding: 12px;
 }
 
 .ops-filter-search {
@@ -1179,14 +1351,12 @@ body:has(.ops-shell) main.min-h-screen {
 }
 
 .ops-filter-search input,
-.ops-user-filters select,
-.ops-settings-input,
-.ops-settings-select {
+.ops-settings-input {
   width: 100%;
-  min-height: 38px;
+  min-height: 48px;
   border: 1px solid var(--ops-border);
-  border-radius: var(--ops-radius-sm);
-  background: var(--ops-surface);
+  border-radius: 12px;
+  background: #111111;
   color: var(--ops-text);
   font-size: 13px;
   outline: none;
@@ -1194,11 +1364,6 @@ body:has(.ops-shell) main.min-h-screen {
 
 .ops-filter-search input {
   padding: 0 12px 0 36px;
-}
-
-.ops-user-filters select {
-  width: 190px;
-  padding: 0 12px;
 }
 
 .ops-users-table-panel {
@@ -1212,7 +1377,8 @@ body:has(.ops-shell) main.min-h-screen {
 .ops-users-table {
   width: 100%;
   min-width: 1080px;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
   font-size: 13px;
 }
@@ -1229,13 +1395,18 @@ body:has(.ops-shell) main.min-h-screen {
 }
 
 .ops-users-table td {
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--ops-border);
+  height: 68px;
+  padding: 0 16px;
+  border-bottom: 0;
   vertical-align: middle;
 }
 
+.ops-users-table tbody tr {
+  box-shadow: inset 0 -1px 0 var(--ops-border);
+}
+
 .ops-users-table tbody tr:hover {
-  background: var(--ops-surface-hover);
+  background: #151515;
 }
 
 .ops-user-cell {
@@ -1294,8 +1465,13 @@ body:has(.ops-shell) main.min-h-screen {
 .ops-risk-score.danger { color: var(--ops-danger); }
 
 .ops-row-actions {
-  gap: 6px;
+  gap: 8px;
   justify-content: flex-end;
+}
+
+.ops-action-square {
+  width: 44px;
+  height: 44px;
 }
 
 .ops-action-menu-wrap {
@@ -1307,17 +1483,17 @@ body:has(.ops-shell) main.min-h-screen {
   top: calc(100% + 8px);
   right: 0;
   z-index: 80;
-  width: 260px;
+  width: 292px;
   max-height: 430px;
   overflow-y: auto;
   border: 1px solid var(--ops-border);
-  border-radius: var(--ops-radius);
+  border-radius: 12px;
   background: var(--ops-surface);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5);
 }
 
 .ops-action-menu-section {
-  padding: 6px;
+  padding: 8px;
   border-bottom: 1px solid var(--ops-border);
 }
 
@@ -1325,12 +1501,25 @@ body:has(.ops-shell) main.min-h-screen {
   border-bottom: 0;
 }
 
+.ops-action-menu-label {
+  padding: 6px 10px 8px;
+  color: var(--ops-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ops-action-menu-section.danger-zone {
+  background: rgba(239, 68, 68, 0.04);
+}
+
 .ops-action-menu button {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 34px;
+  min-height: 40px;
   padding: 0 10px;
   border: 0;
   border-radius: var(--ops-radius-sm);
@@ -1549,8 +1738,7 @@ body:has(.ops-shell) main.min-h-screen {
   font-weight: 800;
 }
 
-.ops-settings-input,
-.ops-settings-select {
+.ops-settings-input {
   padding: 0 12px;
 }
 

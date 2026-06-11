@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from 'lucide-react';
+import { EnterpriseSelect } from '@/components/ui/EnterpriseSelect';
 
 const sections = [
   { id: 'configuration', title: 'Marketplace Configuration', icon: Building2 },
@@ -44,6 +45,7 @@ function Field({ label, value, type = 'text' }: { label: string; value: string; 
 
 export default function PlatformSettingsPage() {
   const [activeSection, setActiveSection] = useState('configuration');
+  const [timezone, setTimezone] = useState('Asia/Kolkata');
   const ActiveIcon = sections.find((section) => section.id === activeSection)?.icon ?? ShieldCheck;
 
   return (
@@ -88,10 +90,15 @@ export default function PlatformSettingsPage() {
               <Field label="GST Number" value="24AAACC0000A1Z5" />
               <label className="ops-settings-field">
                 <span>Timezone</span>
-                <select className="ops-settings-select" defaultValue="Asia/Kolkata">
-                  <option value="Asia/Kolkata">Asia/Kolkata</option>
-                  <option value="UTC">UTC</option>
-                </select>
+                <EnterpriseSelect
+                  value={timezone}
+                  onValueChange={setTimezone}
+                  options={[
+                    { label: 'Asia/Kolkata', value: 'Asia/Kolkata' },
+                    { label: 'UTC', value: 'UTC' },
+                  ]}
+                  ariaLabel="Timezone"
+                />
               </label>
               <Toggle label="Maintenance Mode" description="Temporarily restrict public marketplace access." />
             </div>

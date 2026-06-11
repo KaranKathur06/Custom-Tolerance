@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Activity, Bell, KeyRound, Monitor, Palette, Save, ShieldCheck, User } from 'lucide-react';
+import { EnterpriseSelect } from '@/components/ui/EnterpriseSelect';
 
 const accountTabs = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -14,6 +15,8 @@ const accountTabs = [
 
 export default function OpsAccountPage() {
   const [activeTab, setActiveTab] = useState('profile');
+  const [theme, setTheme] = useState('graphite');
+  const [density, setDensity] = useState('comfortable');
 
   return (
     <div className="ops-account-page">
@@ -76,8 +79,30 @@ export default function OpsAccountPage() {
 
           {activeTab === 'appearance' ? (
             <div className="ops-settings-grid">
-              <label className="ops-settings-field"><span>Theme</span><select className="ops-settings-select" defaultValue="graphite"><option value="graphite">Graphite Pro</option><option value="contrast">High Contrast</option></select></label>
-              <label className="ops-settings-field"><span>Density</span><select className="ops-settings-select" defaultValue="comfortable"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+              <label className="ops-settings-field">
+                <span>Theme</span>
+                <EnterpriseSelect
+                  value={theme}
+                  onValueChange={setTheme}
+                  options={[
+                    { label: 'Graphite Pro', value: 'graphite' },
+                    { label: 'High Contrast', value: 'contrast' },
+                  ]}
+                  ariaLabel="Theme"
+                />
+              </label>
+              <label className="ops-settings-field">
+                <span>Density</span>
+                <EnterpriseSelect
+                  value={density}
+                  onValueChange={setDensity}
+                  options={[
+                    { label: 'Comfortable', value: 'comfortable' },
+                    { label: 'Compact', value: 'compact' },
+                  ]}
+                  ariaLabel="Density"
+                />
+              </label>
             </div>
           ) : null}
 

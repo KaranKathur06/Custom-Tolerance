@@ -22,9 +22,11 @@ import {
   UserCog,
   UserPlus,
   UserX,
+  type LucideIcon,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ops/shared/StatusBadge';
 import { publishOpsEvent, type OpsEventName } from '@/lib/ops/event-layer';
+import { EnterpriseSelect } from '@/components/ui/EnterpriseSelect';
 
 type UserRow = {
   id: string;
@@ -39,6 +41,19 @@ type UserRow = {
   risk: number;
 };
 
+type UserAction = {
+  label: string;
+  icon: LucideIcon;
+  danger?: boolean;
+  run: (user: UserRow) => void;
+};
+
+type UserActionGroup = {
+  label: string;
+  danger?: boolean;
+  actions: UserAction[];
+};
+
 const roles = [
   'Buyer',
   'Seller',
@@ -48,6 +63,18 @@ const roles = [
   'Finance Manager',
   'Admin',
   'Superadmin',
+];
+
+const roleOptions = [
+  { label: 'All roles', value: 'all' },
+  ...roles.map((role) => ({ label: role, value: role })),
+];
+
+const statusOptions = [
+  { label: 'All status', value: 'all' },
+  { label: 'Active', value: 'Active' },
+  { label: 'Suspended', value: 'Suspended' },
+  { label: 'Banned', value: 'Banned' },
 ];
 
 const initialUsers: UserRow[] = [
@@ -97,30 +124,50 @@ export default function UsersPage() {
     notify('User deleted from governance queue');
   }
 
-  const primaryActions = [
-    { label: 'View Profile', icon: Eye, run: (u: UserRow) => notify(`Opening profile for ${u.name}`) },
-    { label: 'View Activity', icon: Shield, run: (u: UserRow) => notify(`Opening activity trail for ${u.name}`) },
-    { label: 'Edit User', icon: Edit3, run: (u: UserRow) => notify(`Editing ${u.name}`) },
-    { label: 'Change Role', icon: UserCog, run: (u: UserRow) => setRoleModalUser(u) },
-    { label: 'Send Notification', icon: Bell, run: (u: UserRow) => {
-      publishOpsEvent('user.notification_sent', { entityId: u.id, entityLabel: u.name, message: `Notification queued for ${u.name}` });
-      notify(`Notification queued for ${u.name}`);
-    } },
-  ];
-
-  const governanceActions = [
-    { label: 'Promote', icon: UserCheck, run: (u: UserRow) => setRoleModalUser(u) },
-    { label: 'Demote', icon: UserX, run: (u: UserRow) => setRoleModalUser(u) },
-    { label: 'Suspend', icon: Shield, run: (u: UserRow) => updateUser(u.id, { status: 'Suspended' }, `${u.name} suspended`) },
-    { label: 'Unsuspend', icon: CheckCircle2, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} restored`) },
-    { label: 'Ban', icon: Ban, run: (u: UserRow) => updateUser(u.id, { status: 'Banned' }, `${u.name} banned`) },
-    { label: 'Unban', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} unbanned`) },
-    { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => notify(`Password reset sent to ${u.email}`) },
-    { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => notify(`${u.name} will be logged out on next request`) },
-    { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`, 'user.verification_changed') },
-    { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`, 'user.verification_changed') },
-    { label: 'Impersonate User', icon: UserCog, run: (u: UserRow) => notify(`Impersonation request logged for ${u.name}`) },
-    { label: 'Delete', icon: Trash2, danger: true, run: (u: UserRow) => removeUser(u.id) },
+  const actionGroups: UserActionGroup[] = [
+    {
+      label: 'Information',
+      actions: [
+        { label: 'View Profile', icon: Eye, run: (u: UserRow) => notify(`Opening profile for ${u.name}`) },
+        { label: 'View Activity', icon: Shield, run: (u: UserRow) => notify(`Opening activity trail for ${u.name}`) },
+      ],
+    },
+    {
+      label: 'Management',
+      actions: [
+        { label: 'Edit User', icon: Edit3, run: (u: UserRow) => notify(`Editing ${u.name}`) },
+        { label: 'Change Role', icon: UserCog, run: (u: UserRow) => setRoleModalUser(u) },
+        { label: 'Send Notification', icon: Bell, run: (u: UserRow) => {
+          publishOpsEvent('user.notification_sent', { entityId: u.id, entityLabel: u.name, message: `Notification queued for ${u.name}` });
+          notify(`Notification queued for ${u.name}`);
+        } },
+      ],
+    },
+    {
+      label: 'Access Control',
+      actions: [
+        { label: 'Promote', icon: UserCheck, run: (u: UserRow) => setRoleModalUser(u) },
+        { label: 'Demote', icon: UserX, run: (u: UserRow) => setRoleModalUser(u) },
+        { label: 'Suspend', icon: Shield, run: (u: UserRow) => updateUser(u.id, { status: 'Suspended' }, `${u.name} suspended`) },
+        { label: 'Unsuspend', icon: CheckCircle2, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} restored`) },
+        { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => notify(`${u.name} will be logged out on next request`) },
+        { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => notify(`Password reset sent to ${u.email}`) },
+        { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`, 'user.verification_changed') },
+        { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`, 'user.verification_changed') },
+        { label: 'Impersonate User', icon: UserCog, run: (u: UserRow) => notify(`Impersonation request logged for ${u.name}`) },
+      ],
+    },
+    {
+      label: 'Enforcement',
+      danger: true,
+      actions: [
+        { label: 'Ban', icon: Ban, run: (u: UserRow) => updateUser(u.id, { status: 'Banned' }, `${u.name} banned`) },
+        { label: 'Unban', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} unbanned`) },
+        { label: 'Delete User', icon: Trash2, danger: true, run: (u: UserRow) => {
+          if (window.confirm(`Delete ${u.name}? This action will be audit logged.`)) removeUser(u.id);
+        } },
+      ],
+    },
   ];
 
   return (
@@ -132,27 +179,19 @@ export default function UsersPage() {
           <h1 className="ops-section-title">User Governance</h1>
           <p className="ops-section-subtitle">Manage identity, roles, verification, sessions, and enforcement workflows.</p>
         </div>
-        <div className="ops-toolbar-actions">
-          <button className="ops-icon-btn" title="Export users"><Download className="w-4 h-4" /></button>
-          <button className="ops-primary-action"><UserPlus className="w-4 h-4" /> Invite User</button>
-        </div>
       </div>
 
-      <div className="ops-user-filters">
+      <div className="ops-filter-bar">
         <label className="ops-filter-search">
           <Search className="w-4 h-4" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, email, company" />
         </label>
-        <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
-          <option value="all">All roles</option>
-          {roles.map((role) => <option key={role} value={role}>{role}</option>)}
-        </select>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-          <option value="all">All status</option>
-          <option value="Active">Active</option>
-          <option value="Suspended">Suspended</option>
-          <option value="Banned">Banned</option>
-        </select>
+        <EnterpriseSelect value={roleFilter} onValueChange={setRoleFilter} options={roleOptions} searchable ariaLabel="Filter by role" />
+        <EnterpriseSelect value={statusFilter} onValueChange={setStatusFilter} options={statusOptions} ariaLabel="Filter by status" />
+        <div className="ops-filter-actions">
+          <button className="ops-icon-btn ops-action-square" title="Export users"><Download className="w-4 h-4" /></button>
+          <button className="ops-primary-action"><UserPlus className="w-4 h-4" /> Invite User</button>
+        </div>
       </div>
 
       <div className="ops-panel ops-users-table-panel">
@@ -183,33 +222,30 @@ export default function UsersPage() {
                   <td className="ops-muted-cell">{user.lastLogin}</td>
                   <td>
                     <div className="ops-row-actions">
-                      <button className="ops-icon-btn" title="View Profile" onClick={() => notify(`Opening profile for ${user.name}`)}><Eye className="w-4 h-4" /></button>
-                      <button className="ops-icon-btn" title="Send Notification" onClick={() => {
+                      <button className="ops-icon-btn ops-action-square" title="View Profile" onClick={() => notify(`Opening profile for ${user.name}`)}><Eye className="w-4 h-4" /></button>
+                      <button className="ops-icon-btn ops-action-square" title="Send Notification" onClick={() => {
                         publishOpsEvent('user.notification_sent', { entityId: user.id, entityLabel: user.name, message: `Notification queued for ${user.name}` });
                         notify(`Notification queued for ${user.name}`);
                       }}><Mail className="w-4 h-4" /></button>
                       <div className="ops-action-menu-wrap">
-                        <button className="ops-icon-btn" title="More actions" onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}>
+                        <button className="ops-icon-btn ops-action-square" title="More actions" onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}>
                           <MoreVertical className="w-4 h-4" />
                         </button>
                         {openMenu === user.id ? (
                           <div className="ops-action-menu">
-                            <div className="ops-action-menu-section">
-                              {primaryActions.map((action) => {
-                                const Icon = action.icon;
-                                return <button key={action.label} onClick={() => action.run(user)}><Icon className="w-4 h-4" /> {action.label}</button>;
-                              })}
-                            </div>
-                            <div className="ops-action-menu-section">
-                              {governanceActions.map((action) => {
-                                const Icon = action.icon;
-                                return (
-                                  <button key={action.label} className={action.danger ? 'danger' : ''} onClick={() => action.run(user)}>
-                                    <Icon className="w-4 h-4" /> {action.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
+                            {actionGroups.map((group) => (
+                              <div key={group.label} className={`ops-action-menu-section ${group.danger ? 'danger-zone' : ''}`}>
+                                <div className="ops-action-menu-label">{group.label}</div>
+                                {group.actions.map((action) => {
+                                  const Icon = action.icon;
+                                  return (
+                                    <button key={action.label} className={action.danger ? 'danger' : ''} onClick={() => action.run(user)}>
+                                      <Icon className="w-4 h-4" /> {action.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ))}
                           </div>
                         ) : null}
                       </div>
