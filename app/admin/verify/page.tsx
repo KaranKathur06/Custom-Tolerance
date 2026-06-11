@@ -100,7 +100,9 @@ function AdminVerifyForm() {
         } else if (data.retryAfterSeconds) {
           setCooldown(Math.min(data.retryAfterSeconds, 120));
         }
-        setError(data.error || 'Failed to send verification code');
+        const hint = data.hint ? ` ${data.hint}` : '';
+        const code = data.code ? ` [${data.code}]` : '';
+        setError(`${data.error || 'Failed to send verification code'}${code}${hint}`);
         return;
       }
 

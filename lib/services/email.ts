@@ -1,11 +1,15 @@
 /**
  * CustomTolerance — Email Service
  *
- * Centralized email delivery service.
- * Supports Resend (primary) and console fallback (development).
+ * Centralized email delivery via Resend HTTP API with structured diagnostics.
  */
 
-import { BRAND, brandSiteUrl } from "@/config/brand";
+import { BRAND } from "@/config/brand";
+import {
+  getEmailConfigSnapshot,
+  parseResendError,
+  type EmailErrorCode,
+} from "@/lib/services/email-diagnostics";
 
 type EmailPayload = {
   to: string;
@@ -14,43 +18,73 @@ type EmailPayload = {
   text?: string;
 };
 
-type SendResult = {
+export type SendResult = {
   success: boolean;
   messageId?: string;
   error?: string;
+  code?: EmailErrorCode;
+  hint?: string;
+  providerStatus?: number;
+  providerName?: string;
 };
-
-const FROM_ADDRESS = process.env.EMAIL_FROM_ADDRESS || BRAND.noreplyEmail;
-const FROM_NAME = process.env.EMAIL_FROM_NAME || BRAND.name;
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 const emailFooter = `${BRAND.name} — ${BRAND.tagline}`;
 
+function formatFromHeader(): string {
+  const config = getEmailConfigSnapshot();
+  return `${config.fromName} <${config.fromAddress}>`;
+}
+
 export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
-  if (RESEND_API_KEY) {
-    return sendViaResend(payload);
+  const config = getEmailConfigSnapshot();
+
+  if (!payload.to?.includes("@")) {
+    return {
+      success: false,
+      code: "EMAIL_RECIPIENT_INVALID",
+      error: "Invalid recipient email address.",
+      hint: "Ensure the authenticated user has a valid email on their account.",
+    };
   }
 
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log(`📧 EMAIL (dev mode — no RESEND_API_KEY set)`);
-  console.log(`   To:      ${payload.to}`);
-  console.log(`   Subject: ${payload.subject}`);
-  console.log(`   Body:    ${payload.text || "(HTML only)"}`);
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  if (!config.resendApiKeyConfigured) {
+    console.log("[Email] Dev mode — RESEND_API_KEY not set");
+    console.log(`[Email] To: ${payload.to} | Subject: ${payload.subject}`);
+    console.log(`[Email] Body: ${payload.text || "(HTML only)"}`);
+    return { success: true, messageId: `dev-${Date.now()}` };
+  }
 
-  return { success: true, messageId: `dev-${Date.now()}` };
+  return sendViaResend(payload);
 }
 
 async function sendViaResend(payload: EmailPayload): Promise<SendResult> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    return {
+      success: false,
+      code: "EMAIL_NOT_CONFIGURED",
+      error: "RESEND_API_KEY is missing at runtime.",
+      hint: "Add RESEND_API_KEY to Vercel Production and redeploy.",
+    };
+  }
+
+  const from = formatFromHeader();
+
   try {
+    console.log("[Email] Resend send attempt", {
+      to: payload.to.replace(/(^.).+(@.+$)/, "$1***$2"),
+      from,
+      subject: payload.subject,
+    });
+
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: `${FROM_NAME} <${FROM_ADDRESS}>`,
+        from,
         to: [payload.to],
         subject: payload.subject,
         html: payload.html,
@@ -58,21 +92,56 @@ async function sendViaResend(payload: EmailPayload): Promise<SendResult> {
       }),
     });
 
-    const data = await response.json();
+    type ResendResponse = {
+      id?: string;
+      message?: string;
+      name?: string;
+      statusCode?: number;
+    };
 
-    if (!response.ok) {
-      console.error("[Email] Resend error:", data);
-      return { success: false, error: data?.message || "Resend API error" };
+    let data: ResendResponse | null = null;
+    try {
+      data = (await response.json()) as ResendResponse;
+    } catch {
+      data = null;
     }
 
-    return { success: true, messageId: data.id };
+    if (!response.ok) {
+      const parsed = parseResendError(response.status, data);
+      console.error("[Email] Resend rejected", {
+        status: response.status,
+        body: data,
+        from,
+        code: parsed.code,
+      });
+      return {
+        success: false,
+        error: parsed.message,
+        code: parsed.code,
+        hint: parsed.hint,
+        providerStatus: response.status,
+        providerName: data?.name,
+      };
+    }
+
+    console.log("[Email] Resend accepted", { messageId: data?.id });
+    return { success: true, messageId: data?.id };
   } catch (err: unknown) {
-    console.error("[Email] Send failed:", err);
-    return { success: false, error: err instanceof Error ? err.message : "Send failed" };
+    const message = err instanceof Error ? err.message : "Network error";
+    console.error("[Email] Resend network failure:", message);
+    return {
+      success: false,
+      code: "EMAIL_PROVIDER_NETWORK",
+      error: message,
+      hint: "Vercel function could not reach api.resend.com. Check network/firewall or retry.",
+    };
   }
 }
 
-export function otpEmailTemplate(code: string, expiryMinutes: number): { subject: string; html: string; text: string } {
+export function otpEmailTemplate(
+  code: string,
+  expiryMinutes: number,
+): { subject: string; html: string; text: string } {
   return {
     subject: `${code} — Your ${BRAND.name} verification code`,
     text: `Your ${BRAND.name} verification code is: ${code}\n\nThis code expires in ${expiryMinutes} minutes.\n\nIf you didn't request this, please ignore this email.`,
@@ -99,7 +168,7 @@ export function otpEmailTemplate(code: string, expiryMinutes: number): { subject
           This code expires in <strong>${expiryMinutes} minutes</strong>.
         </p>
         <p style="margin:0;color:#94a3b8;font-size:12px">
-          If you didn&rsquo;t request this code, you can safely ignore this email. Someone may have entered your email by mistake.
+          If you didn&rsquo;t request this code, you can safely ignore this email.
         </p>
       </td>
     </tr>
@@ -114,11 +183,20 @@ export function otpEmailTemplate(code: string, expiryMinutes: number): { subject
   };
 }
 
-export function verificationEmailTemplate(userName: string, status: "approved" | "rejected", notes?: string): { subject: string; html: string; text: string } {
+export function verificationEmailTemplate(
+  userName: string,
+  status: "approved" | "rejected",
+  notes?: string,
+): { subject: string; html: string; text: string } {
   const isApproved = status === "approved";
-  const appUrl = brandSiteUrl();
+  const appUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    `https://${BRAND.domain}`;
   return {
-    subject: isApproved ? `✅ Your ${BRAND.name} seller account is verified!` : `⚠️ ${BRAND.name} verification update`,
+    subject: isApproved
+      ? `✅ Your ${BRAND.name} seller account is verified!`
+      : `⚠️ ${BRAND.name} verification update`,
     text: isApproved
       ? `Hi ${userName}, your seller account has been verified! You can now create listings on ${BRAND.name}.`
       : `Hi ${userName}, your seller verification needs attention. ${notes || "Please review and resubmit."}`,
@@ -158,10 +236,16 @@ export function verificationEmailTemplate(userName: string, status: "approved" |
   };
 }
 
-export function suspensionEmailTemplate(userName: string, action: "suspend" | "unsuspend", reason?: string): { subject: string; html: string; text: string } {
+export function suspensionEmailTemplate(
+  userName: string,
+  action: "suspend" | "unsuspend",
+  reason?: string,
+): { subject: string; html: string; text: string } {
   const isSuspended = action === "suspend";
   return {
-    subject: isSuspended ? `🚫 Your ${BRAND.name} account has been suspended` : `✅ Your ${BRAND.name} account has been restored`,
+    subject: isSuspended
+      ? `🚫 Your ${BRAND.name} account has been suspended`
+      : `✅ Your ${BRAND.name} account has been restored`,
     text: isSuspended
       ? `Hi ${userName}, your account has been suspended. ${reason || "Contact support for details."}`
       : `Hi ${userName}, your account has been restored. You can now access all features.`,
