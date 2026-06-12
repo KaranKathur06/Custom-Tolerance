@@ -15,7 +15,8 @@ export function isSuperAdminOtpBypassEnabled(): boolean {
 export function getSuperAdminOtpBypassEmail(): string {
   return (
     process.env.SUPER_ADMIN_OTP_BYPASS_EMAIL?.trim().toLowerCase() ||
-    "kathurkaran077@gmail.com"
+    "kathurkaran077@gmail.com",
+    "vyaskaushal2323@gmail.com"
   );
 }
 
