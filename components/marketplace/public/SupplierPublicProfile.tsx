@@ -3,24 +3,22 @@ import {
     ArrowLeft,
     Building2,
     Factory,
-    Globe2,
-    MapPin,
     Package,
     ShieldCheck,
     TrendingUp,
-    Users,
-    Calendar,
 } from "lucide-react";
-import { SupplierCard } from "@/components/marketplace/SupplierCard";
 import type { MarketplaceSupplier } from "@/lib/marketplace/supplier-query";
 import type { SupplierIdentityTrust } from "@/lib/marketplace/supplier-identity";
 import type { SupplierExtendedProfile } from "@/lib/marketplace/supplier-profile-extended";
+import { SupplierProfileHero } from "@/components/marketplace/public/SupplierProfileHero";
+import { SupplierStickyNav } from "@/components/marketplace/public/SupplierStickyNav";
+import { SupplierTechnicalGrid } from "@/components/marketplace/public/SupplierTechnicalGrid";
 import { SupplierListingCards } from "@/components/marketplace/public/SupplierListingCards";
 import { SupplierGallery } from "@/components/marketplace/public/SupplierGallery";
 import { SupplierCertificationsDisplay } from "@/components/marketplace/public/SupplierCertificationsDisplay";
 import { SupplierReviews } from "@/components/marketplace/public/SupplierReviews";
-import { SupplierProfileCta } from "@/components/marketplace/public/SupplierProfileCta";
 import { SupplierTrustBlock } from "@/components/marketplace/public/SupplierTrustBlock";
+import { RelatedSuppliersCarousel } from "@/components/marketplace/public/RelatedSuppliersCarousel";
 
 type SupplierListingPreview = {
     id: string;
@@ -41,6 +39,17 @@ type SupplierPublicProfileProps = {
     extended?: SupplierExtendedProfile;
 };
 
+const PROFILE_SECTIONS = [
+    { id: "about", label: "About" },
+    { id: "capabilities", label: "Capabilities" },
+    { id: "certifications", label: "Certifications" },
+    { id: "gallery", label: "Gallery" },
+    { id: "technical", label: "Technical" },
+    { id: "products", label: "Products" },
+    { id: "reviews", label: "Reviews" },
+    { id: "related", label: "Related" },
+];
+
 export function SupplierPublicProfile({
     supplier,
     relatedSuppliers,
@@ -57,13 +66,23 @@ export function SupplierPublicProfile({
     const employeeCount = extended?.employee_count;
     const isGstVerified = Boolean(extended?.gst_verified_at);
 
+    // Filter out sections without content
+    const activeSections = PROFILE_SECTIONS.filter((s) => {
+        if (s.id === "gallery" && (!extended?.gallery || extended.gallery.length === 0)) return false;
+        if (s.id === "products" && listings.length === 0 && supplier.products.length === 0) return false;
+        if (s.id === "reviews" && !extended) return false;
+        if (s.id === "related" && relatedSuppliers.length === 0) return false;
+        return true;
+    });
+
     return (
-        <div className="min-h-screen bg-slate-50/50">
+        <div className="min-h-screen bg-[hsl(var(--ct-bg))]">
+            {/* Breadcrumb */}
             <div className="border-b border-slate-200 bg-white">
                 <div className="container py-3">
                     <Link
                         href="/marketplace?type=suppliers"
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:text-blue-800"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-ct-gold hover:text-ct-gold-light transition-colors"
                     >
                         <ArrowLeft className="h-3.5 w-3.5" />
                         Back to Suppliers
@@ -71,149 +90,173 @@ export function SupplierPublicProfile({
                 </div>
             </div>
 
-            {/* Cover + Hero */}
-            <section className="relative overflow-hidden border-b border-slate-200">
-                <div className="relative h-48 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 md:h-56">
-                    {coverImage ? (
-                        <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src={coverImage}
-                                alt=""
-                                className="absolute inset-0 h-full w-full object-cover opacity-40"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
-                        </>
-                    ) : null}
-                </div>
+            {/* Premium Hero */}
+            <SupplierProfileHero
+                supplierId={supplier.id}
+                supplierSlug={supplier.slug}
+                companyName={supplier.company_name}
+                locationLabel={locationLabel}
+                logoUrl={supplier.logo_url}
+                coverImageUrl={coverImage}
+                foundingYear={foundingYear}
+                employeeCount={employeeCount}
+                isGstVerified={isGstVerified}
+                isVerified={supplier.verification_status === "verified"}
+                exportCapability={supplier.export_capability}
+                reviewAvg={extended?.review_avg}
+                reviewCount={extended?.review_count ?? 0}
+                verifiedOrderCount={extended?.verified_order_count}
+                isSaved={extended?.isSaved}
+            />
 
-                <div className="container relative z-10 -mt-16 pb-8">
-                    <div className="flex flex-wrap items-end justify-between gap-6">
-                        <div className="flex min-w-0 flex-1 gap-5">
-                            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg">
-                                {supplier.logo_url ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                        src={supplier.logo_url}
-                                        alt=""
-                                        className="h-full w-full object-cover"
-                                    />
-                                ) : (
-                                    <Factory className="h-10 w-10 text-slate-400" />
-                                )}
-                            </div>
-                            <div className="min-w-0 pb-1">
-                                <div className="mb-2 flex flex-wrap items-center gap-2">
-                                    {isGstVerified ? (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white">
-                                            <ShieldCheck className="h-3.5 w-3.5" />
-                                            GST Verified
-                                        </span>
-                                    ) : supplier.verification_status === "verified" ? (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-400/30">
-                                            Verified Supplier
-                                        </span>
-                                    ) : null}
-                                    {supplier.export_capability ? (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
-                                            <Globe2 className="h-3.5 w-3.5" />
-                                            Export
-                                        </span>
-                                    ) : null}
-                                </div>
-                                <h1 className="text-2xl font-bold text-slate-900 md:text-4xl">
-                                    {supplier.company_name}
-                                </h1>
-                                <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-slate-600">
-                                    <MapPin className="h-3.5 w-3.5" />
-                                    {locationLabel}
-                                </p>
-                                <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
-                                    {foundingYear ? (
-                                        <span className="inline-flex items-center gap-1">
-                                            <Calendar className="h-3.5 w-3.5" />
-                                            Est. {foundingYear}
-                                        </span>
-                                    ) : null}
-                                    {employeeCount ? (
-                                        <span className="inline-flex items-center gap-1">
-                                            <Users className="h-3.5 w-3.5" />
-                                            {employeeCount}+ employees
-                                        </span>
-                                    ) : null}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            {/* Sticky Nav */}
+            <SupplierStickyNav sections={activeSections} />
 
+            {/* Content */}
             <div className="container py-8">
-                <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-                    <div className="space-y-6">
-                        <Section title="About company" icon={<Building2 className="h-5 w-5" />}>
+                <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+                    {/* Main content */}
+                    <div className="space-y-8">
+                        {/* About */}
+                        <ProfileSection
+                            id="about"
+                            title="About Company"
+                            icon={<Building2 className="h-5 w-5" />}
+                        >
                             <p className="text-sm leading-relaxed text-slate-600">
-                                {supplier.short_description}
+                                {supplier.short_description || "Company description will be updated soon."}
                             </p>
-                        </Section>
+                        </ProfileSection>
 
-                        <Section title="Capabilities" icon={<ShieldCheck className="h-5 w-5" />}>
-                            <CapabilityFacetList items={supplier.capabilities} />
-                        </Section>
-
-                        <Section title="Industries served" icon={<TrendingUp className="h-5 w-5" />}>
-                            <FacetList items={supplier.industries} hrefPrefix="/industries" />
-                        </Section>
-
-                        <Section title="Commercial information" icon={<Package className="h-5 w-5" />}>
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                <MiniStat label="MOQ" value={supplier.moq ?? "On request"} />
-                                <MiniStat
-                                    label="Lead time"
-                                    value={extended?.lead_time_range ?? supplier.avg_response_time ?? "On request"}
-                                />
-                                <MiniStat
-                                    label="Payment terms"
-                                    value={extended?.payment_terms ?? "On request"}
-                                />
-                                <MiniStat
-                                    label="Export capability"
-                                    value={supplier.export_capability ? "Yes" : "Domestic only"}
-                                />
-                                <MiniStat
-                                    label="Production capacity"
-                                    value={supplier.production_capacity ?? "On request"}
-                                />
-                                <MiniStat label="Price range" value={supplier.price_range ?? "On request"} />
-                            </div>
-                        </Section>
-
-                        {extended?.gallery && extended.gallery.length > 0 ? (
-                            <Section title="Facility gallery" icon={<Factory className="h-5 w-5" />}>
-                                <SupplierGallery images={extended.gallery} />
-                            </Section>
-                        ) : null}
-
-                        <Section title="Certifications" icon={<ShieldCheck className="h-5 w-5" />}>
-                            {extended?.certifications?.length ? (
-                                <SupplierCertificationsDisplay certifications={extended.certifications} />
+                        {/* Capabilities */}
+                        <ProfileSection
+                            id="capabilities"
+                            title="Capabilities"
+                            icon={<ShieldCheck className="h-5 w-5" />}
+                        >
+                            {supplier.capabilities.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {supplier.capabilities.map((cap) => (
+                                        <Link
+                                            key={cap.slug}
+                                            href={`/capabilities/${cap.slug}`}
+                                            className="ct-capability-tag"
+                                        >
+                                            {cap.name}
+                                        </Link>
+                                    ))}
+                                </div>
                             ) : (
-                                <p className="text-sm text-slate-500">Certification details coming soon.</p>
+                                <p className="text-sm text-slate-500">
+                                    Capability details will be updated soon.
+                                </p>
                             )}
-                        </Section>
+                        </ProfileSection>
 
-                        {listings.length > 0 ? (
-                            <Section title="Product listings" icon={<Package className="h-5 w-5" />}>
+                        {/* Industries */}
+                        {supplier.industries.length > 0 && (
+                            <ProfileSection
+                                id="industries"
+                                title="Industries Served"
+                                icon={<TrendingUp className="h-5 w-5" />}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    {supplier.industries.map((ind) => (
+                                        <Link
+                                            key={ind.slug}
+                                            href={`/industries/${ind.slug}`}
+                                            className="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-sm font-medium text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-100"
+                                        >
+                                            {ind.name}
+                                        </Link>
+                                    ))}
+                                </div>
+                            </ProfileSection>
+                        )}
+
+                        {/* Technical Details */}
+                        <ProfileSection
+                            id="technical"
+                            title="Technical Details"
+                            icon={<Package className="h-5 w-5" />}
+                        >
+                            <SupplierTechnicalGrid
+                                moq={supplier.moq}
+                                leadTime={extended?.lead_time_range ?? supplier.avg_response_time}
+                                exportCapability={supplier.export_capability}
+                                paymentTerms={extended?.payment_terms}
+                                productionCapacity={supplier.production_capacity}
+                                priceRange={supplier.price_range}
+                            />
+                        </ProfileSection>
+
+                        {/* Certifications */}
+                        <ProfileSection
+                            id="certifications"
+                            title="Certifications"
+                            icon={<ShieldCheck className="h-5 w-5" />}
+                        >
+                            {extended?.certifications?.length ? (
+                                <SupplierCertificationsDisplay
+                                    certifications={extended.certifications}
+                                />
+                            ) : (
+                                <p className="text-sm text-slate-500">
+                                    Certification details coming soon.
+                                </p>
+                            )}
+                        </ProfileSection>
+
+                        {/* Gallery */}
+                        {extended?.gallery && extended.gallery.length > 0 && (
+                            <ProfileSection
+                                id="gallery"
+                                title="Facility Gallery"
+                                icon={<Factory className="h-5 w-5" />}
+                            >
+                                <SupplierGallery images={extended.gallery} />
+                            </ProfileSection>
+                        )}
+
+                        {/* Product Listings */}
+                        {listings.length > 0 && (
+                            <ProfileSection
+                                id="products"
+                                title="Product Listings"
+                                icon={<Package className="h-5 w-5" />}
+                            >
                                 <SupplierListingCards listings={listings} />
-                            </Section>
-                        ) : null}
+                            </ProfileSection>
+                        )}
 
-                        <Section title="Products & materials" icon={<Package className="h-5 w-5" />}>
-                            <FacetList items={supplier.products} hrefPrefix="/products" />
-                        </Section>
+                        {/* Products & Materials */}
+                        {supplier.products.length > 0 && (
+                            <ProfileSection
+                                id="materials"
+                                title="Products & Materials"
+                                icon={<Package className="h-5 w-5" />}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    {supplier.products.map((prod) => (
+                                        <Link
+                                            key={prod.slug}
+                                            href={`/products/${prod.slug}`}
+                                            className="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-sm font-medium text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-100"
+                                        >
+                                            {prod.name}
+                                        </Link>
+                                    ))}
+                                </div>
+                            </ProfileSection>
+                        )}
 
-                        {extended ? (
-                            <Section title="Reviews" icon={<TrendingUp className="h-5 w-5" />}>
+                        {/* Reviews */}
+                        {extended && (
+                            <ProfileSection
+                                id="reviews"
+                                title="Reviews"
+                                icon={<TrendingUp className="h-5 w-5" />}
+                            >
                                 <SupplierReviews
                                     supplierId={supplier.id}
                                     supplierSlug={supplier.slug}
@@ -221,30 +264,24 @@ export function SupplierPublicProfile({
                                     initialReviews={extended.reviews}
                                     initialTotal={extended.reviewStats?.total_count ?? 0}
                                 />
-                            </Section>
-                        ) : null}
+                            </ProfileSection>
+                        )}
 
-                        {relatedSuppliers.length > 0 ? (
-                            <Section title="Related suppliers" icon={<Factory className="h-5 w-5" />}>
-                                <div className="grid gap-4 md:grid-cols-2">
-                                    {relatedSuppliers.map((related) => (
-                                        <SupplierCard key={related.id} supplier={related} />
-                                    ))}
-                                </div>
-                            </Section>
-                        ) : null}
+                        {/* Related Suppliers */}
+                        {relatedSuppliers.length > 0 && (
+                            <section id="related" className="scroll-mt-24">
+                                <h2 className="ct-section-title mb-6">
+                                    You may also like
+                                </h2>
+                                <RelatedSuppliersCarousel suppliers={relatedSuppliers} />
+                            </section>
+                        )}
                     </div>
 
-                    <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
-                        <SupplierProfileCta
-                            supplierId={supplier.id}
-                            supplierSlug={supplier.slug}
-                            supplierName={supplier.company_name}
-                            isSaved={extended?.isSaved}
-                            recentActivity={supplier.recent_activity}
-                        />
-
-                        {extended ? (
+                    {/* Sidebar */}
+                    <aside className="space-y-5 lg:sticky lg:top-24 lg:h-fit">
+                        {/* Trust block */}
+                        {extended && (
                             <SupplierTrustBlock
                                 reviewAvg={extended.review_avg}
                                 reviewCount={extended.review_count}
@@ -257,21 +294,32 @@ export function SupplierPublicProfile({
                                 gstVerification={extended.gstVerification}
                                 verificationStatus={supplier.verification_status}
                             />
-                        ) : null}
+                        )}
 
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                                Profile strength
+                        {/* Profile strength */}
+                        <div className="ct-card p-5">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                Profile Strength
                             </h4>
                             <div className="mt-3">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-slate-600">Completeness</span>
-                                    <span className="font-bold text-slate-900">{profileStrength}%</span>
+                                    <span className="font-bold text-ct-navy">
+                                        {profileStrength}%
+                                    </span>
                                 </div>
-                                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
                                     <div
-                                        className="h-full rounded-full bg-blue-600 transition-all"
-                                        style={{ width: `${profileStrength}%` }}
+                                        className="h-full rounded-full transition-all duration-700"
+                                        style={{
+                                            width: `${profileStrength}%`,
+                                            background:
+                                                profileStrength >= 80
+                                                    ? "linear-gradient(90deg, #16A34A, #22C55E)"
+                                                    : profileStrength >= 50
+                                                    ? "linear-gradient(90deg, #C68A2D, #D4A853)"
+                                                    : "linear-gradient(90deg, #EF4444, #F87171)",
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -283,81 +331,25 @@ export function SupplierPublicProfile({
     );
 }
 
-function Section({
+/* ─── Section wrapper ─── */
+function ProfileSection({
+    id,
     title,
     icon,
     children,
 }: {
+    id: string;
     title: string;
     icon: React.ReactNode;
     children: React.ReactNode;
 }) {
     return (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-                <span className="text-blue-600">{icon}</span>
+        <section id={id} className="ct-card scroll-mt-24 p-6">
+            <h2 className="flex items-center gap-2.5 font-outfit text-xl font-bold text-ct-navy">
+                <span className="text-ct-gold">{icon}</span>
                 {title}
             </h2>
-            <div className="mt-4">{children}</div>
+            <div className="mt-5">{children}</div>
         </section>
-    );
-}
-
-function CapabilityFacetList({
-    items,
-}: {
-    items: Array<{ name: string; slug: string }>;
-}) {
-    if (!items.length) {
-        return <p className="text-sm text-slate-500">Details will be updated soon.</p>;
-    }
-
-    return (
-        <div className="flex flex-wrap gap-2">
-            {items.map((item) => (
-                <Link
-                    key={item.slug}
-                    href={`/capabilities/${item.slug}`}
-                    className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                >
-                    {item.name}
-                </Link>
-            ))}
-        </div>
-    );
-}
-
-function FacetList({
-    items,
-    hrefPrefix,
-}: {
-    items: Array<{ name: string; slug: string }>;
-    hrefPrefix: string;
-}) {
-    if (!items.length) {
-        return <p className="text-sm text-slate-500">Details will be updated soon.</p>;
-    }
-
-    return (
-        <div className="flex flex-wrap gap-2">
-            {items.map((item) => (
-                <Link
-                    key={item.slug}
-                    href={`${hrefPrefix}/${item.slug}`}
-                    className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                >
-                    {item.name}
-                </Link>
-            ))}
-        </div>
-    );
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">{value}</p>
-        </div>
     );
 }

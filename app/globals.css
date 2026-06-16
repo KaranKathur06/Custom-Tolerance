@@ -4,48 +4,63 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* ─── CustomTolerance Brand Tokens ─── */
+    --ct-navy: 222 47% 11%;
+    --ct-navy-hex: #0F172A;
+    --ct-gold: 38 65% 48%;
+    --ct-gold-hex: #C68A2D;
+    --ct-gold-light: 38 60% 58%;
+    --ct-slate: 215 25% 27%;
+    --ct-slate-hex: #334155;
+    --ct-success: 142 72% 37%;
+    --ct-success-hex: #16A34A;
+    --ct-bg: 210 40% 98%;
+    --ct-bg-hex: #F8FAFC;
+    --ct-card-border: 214 32% 91%;
+
+    /* ─── shadcn/ui tokens (tuned to CT brand) ─── */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 210 40% 30%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary-foreground: 222 47% 11%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 38 65% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 210 40% 30%;
-    --radius: 0.5rem;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 38 65% 48%;
+    --radius: 0.625rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 30%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 38 65% 48%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 38 55% 42%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 96%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 38 65% 48%;
   }
 }
 
@@ -56,6 +71,441 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-outfit, var(--font-inter, sans-serif));
   }
 }
 
+/* ═══════════════════════════════════════════════
+   CustomTolerance Premium Component Utilities
+   ═══════════════════════════════════════════════ */
+
+@layer components {
+  /* ─── Premium Card ─── */
+  .ct-card {
+    @apply relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm;
+    border-color: hsl(var(--ct-card-border));
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .ct-card:hover {
+    box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.12),
+                0 8px 16px -8px rgba(15, 23, 42, 0.08);
+    transform: translateY(-3px);
+  }
+
+  /* ─── Metric Card with gold glow ─── */
+  .ct-metric-card {
+    @apply ct-card p-6;
+  }
+  .ct-metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, hsl(var(--ct-gold)), hsl(var(--ct-gold-light)), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .ct-metric-card:hover::before {
+    opacity: 1;
+  }
+
+  /* ─── Hero Gradient ─── */
+  .ct-hero-gradient {
+    background: linear-gradient(135deg, hsl(var(--ct-navy)) 0%, hsl(215 35% 18%) 50%, hsl(220 40% 22%) 100%);
+    position: relative;
+  }
+  .ct-hero-gradient::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
+    background: linear-gradient(to top, hsl(var(--ct-bg)), transparent);
+    pointer-events: none;
+  }
+
+  /* ─── Gold Accent Line ─── */
+  .ct-gold-accent {
+    position: relative;
+  }
+  .ct-gold-accent::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60%;
+    background: linear-gradient(180deg, hsl(var(--ct-gold)), hsl(var(--ct-gold-light)));
+    border-radius: 2px;
+  }
+
+  /* ─── Section Title ─── */
+  .ct-section-title {
+    @apply text-2xl font-bold tracking-tight;
+    color: hsl(var(--ct-navy));
+    font-family: var(--font-outfit, var(--font-inter, sans-serif));
+  }
+
+  /* ─── Premium Badge ─── */
+  .ct-badge-verified {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold;
+    background: linear-gradient(135deg, #059669, #10B981);
+    color: white;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+  }
+
+  .ct-badge-gold {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold;
+    background: linear-gradient(135deg, hsl(var(--ct-gold)), hsl(var(--ct-gold-light)));
+    color: white;
+    box-shadow: 0 2px 8px rgba(198, 138, 45, 0.3);
+  }
+
+  .ct-badge-export {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold;
+    background: linear-gradient(135deg, #4F46E5, #7C3AED);
+    color: white;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  }
+
+  /* ─── Glassmorphism Panel ─── */
+  .ct-glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* ─── Trust Score Ring ─── */
+  .ct-trust-ring {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ct-trust-ring svg circle {
+    transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ─── Quote Funnel ─── */
+  .ct-funnel-stage {
+    @apply relative flex items-center gap-3 rounded-xl border px-4 py-3;
+    transition: all 0.3s ease;
+  }
+  .ct-funnel-stage:hover {
+    @apply border-blue-200 bg-blue-50/50;
+  }
+  .ct-funnel-connector {
+    @apply mx-auto h-6 w-0.5 bg-gradient-to-b from-slate-300 to-transparent;
+  }
+
+  /* ─── Lead Feed Card ─── */
+  .ct-lead-card {
+    @apply ct-card p-5;
+    border-left: 4px solid transparent;
+    transition: all 0.3s ease;
+  }
+  .ct-lead-card:hover {
+    border-left-color: hsl(var(--ct-gold));
+  }
+
+  /* ─── Premium Button ─── */
+  .ct-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white;
+    background: linear-gradient(135deg, hsl(var(--ct-navy)), hsl(215 35% 18%));
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .ct-btn-primary:hover {
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .ct-btn-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white;
+    background: linear-gradient(135deg, hsl(var(--ct-gold)), hsl(var(--ct-gold-light)));
+    box-shadow: 0 4px 12px rgba(198, 138, 45, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .ct-btn-gold:hover {
+    box-shadow: 0 8px 24px rgba(198, 138, 45, 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* ─── Capability Tag ─── */
+  .ct-capability-tag {
+    @apply rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all duration-200;
+    border-color: hsl(var(--ct-gold) / 0.3);
+    background: hsl(var(--ct-gold) / 0.08);
+    color: hsl(var(--ct-gold));
+  }
+  .ct-capability-tag:hover {
+    background: hsl(var(--ct-gold) / 0.15);
+    border-color: hsl(var(--ct-gold) / 0.5);
+    transform: translateY(-1px);
+  }
+
+  /* ─── Notification Item ─── */
+  .ct-notification-item {
+    @apply flex items-start gap-3 rounded-xl border border-transparent px-4 py-3 transition-all duration-200;
+  }
+  .ct-notification-item:hover {
+    @apply border-slate-200 bg-slate-50;
+  }
+  .ct-notification-item.unread {
+    @apply border-blue-100 bg-blue-50/50;
+  }
+
+  /* ─── Data Grid Row ─── */
+  .ct-grid-row {
+    @apply border-b border-slate-100 transition-colors duration-150;
+  }
+  .ct-grid-row:hover {
+    @apply bg-slate-50/80;
+  }
+
+  /* ─── Sticky Section Nav ─── */
+  .ct-sticky-nav {
+    @apply sticky top-0 z-30 border-b bg-white/90 backdrop-blur-md;
+    border-color: hsl(var(--ct-card-border));
+  }
+  .ct-sticky-nav a,
+  .ct-sticky-nav button {
+    @apply relative px-4 py-3 text-sm font-medium text-slate-500 transition-colors;
+  }
+  .ct-sticky-nav a:hover,
+  .ct-sticky-nav button:hover {
+    @apply text-slate-900;
+  }
+  .ct-sticky-nav .active {
+    @apply text-slate-900;
+  }
+  .ct-sticky-nav .active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: hsl(var(--ct-gold));
+    border-radius: 1px;
+  }
+
+  /* ─── Profile Stat Block ─── */
+  .ct-stat-block {
+    @apply rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 p-4;
+  }
+  .ct-stat-block:hover {
+    @apply border-slate-300;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  }
+
+  /* ─── Timeline ─── */
+  .ct-timeline-line {
+    @apply absolute left-5 top-10 bottom-0 w-px bg-gradient-to-b from-slate-200 to-transparent;
+  }
+  .ct-timeline-dot {
+    @apply relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-slate-100 shadow-sm;
+  }
+
+  /* ─── Masonry Gallery ─── */
+  .ct-gallery-grid {
+    columns: 3;
+    column-gap: 12px;
+  }
+  @media (max-width: 768px) {
+    .ct-gallery-grid {
+      columns: 2;
+    }
+  }
+  @media (max-width: 480px) {
+    .ct-gallery-grid {
+      columns: 1;
+    }
+  }
+  .ct-gallery-item {
+    @apply mb-3 overflow-hidden rounded-xl;
+    break-inside: avoid;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .ct-gallery-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  }
+
+  /* ─── Carousel ─── */
+  .ct-carousel {
+    @apply flex gap-4 overflow-x-auto pb-4;
+    scroll-snap-type: x mandatory;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .ct-carousel::-webkit-scrollbar {
+    display: none;
+  }
+  .ct-carousel > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Animations & Keyframes
+   ═══════════════════════════════════════════════ */
+
+@keyframes ct-count-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ct-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ct-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ct-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ct-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ct-pulse-gold {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(198, 138, 45, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(198, 138, 45, 0);
+  }
+}
+
+@keyframes ct-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes ct-draw-ring {
+  from {
+    stroke-dashoffset: var(--ct-ring-circumference, 283);
+  }
+  to {
+    stroke-dashoffset: var(--ct-ring-offset, 0);
+  }
+}
+
+@keyframes ct-progress-fill {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes ct-funnel-expand {
+  from {
+    opacity: 0;
+    transform: scaleX(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes ct-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@layer utilities {
+  .animate-ct-count-up {
+    animation: ct-count-up 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .animate-ct-fade-up {
+    animation: ct-fade-up 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .animate-ct-slide-in {
+    animation: ct-slide-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .animate-ct-slide-in-right {
+    animation: ct-slide-in-right 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .animate-ct-scale-in {
+    animation: ct-scale-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .animate-ct-pulse-gold {
+    animation: ct-pulse-gold 2s infinite;
+  }
+  .animate-ct-shimmer {
+    background: linear-gradient(90deg, transparent 25%, rgba(198,138,45,0.08) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: ct-shimmer 2s infinite;
+  }
+  .animate-ct-draw-ring {
+    animation: ct-draw-ring 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .animate-ct-float {
+    animation: ct-float 3s ease-in-out infinite;
+  }
+
+  /* Stagger delays for child animations */
+  .ct-stagger-1 { animation-delay: 0.1s; }
+  .ct-stagger-2 { animation-delay: 0.2s; }
+  .ct-stagger-3 { animation-delay: 0.3s; }
+  .ct-stagger-4 { animation-delay: 0.4s; }
+  .ct-stagger-5 { animation-delay: 0.5s; }
+  .ct-stagger-6 { animation-delay: 0.6s; }
+}

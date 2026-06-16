@@ -1,42 +1,74 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  Bell,
   ClipboardList,
-  Heart,
-  Loader2,
+  FileText,
   Package,
+  Users,
+  Loader2,
 } from "lucide-react";
-import { BuyerProcurementSection } from "@/components/dashboard/BuyerProcurementSection";
-import { BuyerRfqList } from "@/components/dashboard/BuyerRfqList";
-import { SavedSuppliersList } from "@/components/dashboard/SavedSuppliersList";
-import { BuyerQuotesSection } from "@/components/dashboard/BuyerQuotesSection";
-import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { BuyerHeroHeader } from "@/components/dashboard/v2/BuyerHeroHeader";
+import { PremiumMetricCard } from "@/components/dashboard/v2/PremiumMetricCard";
+import { AIProcurementInsights } from "@/components/dashboard/v2/AIProcurementInsights";
+import { ActiveRfqTable } from "@/components/dashboard/v2/ActiveRfqTable";
+import { QuoteComparisonWorkspace } from "@/components/dashboard/v2/QuoteComparisonWorkspace";
+import { SavedSuppliersGrid } from "@/components/dashboard/v2/SavedSuppliersGrid";
+import { GroupedNotifications } from "@/components/dashboard/v2/GroupedNotifications";
+import { DashboardSectionNav } from "@/components/dashboard/v2/DashboardSectionNav";
 import { ProfileCompletionWidget } from "@/components/dashboard/ProfileCompletionWidget";
+import { MarketIntelligence } from "@/components/dashboard/v2/MarketIntelligence";
+import { CalendarWidget } from "@/components/dashboard/v2/CalendarWidget";
 import { MessageInbox } from "@/components/marketplace/MessageInbox";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type BuyerStats = {
   rfqCount: number;
   openRfqs: number;
   closedRfqs: number;
+  expiringRfqs?: number;
+  responseRate?: number;
   quotesReceived: number;
   activeQuotes: number;
+  acceptedQuotes?: number;
+  avgPriceDiff?: number;
+  ordersRunning?: number;
+  ordersCompleted?: number;
+  ordersDelayed?: number;
+  spendThisMonth?: number;
   savedSuppliers: number;
+  verifiedSuppliers?: number;
+  newMatches?: number;
   unreadNotifications: number;
   profileCompletion: number;
 };
 
+const SECTIONS = [
+  { id: "overview", label: "Overview" },
+  { id: "insights", label: "AI Insights" },
+  { id: "rfqs", label: "Active RFQs" },
+  { id: "quotes", label: "Quotes" },
+  { id: "suppliers", label: "Saved Suppliers" },
+  { id: "market", label: "Market" },
+  { id: "calendar", label: "Calendar" },
+  { id: "messages", label: "Messages" },
+  { id: "notifications", label: "Notifications" },
+];
+
+// Demo sparkline data for when real data isn't available
+const SPARK_RFQS = [3, 5, 4, 7, 6, 8, 9];
+const SPARK_QUOTES = [8, 12, 10, 15, 14, 18, 20];
+const SPARK_ORDERS = [2, 3, 2, 4, 3, 5, 4];
+const SPARK_SUPPLIERS = [5, 7, 8, 10, 12, 14, 16];
+
 export default function BuyerDashboardContent() {
   const searchParams = useSearchParams();
-  const defaultTab = searchParams.get("tab") ?? "rfqs";
+  const { profile } = useAuth();
   const [stats, setStats] = useState<BuyerStats | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  const userName = profile?.full_name?.split(" ")[0] || profile?.email?.split("@")[0] || "there";
 
   useEffect(() => {
     void (async () => {
@@ -45,172 +77,175 @@ export default function BuyerDashboardContent() {
         const json = await res.json();
         if (json.success) setStats(json.data);
       } finally {
-        setLoadingStats(false);
+        setLoading(false);
       }
     })();
   }, []);
 
+  // Scroll to section from URL hash
+  useEffect(() => {
+    const section = searchParams.get("section");
+    if (section) {
+      setTimeout(() => {
+        document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+      }, 300);
+    }
+  }, [searchParams]);
+
   return (
-    <div className="container py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold">Buyer Dashboard</h1>
-        <p className="mt-2 text-muted-foreground">
-          Manage RFQs, compare quotes, and track suppliers
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link href="/rfq/new">
-            <Button>Post requirement</Button>
-          </Link>
-          <Link href="/marketplace?type=suppliers">
-            <Button variant="outline">Find suppliers</Button>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-[hsl(var(--ct-bg))]">
+      {/* Hero */}
+      <div className="container pt-6 pb-2">
+        <BuyerHeroHeader
+          userName={userName}
+          activeRfqs={stats?.openRfqs ?? 0}
+          quotesAwaiting={stats?.activeQuotes ?? 0}
+          ordersInProduction={stats?.ordersRunning ?? 0}
+          responseRate={stats?.responseRate ?? 28}
+        />
       </div>
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <BuyerProcurementSection />
-        <ProfileCompletionWidget role="buyer" percent={stats?.profileCompletion ?? 0} />
+      {/* Sticky Nav */}
+      <div className="mt-6">
+        <DashboardSectionNav sections={SECTIONS} />
       </div>
 
-      {loadingStats ? (
-        <div className="mb-8 flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-        </div>
-      ) : (
-        <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="My RFQs"
-            value={stats?.rfqCount ?? 0}
-            sub={`${stats?.openRfqs ?? 0} open`}
-            icon={<ClipboardList className="h-4 w-4" />}
-          />
-          <StatCard
-            title="Quotes received"
-            value={stats?.quotesReceived ?? 0}
-            sub={`${stats?.activeQuotes ?? 0} active`}
-            icon={<Package className="h-4 w-4" />}
-          />
-          <StatCard
-            title="Saved suppliers"
-            value={stats?.savedSuppliers ?? 0}
-            icon={<Heart className="h-4 w-4" />}
-          />
-          <StatCard
-            title="Notifications"
-            value={stats?.unreadNotifications ?? 0}
-            sub="unread"
-            icon={<Bell className="h-4 w-4" />}
-          />
-        </div>
-      )}
+      {/* Main content */}
+      <div className="container py-8 space-y-10">
+        {/* ─── Section: Business Overview ─── */}
+        <section id="overview" className="scroll-mt-20">
+          <h2 className="ct-section-title mb-6">Business Overview</h2>
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <PremiumMetricCard
+                title="RFQs"
+                value={stats?.rfqCount ?? 0}
+                icon={<ClipboardList className="h-5 w-5" />}
+                sparkData={SPARK_RFQS}
+                trend={{ value: 12, label: "vs last month" }}
+                subMetrics={[
+                  { label: "Active", value: stats?.openRfqs ?? 0 },
+                  { label: "Expiring Soon", value: stats?.expiringRfqs ?? 0 },
+                  { label: "Response Rate", value: `${stats?.responseRate ?? 0}%` },
+                ]}
+                delay={0}
+              />
+              <PremiumMetricCard
+                title="Quotes"
+                value={stats?.quotesReceived ?? 0}
+                icon={<FileText className="h-5 w-5" />}
+                sparkData={SPARK_QUOTES}
+                accentColor="#3B82F6"
+                subMetrics={[
+                  { label: "Awaiting Action", value: stats?.activeQuotes ?? 0 },
+                  { label: "Accepted", value: stats?.acceptedQuotes ?? 0 },
+                  { label: "Avg Price Diff", value: `${stats?.avgPriceDiff ?? 0}%` },
+                ]}
+                delay={100}
+              />
+              <PremiumMetricCard
+                title="Orders"
+                value={(stats?.ordersRunning ?? 0) + (stats?.ordersCompleted ?? 0)}
+                icon={<Package className="h-5 w-5" />}
+                sparkData={SPARK_ORDERS}
+                accentColor="#16A34A"
+                subMetrics={[
+                  { label: "Running", value: stats?.ordersRunning ?? 0 },
+                  { label: "Completed", value: stats?.ordersCompleted ?? 0 },
+                  { label: "Spend", value: stats?.spendThisMonth ? `₹${(stats.spendThisMonth / 1000).toFixed(0)}K` : "₹0" },
+                ]}
+                delay={200}
+              />
+              <PremiumMetricCard
+                title="Supplier Network"
+                value={stats?.savedSuppliers ?? 0}
+                icon={<Users className="h-5 w-5" />}
+                sparkData={SPARK_SUPPLIERS}
+                accentColor="#7C3AED"
+                subMetrics={[
+                  { label: "Verified", value: stats?.verifiedSuppliers ?? 0 },
+                  { label: "New Matches", value: stats?.newMatches ?? 0 },
+                ]}
+                delay={300}
+              />
+            </div>
+          )}
+        </section>
 
-      <Tabs defaultValue={defaultTab} className="space-y-4">
-        <TabsList className="flex h-auto flex-wrap">
-          <TabsTrigger value="rfqs">My RFQs</TabsTrigger>
-          <TabsTrigger value="quotes">Active quotes</TabsTrigger>
-          <TabsTrigger value="saved">Saved suppliers</TabsTrigger>
-          <TabsTrigger value="history">Order history</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-        </TabsList>
+        {/* ─── Section: AI Insights ─── */}
+        <section id="insights" className="scroll-mt-20">
+          <AIProcurementInsights />
+        </section>
 
-        <TabsContent value="rfqs">
-          <Card>
-            <CardHeader>
-              <CardTitle>My RFQs</CardTitle>
-              <CardDescription>Open requirements receiving supplier quotes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <BuyerRfqList filter="open" />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Active RFQs ─── */}
+        <section id="rfqs" className="scroll-mt-20">
+          <div className="ct-card p-6">
+            <h2 className="ct-section-title mb-1">Active RFQs</h2>
+            <p className="mb-6 text-sm text-slate-400">
+              Track your requirements and incoming supplier quotes
+            </p>
+            <ActiveRfqTable />
+          </div>
+        </section>
 
-        <TabsContent value="quotes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active quotes</CardTitle>
-              <CardDescription>Compare supplier quotes side by side</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <BuyerQuotesSection />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Quote Comparison ─── */}
+        <section id="quotes" className="scroll-mt-20">
+          <div className="ct-card p-6">
+            <h2 className="ct-section-title mb-1">Quote Comparison Workspace</h2>
+            <p className="mb-6 text-sm text-slate-400">
+              Compare supplier quotes side by side
+            </p>
+            <QuoteComparisonWorkspace />
+          </div>
+        </section>
 
-        <TabsContent value="saved">
-          <Card>
-            <CardHeader>
-              <CardTitle>Saved suppliers</CardTitle>
-              <CardDescription>Bookmarked suppliers for quick RFQs</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SavedSuppliersList />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Saved Suppliers ─── */}
+        <section id="suppliers" className="scroll-mt-20">
+          <h2 className="ct-section-title mb-6">Saved Suppliers</h2>
+          <SavedSuppliersGrid />
+        </section>
 
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order history</CardTitle>
-              <CardDescription>Closed RFQs and accepted quotes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <BuyerRfqList filter="closed" />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Market Intelligence ─── */}
+        <section id="market" className="scroll-mt-20">
+          <MarketIntelligence role="buyer" />
+        </section>
 
-        <TabsContent value="messages">
-          <Card>
-            <CardHeader>
-              <CardTitle>Messages</CardTitle>
-              <CardDescription>Conversations with suppliers</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MessageInbox />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Calendar ─── */}
+        <section id="calendar" className="scroll-mt-20">
+          <CalendarWidget />
+        </section>
 
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification center</CardTitle>
-              <CardDescription>Quotes, RFQ updates, and reminders</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <NotificationCenter />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        {/* ─── Section: Messages ─── */}
+        <section id="messages" className="scroll-mt-20">
+          <div className="ct-card p-6">
+            <h2 className="ct-section-title mb-1">Messages</h2>
+            <p className="mb-6 text-sm text-slate-400">
+              Conversations with suppliers
+            </p>
+            <MessageInbox />
+          </div>
+        </section>
+
+        {/* ─── Section: Notifications ─── */}
+        <section id="notifications" className="scroll-mt-20">
+          <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+            <div className="ct-card p-6">
+              <h2 className="ct-section-title mb-6">Notifications</h2>
+              <GroupedNotifications />
+            </div>
+            <div>
+              <ProfileCompletionWidget
+                role="buyer"
+                percent={stats?.profileCompletion ?? 0}
+              />
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  sub,
-  icon,
-}: {
-  title: string;
-  value: number;
-  sub?: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <span className="text-muted-foreground">{icon}</span>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {sub ? <p className="text-xs text-muted-foreground">{sub}</p> : null}
-      </CardContent>
-    </Card>
   );
 }

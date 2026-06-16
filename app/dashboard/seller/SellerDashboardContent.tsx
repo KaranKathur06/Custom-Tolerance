@@ -3,34 +3,37 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { SellerTrustSection } from "@/components/dashboard/SellerTrustSection";
-import { SellerQuotePipeline } from "@/components/dashboard/SellerQuotePipeline";
-import { SellerLeadFeed } from "@/components/dashboard/SellerLeadFeed";
-import { SellerInquiryInbox } from "@/components/dashboard/SellerInquiryInbox";
-import { SubscriptionCenter } from "@/components/dashboard/SubscriptionCenter";
-import { ProfileCompletionWidget } from "@/components/dashboard/ProfileCompletionWidget";
-import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
-import { MessageInbox } from "@/components/marketplace/MessageInbox";
-import { ProfileCompletionBanner } from "@/components/supplier/ProfileCompletionBanner";
-import { MarketplaceFeatureLock } from "@/components/supplier/MarketplaceFeatureLock";
-import { SupplierVerificationBadges } from "@/components/supplier/SupplierVerificationBadges";
-import { useSupplierOnboardingStatus } from "@/lib/hooks/useSupplierOnboardingStatus";
-import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Plus,
   Edit,
   Eye,
-  MessageSquare,
   Package,
+  Inbox,
+  MessageSquare,
+  Sparkles,
   Users,
   Loader2,
-  Inbox,
-  Sparkles,
+  BarChart3,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useSupplierOnboardingStatus } from "@/lib/hooks/useSupplierOnboardingStatus";
+import { ProfileCompletionBanner } from "@/components/supplier/ProfileCompletionBanner";
+import { SupplierVerificationBadges } from "@/components/supplier/SupplierVerificationBadges";
+import { MarketplaceFeatureLock } from "@/components/supplier/MarketplaceFeatureLock";
+import { SellerHeroHeader } from "@/components/dashboard/v2/SellerHeroHeader";
+import { PremiumMetricCard } from "@/components/dashboard/v2/PremiumMetricCard";
+import { QuoteFunnel } from "@/components/dashboard/v2/QuoteFunnel";
+import { PremiumLeadFeed } from "@/components/dashboard/v2/PremiumLeadFeed";
+import { ListingAnalytics } from "@/components/dashboard/v2/ListingAnalytics";
+import { TrustCenter } from "@/components/dashboard/v2/TrustCenter";
+import { GroupedNotifications } from "@/components/dashboard/v2/GroupedNotifications";
+import { DashboardSectionNav } from "@/components/dashboard/v2/DashboardSectionNav";
+import { MessageInbox } from "@/components/marketplace/MessageInbox";
+import { MarketIntelligence } from "@/components/dashboard/v2/MarketIntelligence";
+import { CalendarWidget } from "@/components/dashboard/v2/CalendarWidget";
+import { SubscriptionCenter } from "@/components/dashboard/SubscriptionCenter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/utils";
 
 type SellerListing = {
@@ -75,10 +78,24 @@ function listingBucket(item: SellerListing): ListingFilter {
   return "draft";
 }
 
+const SECTIONS = [
+  { id: "metrics", label: "Metrics" },
+  { id: "leads", label: "Lead Feed" },
+  { id: "listings", label: "My Listings" },
+  { id: "analytics", label: "Analytics" },
+  { id: "trust", label: "Trust Center" },
+  { id: "market", label: "Market" },
+  { id: "calendar", label: "Calendar" },
+  { id: "messages", label: "Messages" },
+  { id: "notifications", label: "Notifications" },
+];
+
+const SPARK_LISTINGS = [8, 10, 9, 14, 12, 16, 18];
+const SPARK_INQUIRIES = [5, 8, 6, 12, 10, 15, 14];
+
 export default function SellerDashboardContent() {
   const searchParams = useSearchParams();
-  const defaultTab = searchParams.get("tab") ?? "listings";
-  const { supabase, sellerProfile } = useAuth();
+  const { supabase, sellerProfile, profile, company } = useAuth();
   const { data: onboardingStatus } = useSupplierOnboardingStatus();
   const [listings, setListings] = useState<SellerListing[]>([]);
   const [stats, setStats] = useState<SellerStats | null>(null);
@@ -86,6 +103,7 @@ export default function SellerDashboardContent() {
   const [listingFilter, setListingFilter] = useState<ListingFilter>("all");
 
   const marketplaceLocked = onboardingStatus ? !onboardingStatus.marketplaceUnlocked : false;
+  const userName = profile?.full_name?.split(" ")[0] || company?.name?.split(" ")[0] || "Seller";
 
   useEffect(() => {
     if (!supabase || !sellerProfile?.id) {
@@ -118,298 +136,345 @@ export default function SellerDashboardContent() {
     return listings.filter((item) => listingBucket(item) === listingFilter);
   }, [listings, listingFilter]);
 
-  const membershipLabel =
-    (stats?.trustLevel ?? 0) >= 3 ? "gold" : (stats?.trustLevel ?? 0) >= 1 ? "silver" : "starter";
+  // Pipeline value estimate
+  const pipelineValue =
+    ((stats?.quotes.submitted ?? 0) + (stats?.quotes.viewed ?? 0)) * 50000;
+
+  // Quote funnel stages from real data
+  const funnelStages = stats
+    ? [
+        { label: "Sent", count: stats.quotes.submitted + stats.quotes.viewed + stats.quotes.shortlisted + stats.quotes.won, color: "#3B82F6" },
+        { label: "Viewed", count: stats.quotes.viewed + stats.quotes.shortlisted + stats.quotes.won, color: "#8B5CF6" },
+        { label: "Shortlisted", count: stats.quotes.shortlisted + stats.quotes.won, color: "#C68A2D" },
+        { label: "Won", count: stats.quotes.won, color: "#16A34A" },
+      ]
+    : undefined;
+
+  // Scroll to section from URL
+  useEffect(() => {
+    const section = searchParams.get("section");
+    if (section) {
+      setTimeout(() => {
+        document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+      }, 300);
+    }
+  }, [searchParams]);
 
   return (
-    <div className="container py-8">
-      {onboardingStatus ? (
-        <div className="mb-6 space-y-4">
-          <ProfileCompletionBanner
-            percent={onboardingStatus.profileCompletionPercent}
-            remainingItems={onboardingStatus.remainingItems}
-            onboardingStatus={onboardingStatus.onboardingStatus}
-            changeRequestNotes={onboardingStatus.changeRequestNotes}
-            marketplaceUnlocked={onboardingStatus.marketplaceUnlocked}
-          />
-          {onboardingStatus.badges.some((b) => b.earned) ? (
-            <SupplierVerificationBadges badges={onboardingStatus.badges} />
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <SellerTrustSection hasListings={(stats?.listings.total ?? 0) > 0} />
-        <ProfileCompletionWidget
-          role="seller"
-          percent={stats?.profileHealth ?? onboardingStatus?.profileCompletionPercent ?? 0}
-        />
-      </div>
-
-      <div className="mb-6 flex flex-wrap gap-3">
-        <Link href="/seller/rfqs">
-          <Button variant="outline">Browse RFQs</Button>
-        </Link>
-        <Link href="/seller/quotes">
-          <Button variant="outline">My Quotes</Button>
-        </Link>
-        <Link href="/onboarding/seller">
-          <Button variant="outline">Improve Profile</Button>
-        </Link>
-      </div>
-
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-bold">Seller Dashboard</h1>
-          <p className="mt-2 text-muted-foreground">
-            Your operating center for leads, quotes, and listings
-          </p>
-        </div>
-        <MarketplaceFeatureLock
-          locked={marketplaceLocked}
-          message={onboardingStatus?.marketplaceGate.message}
-          missingRequirements={onboardingStatus?.marketplaceGate.missingRequirements}
-        >
-          <Link href="/dashboard/seller/create">
-            <Button disabled={marketplaceLocked}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Listing
-            </Button>
-          </Link>
-        </MarketplaceFeatureLock>
-      </div>
-
-      {loading ? (
-        <div className="mb-8 flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-        </div>
-      ) : (
-        <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <StatCard
-            title="Listings"
-            value={stats?.listings.total ?? 0}
-            sub={`${stats?.listings.active ?? 0} active`}
-            icon={<Package className="h-4 w-4" />}
-          />
-          <StatCard
-            title="Inquiries"
-            value={stats?.inquiries.total ?? 0}
-            sub={`${stats?.inquiries.unread ?? 0} unread`}
-            icon={<Inbox className="h-4 w-4" />}
-          />
-          <StatCard
-            title="Quote pipeline"
-            value={(stats?.quotes.submitted ?? 0) + (stats?.quotes.viewed ?? 0)}
-            sub={`${stats?.quotes.won ?? 0} won`}
-            icon={<MessageSquare className="h-4 w-4" />}
-          />
-          <StatCard title="Lead feed" value={stats?.leadFeedCount ?? 0} icon={<Sparkles className="h-4 w-4" />} />
-          <StatCard title="Trust tier" value={membershipLabel} icon={<Users className="h-4 w-4" />} isLabel />
+    <div className="min-h-screen bg-[hsl(var(--ct-bg))]">
+      {/* Onboarding banner */}
+      {onboardingStatus && (
+        <div className="container pt-6">
+          <div className="space-y-4">
+            <ProfileCompletionBanner
+              percent={onboardingStatus.profileCompletionPercent}
+              remainingItems={onboardingStatus.remainingItems}
+              onboardingStatus={onboardingStatus.onboardingStatus}
+              changeRequestNotes={onboardingStatus.changeRequestNotes}
+              marketplaceUnlocked={onboardingStatus.marketplaceUnlocked}
+            />
+            {onboardingStatus.badges.some((b) => b.earned) ? (
+              <SupplierVerificationBadges badges={onboardingStatus.badges} />
+            ) : null}
+          </div>
         </div>
       )}
 
-      <Tabs defaultValue={defaultTab} className="space-y-4">
-        <TabsList className="flex h-auto flex-wrap">
-          <TabsTrigger value="listings">My listings</TabsTrigger>
-          <TabsTrigger value="inquiries">
-            Inquiries
-            {(stats?.inquiries.unread ?? 0) > 0 ? (
-              <Badge className="ml-2" variant="destructive">
-                {stats?.inquiries.unread}
-              </Badge>
-            ) : null}
-          </TabsTrigger>
-          <TabsTrigger value="quotes">Quote pipeline</TabsTrigger>
-          <TabsTrigger value="leads">Lead feed</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="subscription">Subscription</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-        </TabsList>
+      {/* Hero */}
+      <div className="container pt-6 pb-2">
+        <SellerHeroHeader
+          userName={userName}
+          leads={stats?.leadFeedCount ?? 0}
+          activeQuotes={(stats?.quotes.submitted ?? 0) + (stats?.quotes.viewed ?? 0)}
+          pendingListings={stats?.listings.pending ?? 0}
+          pipelineValue={pipelineValue}
+          healthStatus={
+            (stats?.profileHealth ?? 0) >= 80
+              ? "excellent"
+              : (stats?.profileHealth ?? 0) >= 50
+              ? "good"
+              : "needs-attention"
+          }
+        />
+      </div>
 
-        <TabsContent value="listings">
-          <Card>
-            <CardHeader>
-              <CardTitle>My listings</CardTitle>
-              <CardDescription>Filter by status</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4 flex flex-wrap gap-2">
-                {(["all", "draft", "pending", "active", "paused", "rejected"] as ListingFilter[]).map(
-                  (f) => (
-                    <Button
-                      key={f}
-                      size="sm"
-                      variant={listingFilter === f ? "default" : "outline"}
-                      onClick={() => setListingFilter(f)}
-                    >
-                      {f.charAt(0).toUpperCase() + f.slice(1)}
-                      {f !== "all" && stats?.listings
-                        ? ` (${stats.listings[f as keyof typeof stats.listings] ?? 0})`
-                        : ""}
-                    </Button>
-                  ),
-                )}
-              </div>
-              {loading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      {/* Sticky Nav */}
+      <div className="mt-6">
+        <DashboardSectionNav sections={SECTIONS} />
+      </div>
+
+      {/* Main Content */}
+      <div className="container py-8 space-y-10">
+        {/* ─── Section: Metrics ─── */}
+        <section id="metrics" className="scroll-mt-20">
+          <h2 className="ct-section-title mb-6">Business Metrics</h2>
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <PremiumMetricCard
+                title="Listings"
+                value={stats?.listings.total ?? 0}
+                icon={<Package className="h-5 w-5" />}
+                sparkData={SPARK_LISTINGS}
+                subMetrics={[
+                  { label: "Active", value: stats?.listings.active ?? 0 },
+                  { label: "Paused", value: stats?.listings.paused ?? 0 },
+                  { label: "Pending", value: stats?.listings.pending ?? 0 },
+                  { label: "Views", value: stats?.listings.totalViews ?? 0 },
+                ]}
+                delay={0}
+              />
+              <PremiumMetricCard
+                title="Inquiries"
+                value={stats?.inquiries.total ?? 0}
+                icon={<Inbox className="h-5 w-5" />}
+                sparkData={SPARK_INQUIRIES}
+                accentColor="#3B82F6"
+                trend={{
+                  value: stats?.inquiries.unread ?? 0,
+                  label: "unread",
+                }}
+                subMetrics={[
+                  { label: "Unread", value: stats?.inquiries.unread ?? 0 },
+                  { label: "Responded", value: (stats?.inquiries.total ?? 0) - (stats?.inquiries.unread ?? 0) },
+                ]}
+                delay={100}
+              />
+
+              {/* Quote Pipeline — funnel inside metric */}
+              <div className="ct-metric-card opacity-0 animate-ct-fade-up sm:col-span-2 lg:col-span-1" style={{ animationDelay: "200ms" }}>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
                 </div>
-              ) : filteredListings.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  No listings in this filter.
+                <p className="mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Quote Pipeline
                 </p>
-              ) : (
-                <div className="space-y-4">
-                  {filteredListings.map((listing) => {
-                    const status = listingBucket(listing);
-                    return (
-                      <div
-                        key={listing.id}
-                        className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="flex-1">
-                          <div className="mb-2 flex items-center gap-2">
-                            <Link
-                              href={`/products/${listing.slug}`}
-                              className="font-semibold hover:text-primary"
-                            >
-                              {listing.title}
-                            </Link>
-                            <Badge
-                              variant={
-                                status === "active"
-                                  ? "success"
-                                  : status === "pending"
-                                    ? "warning"
-                                    : "secondary"
-                              }
-                            >
-                              {status}
-                            </Badge>
-                          </div>
-                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                            {listing.price_min != null ? (
-                              <span>{formatCurrency(listing.price_min)}</span>
-                            ) : null}
-                            <span>{listing.views_count ?? 0} views</span>
-                            <span>{listing.inquiry_count ?? 0} inquiries</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Link href={`/products/${listing.slug}`}>
-                            <Button variant="outline" size="icon" aria-label="View">
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                <div className="mt-3">
+                  <QuoteFunnel stages={funnelStages} />
+                </div>
+              </div>
+
+              <PremiumMetricCard
+                title="Revenue"
+                value={stats?.quotes.won ?? 0}
+                suffix=" orders"
+                icon={<BarChart3 className="h-5 w-5" />}
+                accentColor="#16A34A"
+                subMetrics={[
+                  { label: "Won", value: stats?.quotes.won ?? 0 },
+                  { label: "Lost", value: stats?.quotes.lost ?? 0 },
+                  {
+                    label: "Win Rate",
+                    value: ((stats?.quotes.won ?? 0) + (stats?.quotes.lost ?? 0)) > 0
+                      ? `${(((stats?.quotes.won ?? 0) / ((stats?.quotes.won ?? 0) + (stats?.quotes.lost ?? 0))) * 100).toFixed(0)}%`
+                      : "—",
+                  },
+                ]}
+                delay={300}
+              />
+            </div>
+          )}
+        </section>
+
+        {/* ─── Section: Lead Feed ─── */}
+        <section id="leads" className="scroll-mt-20">
+          <div className="ct-card p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="ct-section-title">Recommended RFQs</h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  RFQs matched to your capabilities and location
+                </p>
+              </div>
+              <Link href="/seller/rfqs">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Browse All
+                </Button>
+              </Link>
+            </div>
+            <PremiumLeadFeed />
+          </div>
+        </section>
+
+        {/* ─── Section: My Listings ─── */}
+        <section id="listings" className="scroll-mt-20">
+          <div className="ct-card p-6">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="ct-section-title">My Listings</h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  Manage your product and service listings
+                </p>
+              </div>
+              <MarketplaceFeatureLock
+                locked={marketplaceLocked}
+                message={onboardingStatus?.marketplaceGate.message}
+                missingRequirements={onboardingStatus?.marketplaceGate.missingRequirements}
+              >
+                <Link href="/dashboard/seller/create">
+                  <Button
+                    disabled={marketplaceLocked}
+                    className="gap-1.5 bg-ct-navy text-white hover:bg-ct-navy-light"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Listing
+                  </Button>
+                </Link>
+              </MarketplaceFeatureLock>
+            </div>
+
+            {/* Filter pills */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              {(["all", "draft", "pending", "active", "paused", "rejected"] as ListingFilter[]).map(
+                (f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setListingFilter(f)}
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                      listingFilter === f
+                        ? "bg-ct-navy text-white shadow-sm"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    }`}
+                  >
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                    {f !== "all" && stats?.listings
+                      ? ` (${stats.listings[f as keyof typeof stats.listings] ?? 0})`
+                      : ""}
+                  </button>
+                ),
+              )}
+            </div>
+
+            {/* Listings */}
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
+              </div>
+            ) : filteredListings.length === 0 ? (
+              <div className="flex flex-col items-center py-12 text-center">
+                <Package className="mb-3 h-8 w-8 text-slate-200" />
+                <p className="text-sm text-slate-500">No listings in this filter</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredListings.map((listing) => {
+                  const status = listingBucket(listing);
+                  return (
+                    <div
+                      key={listing.id}
+                      className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex-1">
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <Link
+                            href={`/products/${listing.slug}`}
+                            className="font-semibold text-ct-navy hover:text-ct-gold transition-colors"
+                          >
+                            {listing.title}
                           </Link>
-                          <Button variant="outline" size="icon" disabled aria-label="Edit">
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <Badge
+                            variant={
+                              status === "active"
+                                ? "success"
+                                : status === "pending"
+                                  ? "warning"
+                                  : "secondary"
+                            }
+                          >
+                            {status}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-4 text-xs text-slate-400">
+                          {listing.price_min != null && (
+                            <span>{formatCurrency(listing.price_min)}</span>
+                          )}
+                          <span>{listing.views_count ?? 0} views</span>
+                          <span>{listing.inquiry_count ?? 0} inquiries</span>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                      <div className="flex gap-2">
+                        <Link href={`/products/${listing.slug}`}>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label="View"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled
+                          aria-label="Edit"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
 
-        <TabsContent value="inquiries">
-          <Card>
-            <CardHeader>
-              <CardTitle>Incoming inquiries</CardTitle>
-              <CardDescription>Direct buyer messages from profile, listings, and search</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SellerInquiryInbox />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Analytics ─── */}
+        <section id="analytics" className="scroll-mt-20">
+          <h2 className="ct-section-title mb-6">Listing Analytics</h2>
+          <ListingAnalytics />
+        </section>
 
-        <TabsContent value="quotes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Quote pipeline</CardTitle>
-              <CardDescription>Submitted → Viewed → Shortlisted → Won / Lost</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SellerQuotePipeline />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Trust Center ─── */}
+        <section id="trust" className="scroll-mt-20">
+          <TrustCenter
+            score={stats?.profileHealth ?? onboardingStatus?.profileCompletionPercent ?? 65}
+          />
+        </section>
 
-        <TabsContent value="leads">
-          <Card>
-            <CardHeader>
-              <CardTitle>Lead feed</CardTitle>
-              <CardDescription>RFQs matched to your capabilities and location</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SellerLeadFeed />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Market Intelligence ─── */}
+        <section id="market" className="scroll-mt-20">
+          <MarketIntelligence role="seller" />
+        </section>
 
-        <TabsContent value="messages">
-          <Card>
-            <CardHeader>
-              <CardTitle>Messages</CardTitle>
-              <CardDescription>Procurement conversations</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MessageInbox />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* ─── Section: Calendar ─── */}
+        <section id="calendar" className="scroll-mt-20">
+          <CalendarWidget />
+        </section>
 
-        <TabsContent value="subscription">
-          <SubscriptionCenter trustLevel={stats?.trustLevel ?? sellerProfile?.trust_level ?? 0} />
-        </TabsContent>
+        {/* ─── Section: Messages ─── */}
+        <section id="messages" className="scroll-mt-20">
+          <div className="ct-card p-6">
+            <h2 className="ct-section-title mb-1">Messages</h2>
+            <p className="mb-6 text-sm text-slate-400">
+              Procurement conversations with buyers
+            </p>
+            <MessageInbox />
+          </div>
+        </section>
 
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notifications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <NotificationCenter />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        {/* ─── Section: Notifications + Subscription ─── */}
+        <section id="notifications" className="scroll-mt-20">
+          <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+            <div className="ct-card p-6">
+              <h2 className="ct-section-title mb-6">Notifications</h2>
+              <GroupedNotifications />
+            </div>
+            <SubscriptionCenter
+              trustLevel={stats?.trustLevel ?? sellerProfile?.trust_level ?? 0}
+            />
+          </div>
+        </section>
+      </div>
     </div>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  sub,
-  icon,
-  isLabel,
-}: {
-  title: string;
-  value: number | string;
-  sub?: string;
-  icon: React.ReactNode;
-  isLabel?: boolean;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <span className="text-muted-foreground">{icon}</span>
-      </CardHeader>
-      <CardContent>
-        {isLabel ? (
-          <Badge variant={value === "gold" ? "warning" : "secondary"}>
-            {String(value).charAt(0).toUpperCase() + String(value).slice(1)}
-          </Badge>
-        ) : (
-          <div className="text-2xl font-bold">{value}</div>
-        )}
-        {sub ? <p className="text-xs text-muted-foreground">{sub}</p> : null}
-      </CardContent>
-    </Card>
   );
 }
