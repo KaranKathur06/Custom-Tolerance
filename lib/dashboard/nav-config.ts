@@ -49,3 +49,11 @@ export const sellerNavItems: DashboardNavItem[] = [
 
 export const buyerMobileNavItems = buyerNavItems.slice(0, 5);
 export const sellerMobileNavItems = sellerNavItems.slice(0, 5);
+
+export function getNavItemsForRole(role: "buyer" | "seller") {
+  return role === "buyer" ? buyerNavItems : sellerNavItems;
+}
+
+export function getMobileNavItemsForRole(role: "buyer" | "seller") {
+  return role === "buyer" ? buyerMobileNavItems : sellerMobileNavItems;
+}

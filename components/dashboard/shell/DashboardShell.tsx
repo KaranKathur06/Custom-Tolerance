@@ -1,19 +1,20 @@
-import type { DashboardNavItem } from "@/lib/dashboard/nav-config";
+"use client";
+
+import {
+  getMobileNavItemsForRole,
+  getNavItemsForRole,
+} from "@/lib/dashboard/nav-config";
 import { DashboardSidebar } from "./DashboardSidebar";
 
 type DashboardShellProps = {
   children: React.ReactNode;
   role: "buyer" | "seller";
-  navItems: DashboardNavItem[];
-  mobileNavItems?: DashboardNavItem[];
 };
 
-export function DashboardShell({
-  children,
-  role,
-  navItems,
-  mobileNavItems,
-}: DashboardShellProps) {
+export function DashboardShell({ children, role }: DashboardShellProps) {
+  const navItems = getNavItemsForRole(role);
+  const mobileNavItems = getMobileNavItemsForRole(role);
+
   return (
     <div className="ct-dash-shell">
       <DashboardSidebar
