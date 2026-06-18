@@ -6,6 +6,9 @@
 import { NextResponse } from 'next/server';
 import { protectApiRoute } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
+import { evaluateSupplierMarketplaceGate } from '@/lib/marketplace/supplier-marketplace-gates';
+import { getServerDevelopmentTrustMode } from '@/lib/marketplace/trust-mode-server';
+import { getSellerV3ActivationContext } from '@/lib/marketplace/onboarding-v3-gates';
 
 export async function POST(request: Request) {
   const auth = await protectApiRoute(request, {
@@ -26,15 +29,40 @@ export async function POST(request: Request) {
   }
 
   // Get seller profile
-  const { data: sellerProfile } = await auth.supabase
-    .from('seller_profiles')
-    .select('id, company_id, verification_status')
-    .eq('profile_id', auth.user.id)
-    .maybeSingle();
+  const sellerContext = await getSellerV3ActivationContext(auth.supabase, auth.user.id);
+  const sellerProfile = sellerContext.sellerProfile;
 
   if (!sellerProfile) {
     return NextResponse.json(
       { success: false, error: { code: 'FORBIDDEN', message: 'Seller profile required' } },
+      { status: 403 },
+    );
+  }
+
+  const { data: company } = await auth.supabase
+    .from('companies')
+    .select('email_verified, phone_verified')
+    .eq('id', sellerProfile.company_id)
+    .maybeSingle();
+
+  const developmentTrustMode = await getServerDevelopmentTrustMode(auth.supabase);
+  const gate = evaluateSupplierMarketplaceGate({
+    action: 'publish_listing',
+    onboardingStatus: sellerProfile.onboarding_status,
+    profileCompletionPercent: sellerProfile.profile_completion_percent ?? 0,
+    emailVerified: Boolean(auth.user.email_confirmed_at) || Boolean(company?.email_verified),
+    mobileVerified: Boolean(company?.phone_verified),
+    requiredDocumentsUploaded: sellerContext.requiredDocumentsUploaded && sellerContext.bankVerified,
+    developmentTrustMode,
+  });
+
+  if (!gate.allowed && gate.hardBlocked) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: 'SELLER_GATE', message: gate.message },
+        gate,
+      },
       { status: 403 },
     );
   }
@@ -47,7 +75,7 @@ export async function POST(request: Request) {
     .replace(/-+/g, '-')
     + '-' + Math.random().toString(36).slice(2, 6);
 
-  const isVerified = sellerProfile.verification_status === 'approved';
+  const isVerified = gate.allowed && gate.missingRequirements.length === 0;
   const initialStatus = isVerified ? 'approved' : 'pending';
 
   const { data, error } = await auth.supabase

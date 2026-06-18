@@ -9,6 +9,7 @@ import { protectApiRoute } from "@/lib/auth/protect-route";
 import { evaluateProcurementGate } from "@/lib/marketplace/procurement-gates";
 import { getServerDevelopmentTrustMode } from "@/lib/marketplace/trust-mode-server";
 import { createMarketplaceRfq } from "@/lib/marketplace/rfq-create";
+import { getBuyerV3GateContext } from "@/lib/marketplace/onboarding-v3-gates";
 
 export const dynamic = "force-dynamic";
 
@@ -98,24 +99,19 @@ export async function POST(request: Request) {
     .eq("id", auth.user.id)
     .maybeSingle();
 
-  const { data: buyerProfile } = await auth.supabase
-    .from("buyer_profiles")
-    .select("id, trust_level, profile_completion_percent")
-    .eq("profile_id", auth.user.id)
-    .maybeSingle();
+  const buyerGateContext = await getBuyerV3GateContext(auth.supabase, auth.user.id);
+  const buyerProfile = buyerGateContext.buyerProfile;
 
   const developmentTrustMode = await getServerDevelopmentTrustMode(auth.supabase);
-  const trustLevel = Math.min(
-    4,
-    Math.max(0, buyerProfile?.trust_level ?? profile?.trust_level ?? 0),
-  ) as 0 | 1 | 2 | 3 | 4;
+  const trustLevel = Math.min(4, Math.max(0, buyerGateContext.trustLevel ?? profile?.trust_level ?? 0)) as 0 | 1 | 2 | 3 | 4;
 
   const gate = evaluateProcurementGate({
     action: "publish_rfq",
     role: auth.role === "seller" ? "both" : "buyer",
     currentTrustLevel: trustLevel,
-    profileCompletionPercent: buyerProfile?.profile_completion_percent ?? 0,
-    emailVerified: Boolean(auth.user.email_confirmed_at),
+    profileCompletionPercent: buyerGateContext.profileCompletionPercent,
+    emailVerified: Boolean(auth.user.email_confirmed_at) || buyerGateContext.emailVerified,
+    mobileVerified: buyerGateContext.mobileVerified,
     developmentTrustMode,
   });
 

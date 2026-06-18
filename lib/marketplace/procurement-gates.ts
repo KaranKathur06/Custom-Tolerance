@@ -13,6 +13,7 @@ export type ProcurementGateInput = {
   currentTrustLevel: TrustTier["level"];
   profileCompletionPercent?: number | null;
   emailVerified?: boolean;
+  mobileVerified?: boolean;
   developmentTrustMode: boolean;
 };
 
@@ -58,6 +59,19 @@ export function evaluateProcurementGate(input: ProcurementGateInput) {
       hardBlocked: !input.developmentTrustMode,
       requiredTier,
       message: "Verify your email to improve procurement trust and unlock stronger marketplace actions.",
+    };
+  }
+
+  if (
+    (input.role === "buyer" || input.role === "both") &&
+    !input.mobileVerified &&
+    input.action !== "featured_supplier_visibility"
+  ) {
+    return {
+      allowed: input.developmentTrustMode,
+      hardBlocked: !input.developmentTrustMode,
+      requiredTier,
+      message: "Verify your mobile number before sending RFQs, contacting suppliers, or saving suppliers.",
     };
   }
 

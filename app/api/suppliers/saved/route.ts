@@ -6,6 +6,9 @@
 
 import { NextResponse } from "next/server";
 import { protectApiRoute } from "@/lib/auth/protect-route";
+import { evaluateProcurementGate } from "@/lib/marketplace/procurement-gates";
+import { getServerDevelopmentTrustMode } from "@/lib/marketplace/trust-mode-server";
+import { getBuyerV3GateContext } from "@/lib/marketplace/onboarding-v3-gates";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +82,29 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { success: false, error: { code: "VALIDATION_ERROR", message: "supplier_id is required" } },
       { status: 400 },
+    );
+  }
+
+  const buyerGateContext = await getBuyerV3GateContext(auth.supabase, auth.user.id);
+  const developmentTrustMode = await getServerDevelopmentTrustMode(auth.supabase);
+  const gate = evaluateProcurementGate({
+    action: "contact_supplier",
+    role: auth.role === "seller" ? "both" : "buyer",
+    currentTrustLevel: buyerGateContext.trustLevel,
+    profileCompletionPercent: buyerGateContext.profileCompletionPercent,
+    emailVerified: Boolean(auth.user.email_confirmed_at) || buyerGateContext.emailVerified,
+    mobileVerified: buyerGateContext.mobileVerified,
+    developmentTrustMode,
+  });
+
+  if (!gate.allowed && gate.hardBlocked) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: "PROCUREMENT_GATE", message: gate.message ?? "Save supplier is not allowed" },
+        gate,
+      },
+      { status: 403 },
     );
   }
 

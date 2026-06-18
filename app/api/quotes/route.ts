@@ -6,10 +6,12 @@
 import { NextResponse } from "next/server";
 import { protectApiRoute } from "@/lib/auth/protect-route";
 import { evaluateProcurementGate } from "@/lib/marketplace/procurement-gates";
+import { evaluateSupplierMarketplaceGate } from "@/lib/marketplace/supplier-marketplace-gates";
 import { getServerDevelopmentTrustMode } from "@/lib/marketplace/trust-mode-server";
 import { canTransitionQuote } from "@/lib/marketplace/procurement-workflow";
 import { createNotification } from "@/lib/marketplace/notifications";
 import { ensureProcurementThread, sendThreadMessage } from "@/lib/marketplace/messaging";
+import { getSellerV3ActivationContext } from "@/lib/marketplace/onboarding-v3-gates";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +96,14 @@ export async function POST(request: Request) {
   }
 
   const developmentTrustMode = await getServerDevelopmentTrustMode(auth.supabase);
+  const sellerV3Context = await getSellerV3ActivationContext(auth.supabase, auth.user.id);
+  const { data: company } = sellerProfile.company_id
+    ? await auth.supabase
+        .from("companies")
+        .select("email_verified, phone_verified")
+        .eq("id", sellerProfile.company_id)
+        .maybeSingle()
+    : { data: null };
   const trustLevel = Math.min(
     4,
     Math.max(0, sellerProfile.trust_level ?? 0),
@@ -114,6 +124,27 @@ export async function POST(request: Request) {
         success: false,
         error: { code: "PROCUREMENT_GATE", message: gate.message ?? "Quote submission blocked" },
         gate,
+      },
+      { status: 403 },
+    );
+  }
+
+  const sellerGate = evaluateSupplierMarketplaceGate({
+    action: "respond_rfq",
+    onboardingStatus: sellerV3Context.sellerProfile?.onboarding_status ?? "REGISTERED",
+    profileCompletionPercent: sellerProfile.profile_completion_percent ?? 0,
+    emailVerified: Boolean(auth.user.email_confirmed_at) || Boolean(company?.email_verified),
+    mobileVerified: Boolean(company?.phone_verified),
+    requiredDocumentsUploaded: sellerV3Context.requiredDocumentsUploaded && sellerV3Context.bankVerified,
+    developmentTrustMode,
+  });
+
+  if (!sellerGate.allowed && sellerGate.hardBlocked) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: "SELLER_GATE", message: sellerGate.message },
+        gate: sellerGate,
       },
       { status: 403 },
     );
