@@ -14,7 +14,7 @@ export default function AnalyticsComingSoon() {
     <ComingSoonPage 
       featureName={config?.featureName || "Analytics"} 
       description={config?.description} 
-      backLink="/dashboard/seller"
+      backLink="/seller"
     />
   )
 }

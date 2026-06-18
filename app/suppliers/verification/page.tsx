@@ -14,7 +14,7 @@ export default function VerificationComingSoon() {
     <ComingSoonPage 
       featureName={config?.featureName || "Verification Flow"} 
       description={config?.description} 
-      backLink="/dashboard/seller"
+      backLink="/seller"
     />
   )
 }

@@ -31,8 +31,8 @@ export const AUTH_ROUTES = {
 // ── Dashboard Routes ──
 export const DASHBOARD_ROUTES = {
   MAIN: '/dashboard',
-  SELLER: '/seller/dashboard',
-  BUYER: '/buyer/dashboard',
+  SELLER: '/seller',
+  BUYER: '/buyer',
 } as const;
 
 // ── Admin Routes ──

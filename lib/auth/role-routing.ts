@@ -3,8 +3,8 @@ import type { AppRole } from "./profile-role";
 export const ROLE_HOME_PATH: Record<AppRole, string> = {
     super_admin: "/admin",
     admin: "/admin",
-    seller: "/seller/dashboard",
-    buyer: "/buyer/dashboard",
+    seller: "/seller",
+    buyer: "/buyer",
 };
 
 export const PROTECTED_ROUTE_PREFIXES = [

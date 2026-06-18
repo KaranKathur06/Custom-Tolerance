@@ -139,9 +139,9 @@ export async function middleware(request: NextRequest) {
         effectiveRole === "manufacturer" ||
         effectiveRole === "distributor"
       ) {
-        redirectUrl = "/seller/dashboard";
+        redirectUrl = "/seller";
       } else if (effectiveRole === "buyer") {
-        redirectUrl = "/buyer/dashboard";
+        redirectUrl = "/buyer";
       }
       return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
@@ -183,9 +183,9 @@ export async function middleware(request: NextRequest) {
       );
       let dashboardUrl = "/dashboard";
       if (role === "seller" || role === "manufacturer" || role === "distributor") {
-        dashboardUrl = "/seller/dashboard";
+        dashboardUrl = "/seller";
       } else if (role === "buyer") {
-        dashboardUrl = "/buyer/dashboard";
+        dashboardUrl = "/buyer";
       }
       return NextResponse.redirect(new URL(dashboardUrl, request.url));
     }
@@ -203,9 +203,9 @@ export async function middleware(request: NextRequest) {
       role === "manufacturer" ||
       role === "distributor"
     ) {
-      dashboardUrl = "/seller/dashboard";
+      dashboardUrl = "/seller";
     } else if (role === "buyer") {
-      dashboardUrl = "/buyer/dashboard";
+      dashboardUrl = "/buyer";
     } else if (role === "admin" || role === "super_admin") {
       dashboardUrl = isAdminVerified(request) ? "/admin" : "/admin/verify";
     } else if (

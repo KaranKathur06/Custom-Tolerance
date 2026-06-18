@@ -1,45 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
+import { commitSellerOnboardingV3 } from "@/lib/marketplace/onboarding-v3-commit";
 import {
-  applySellerOnboardingPatch,
-  createSellerOnboardingSession,
-  toOnboardingSessionUpsert,
-  type OnboardingSession,
-} from "@/lib/marketplace/onboarding-session";
-import {
-  buildCommitSessionFromDraft,
-  commitSellerOnboardingSession,
-} from "@/lib/marketplace/onboarding-commit";
+  ONBOARDING_V3_FLOW_VERSION,
+  SELLER_ONBOARDING_V3_FLOW_KEY,
+  calculateSellerOnboardingV3Completion,
+  getSellerV3HardGateStatus,
+} from "@/lib/marketplace/onboarding-v3";
 
 export const dynamic = "force-dynamic";
 
-async function getAuthUserId() {
+async function getAuthUser() {
   const user = await getServerUser();
-  return user?.id ?? null;
-}
-
-function mapDbSession(row: Record<string, unknown>): OnboardingSession {
-  return {
-    id: row.id as string,
-    userId: row.user_id as string,
-    role: (row.role as OnboardingSession["role"]) ?? "seller",
-    flowKey: (row.flow_key as string) ?? "seller_onboarding",
-    flowVersion: (row.flow_version as number) ?? 1,
-    currentStep: row.current_step as string,
-    draftPayload: (row.draft_payload as Record<string, unknown>) ?? {},
-    completionPercentage: (row.completion_percentage as number) ?? 0,
-    lastCompletedStep: (row.last_completed_step as string) ?? null,
-    skippedSteps: (row.skipped_steps as string[]) ?? [],
-    skippedStepDetails:
-      (row.skipped_step_details as OnboardingSession["skippedStepDetails"]) ?? {},
-    isCompleted: Boolean(row.is_completed),
-    status: (row.status as OnboardingSession["status"]) ?? "active",
-  };
+  return user ?? null;
 }
 
 export async function GET() {
-  const userId = await getAuthUserId();
-  if (!userId) {
+  const user = await getAuthUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -51,9 +29,10 @@ export async function GET() {
   const { data, error } = await supabase
     .from("onboarding_sessions")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .eq("role", "seller")
-    .eq("flow_key", "supplier_verification_v2")
+    .eq("flow_key", SELLER_ONBOARDING_V3_FLOW_KEY)
+    .eq("flow_version", ONBOARDING_V3_FLOW_VERSION)
     .eq("status", "active")
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -64,13 +43,13 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    session: data ? mapDbSession(data) : null,
+    session: data ?? null,
   });
 }
 
 export async function POST(request: NextRequest) {
-  const userId = await getAuthUserId();
-  if (!userId) {
+  const user = await getAuthUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -80,81 +59,56 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const action = body.action as "save" | "commit";
+  const action = ((body.action as string | undefined) ?? "save") as "save" | "submit";
+  const values = ((body.values ?? body.draftPayload ?? {}) as Record<string, unknown>) ?? {};
+  const payload: Record<string, unknown> = {
+    ...values,
+    emailVerified: Boolean(user.email_confirmed_at) || Boolean(values.emailVerified),
+  };
+  const completion = calculateSellerOnboardingV3Completion(payload);
+  const gate = getSellerV3HardGateStatus(payload);
 
-  if (action === "commit") {
-    const draftPayload = (body.draftPayload ?? {}) as Record<string, unknown>;
-    const session = buildCommitSessionFromDraft({
-      userId,
-      draftPayload,
-      sessionId: body.sessionId,
-      skippedSteps: body.skippedSteps,
-    });
-
-    try {
-      const result = await commitSellerOnboardingSession(supabase, userId, session);
-      return NextResponse.json({ success: true, result });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Commit failed";
-      return NextResponse.json({ error: message }, { status: 400 });
-    }
-  }
-
-  const patch = {
-    stepKey: body.stepKey as string,
-    values: (body.values ?? {}) as Record<string, unknown>,
-    markComplete: Boolean(body.markComplete),
-    skipStep: Boolean(body.skipStep),
-    skipReason: body.skipReason as string | null,
-    developmentTrustMode: body.developmentTrustMode !== false,
+  const sessionPatch = {
+    user_id: user.id,
+    role: "seller",
+    flow_key: SELLER_ONBOARDING_V3_FLOW_KEY,
+    flow_version: ONBOARDING_V3_FLOW_VERSION,
+    status: action === "submit" && gate.canActivate ? "completed" : "active",
+    current_step: (body.stepKey as string | undefined) ?? "gst_verification",
+    draft_payload: payload,
+    completion_percentage: completion.overallPercent,
+    last_completed_step: (body.stepKey as string | undefined) ?? null,
+    skipped_steps: [],
+    skipped_step_details: {},
+    is_completed: action === "submit" && gate.canActivate,
+    completed_at: action === "submit" && gate.canActivate ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
   };
 
-  let session: OnboardingSession;
+  const { data: existing } = await supabase
+    .from("onboarding_sessions")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("role", "seller")
+    .eq("flow_key", SELLER_ONBOARDING_V3_FLOW_KEY)
+    .eq("flow_version", ONBOARDING_V3_FLOW_VERSION)
+    .eq("status", "active")
+    .maybeSingle();
 
-  if (body.sessionId) {
-    const { data: existing } = await supabase
-      .from("onboarding_sessions")
-      .select("*")
-      .eq("id", body.sessionId)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    session = existing
-      ? applySellerOnboardingPatch(mapDbSession(existing), patch)
-      : createSellerOnboardingSession({ userId, initialPayload: patch.values });
-  } else {
-    const { data: existing } = await supabase
-      .from("onboarding_sessions")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("role", "seller")
-      .eq("flow_key", "supplier_verification_v2")
-      .eq("status", "active")
-      .maybeSingle();
-
-    session = existing
-      ? applySellerOnboardingPatch(mapDbSession(existing), patch)
-      : applySellerOnboardingPatch(
-          createSellerOnboardingSession({ userId, initialPayload: patch.values }),
-          patch,
-        );
-  }
-
-  const upsert = toOnboardingSessionUpsert(session);
   let saved;
   let error;
 
-  if (session.id) {
+  if (existing?.id) {
     ({ data: saved, error } = await supabase
       .from("onboarding_sessions")
-      .update(upsert)
-      .eq("id", session.id)
+      .update(sessionPatch)
+      .eq("id", existing.id)
       .select("*")
       .single());
   } else {
     ({ data: saved, error } = await supabase
       .from("onboarding_sessions")
-      .insert(upsert)
+      .insert(sessionPatch)
       .select("*")
       .single());
   }
@@ -163,5 +117,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ session: mapDbSession(saved) });
+  const hasCompanyIdentity = Boolean(payload.companyName || payload.legalBusinessName);
+  let result = null;
+
+  if (hasCompanyIdentity) {
+    try {
+      result = await commitSellerOnboardingV3(supabase, user.id, payload, {
+        submitForReview: action === "submit",
+      });
+    } catch (err) {
+      if (action === "submit") {
+        const message = err instanceof Error ? err.message : "Submission failed";
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+    }
+  }
+
+  return NextResponse.json({ success: true, session: saved, completion, gate, result });
 }

@@ -37,7 +37,7 @@ export default async function MarketplaceSettingsPage() {
     const auth = await hydrateAuthState(supabase);
 
     if (auth.status === "unauthenticated") redirect("/login");
-    if (auth.role !== "super_admin") redirect("/buyer/dashboard");
+    if (auth.role !== "super_admin") redirect("/buyer");
 
     const { data, error } = await supabase
         .from("marketplace_settings_versions")
@@ -178,7 +178,7 @@ async function requireSuperadmin() {
     const auth = await hydrateAuthState(supabase);
 
     if (auth.status === "unauthenticated") redirect("/login");
-    if (auth.role !== "super_admin") redirect("/buyer/dashboard");
+    if (auth.role !== "super_admin") redirect("/buyer");
 
     return { supabase, auth };
 }

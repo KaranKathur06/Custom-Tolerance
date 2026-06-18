@@ -9,7 +9,7 @@ export default function MessagesPage() {
     <div className="container py-8">
       <div className="mb-6">
         <Link
-          href="/dashboard"
+          href="/buyer"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:text-blue-800"
         >
           <ArrowLeft className="h-3.5 w-3.5" />

@@ -128,9 +128,9 @@ export function getDashboardRoute(role: string | null | undefined): string {
     case ROLES.SELLER:
     case ROLES.MANUFACTURER:
     case ROLES.DISTRIBUTOR:
-      return '/seller/dashboard';
+      return '/seller';
     case ROLES.BUYER:
-      return '/buyer/dashboard';
+      return '/buyer';
     case ROLES.FINANCE:
       return '/admin';
     case ROLES.MARKETING:

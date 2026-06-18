@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       type: "new_inquiry",
       title: "New inquiry received",
       body: `You have a new inquiry from a buyer for ${supplier.company_name}.`,
-      href: "/dashboard/seller?tab=inquiries",
+      href: "/seller?tab=inquiries",
       metadata: {
         inquiry_id: inquiry.id,
         supplier_id: supplierId,
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     {
       success: true,
       data: inquiry,
-      href: `/dashboard/buyer?tab=inquiries`,
+      href: `/buyer?tab=inquiries`,
     },
     { status: 201 },
   );

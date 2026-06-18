@@ -153,7 +153,7 @@ export function RfqWizard({ supplierSlug }: RfqWizardProps) {
             <Link href={`/rfq/${successSlug}`}>
               <Button>View RFQ</Button>
             </Link>
-            <Link href="/dashboard/buyer">
+            <Link href="/buyer">
               <Button variant="outline">Buyer dashboard</Button>
             </Link>
           </div>

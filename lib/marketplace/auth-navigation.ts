@@ -39,18 +39,12 @@ export const sharedAuthenticatedNavItems: MarketplaceNavItem[] = [
 export const sellerNavItems: MarketplaceNavItem[] = [
   {
     label: "Seller Dashboard",
-    href: "/seller/dashboard",
+    href: "/seller",
     roles: ["seller", "both", "admin"],
     requiresAuthenticated: true,
   },
   {
-    label: "Listings",
-    href: "/seller/listings",
-    roles: ["seller", "both", "admin"],
-    requiresAuthenticated: true,
-  },
-  {
-    label: "RFQs",
+    label: "Browse RFQs",
     href: "/seller/rfqs",
     roles: ["seller", "both", "admin"],
     requiresAuthenticated: true,
@@ -58,6 +52,12 @@ export const sellerNavItems: MarketplaceNavItem[] = [
   {
     label: "Quotes",
     href: "/seller/quotes",
+    roles: ["seller", "both", "admin"],
+    requiresAuthenticated: true,
+  },
+  {
+    label: "Orders",
+    href: "/seller/orders",
     roles: ["seller", "both", "admin"],
     requiresAuthenticated: true,
   },
@@ -72,25 +72,31 @@ export const sellerNavItems: MarketplaceNavItem[] = [
 export const buyerNavItems: MarketplaceNavItem[] = [
   {
     label: "Buyer Dashboard",
-    href: "/buyer/dashboard",
+    href: "/buyer",
     roles: ["buyer", "both", "admin"],
     requiresAuthenticated: true,
   },
   {
-    label: "Requirements",
-    href: "/buyer/requirements",
+    label: "RFQs",
+    href: "/buyer/rfqs",
     roles: ["buyer", "both", "admin"],
     requiresAuthenticated: true,
   },
   {
-    label: "Saved Suppliers",
-    href: "/buyer/saved-suppliers",
+    label: "Quotes",
+    href: "/buyer/quotes",
     roles: ["buyer", "both", "admin"],
     requiresAuthenticated: true,
   },
   {
-    label: "Orders",
-    href: "/buyer/orders",
+    label: "Suppliers",
+    href: "/buyer/suppliers",
+    roles: ["buyer", "both", "admin"],
+    requiresAuthenticated: true,
+  },
+  {
+    label: "Market Intelligence",
+    href: "/market",
     roles: ["buyer", "both", "admin"],
     requiresAuthenticated: true,
   },
@@ -123,9 +129,9 @@ export function getDashboardHref(role: MarketplaceRole | null | undefined) {
     case "manufacturer":
     case "distributor":
     case "logistics":
-      return "/seller/dashboard";
+      return "/seller";
     case "buyer":
-      return "/buyer/dashboard";
+      return "/buyer";
     case "admin":
     case "super_admin":
     case "finance":

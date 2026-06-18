@@ -34,7 +34,7 @@ const DEMO_INSIGHTS: Insight[] = [
   {
     type: "hot",
     message: "4 new suppliers match your CNC Aluminum RFQ — average quote ₹12,400/unit",
-    action: { label: "Review Matches", href: "/dashboard/buyer?section=quotes" },
+    action: { label: "Review Matches", href: "/buyer/quotes" },
   },
   {
     type: "tip",

@@ -58,7 +58,7 @@ export default function CreateListingPage() {
 
   const handleSubmit = () => {
     // TODO: Implement API call
-    router.push("/dashboard/seller")
+    router.push("/seller")
   }
 
   return (
@@ -70,7 +70,7 @@ export default function CreateListingPage() {
       >
       <div className="mb-8">
         <Link
-          href="/dashboard/seller"
+          href="/seller"
           className="inline-flex items-center text-primary hover:underline"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

@@ -49,7 +49,7 @@ export default async function RankingPreviewPage() {
     const auth = await hydrateAuthState(supabase);
 
     if (auth.status === "unauthenticated") redirect("/login");
-    if (auth.role !== "super_admin") redirect("/buyer/dashboard");
+    if (auth.role !== "super_admin") redirect("/buyer");
 
     const [settingsResult, snapshotsResult] = await Promise.all([
         supabase
@@ -235,7 +235,7 @@ async function requireSuperadmin() {
     const auth = await hydrateAuthState(supabase);
 
     if (auth.status === "unauthenticated") redirect("/login");
-    if (auth.role !== "super_admin") redirect("/buyer/dashboard");
+    if (auth.role !== "super_admin") redirect("/buyer");
 
     return { supabase, auth };
 }
