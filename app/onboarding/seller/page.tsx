@@ -167,6 +167,11 @@ const initialForm: SellerForm = {
   exportExperience: [],
   qualitySystems: [],
   factoryTourUrl: "",
+  emailVisibility: "MEMBERS_ONLY",
+  mobileVisibility: "PRIVATE",
+  whatsappVisibility: "PRIVATE",
+  factoryAddressVisibility: "MEMBERS_ONLY",
+  gstVisibility: "PUBLIC",
 };
 
 export default function SellerOnboardingPage() {
@@ -768,7 +773,15 @@ export default function SellerOnboardingPage() {
       {activeStep.key === "bank_financial_verification" ? <BankVerificationStep {...stepProps} /> : null}
 
       {activeStep.key === "registration_complete" ? (
-        <RegistrationCompleteStep completion={completion} gate={gate} />
+        <RegistrationCompleteStep
+          form={form}
+          completion={completion}
+          gate={gate}
+          onEditPrivacy={() => {
+            const idx = SELLER_ONBOARDING_V3_STEPS.findIndex((s) => s.key === "basic_information");
+            if (idx >= 0) setActiveIndex(idx);
+          }}
+        />
       ) : null}
 
       {activeStep.key === "profile_completion" ? <ProfileCompletionStep {...stepProps} /> : null}

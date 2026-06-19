@@ -2,6 +2,11 @@ import { createHash } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { commitBuyerOnboarding } from "./onboarding-commit-buyer";
 import { commitSupplierVerificationProfile } from "./supplier-verification-commit";
+import { syncMarketplaceBuyerFromProfile } from "./buyer-public-profile";
+import {
+  privacyFromOnboardingForm,
+  saveProfilePrivacySettings,
+} from "./profile-privacy-service";
 import {
   calculateBuyerOnboardingV3Completion,
   calculateSellerOnboardingV3Completion,
@@ -175,6 +180,19 @@ export async function commitBuyerOnboardingV3(
     metadata: { completionPercent: completion.overallPercent },
   });
 
+  await saveProfilePrivacySettings(
+    supabase,
+    userId,
+    "buyer",
+    privacyFromOnboardingForm("buyer", payload),
+  );
+
+  try {
+    await syncMarketplaceBuyerFromProfile(supabase, userId, payload);
+  } catch {
+    // Non-blocking — buyer discovery sync can retry on next save
+  }
+
   return {
     buyerProfileId,
     companyId: baseResult.companyId,
@@ -316,6 +334,13 @@ export async function commitSellerOnboardingV3(
       missingActivationRequirements: gate.missingRequirements,
     },
   });
+
+  await saveProfilePrivacySettings(
+    supabase,
+    userId,
+    "seller",
+    privacyFromOnboardingForm("seller", payload),
+  );
 
   return {
     sellerProfileId,

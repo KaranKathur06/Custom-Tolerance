@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { Field, TextInput } from "@/components/onboarding/OnboardingV3Wizard";
 import type { StepProps } from "./types";
 
@@ -20,6 +21,8 @@ export function GstVerificationStep({
   gstError?: string | null;
   onRetryGst?: () => void;
 }) {
+  const isVerified = Boolean(form.gstVerified);
+
   return (
     <div className="mt-6 space-y-6">
       <p className="text-sm text-slate-600">Verify business identity before marketplace activation.</p>
@@ -51,15 +54,70 @@ export function GstVerificationStep({
         </div>
       ) : null}
 
+      {/* GST inline verify — Stripe / Razorpay style */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Field label="GST number" required error={errors.gstNumber}>
-          <TextInput
-            value={String(form.gstNumber || "")}
-            onChange={(e) => onFieldChange("gstNumber", e.target.value.toUpperCase())}
-            placeholder="24ADUPV1084A2ZF"
-            error={Boolean(errors.gstNumber)}
-          />
-        </Field>
+        <div className="lg:col-span-2">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
+              GST number *
+            </span>
+            {isVerified ? (
+              <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50 to-white px-4 py-3 shadow-sm">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-sm font-semibold text-slate-900">{String(form.gstNumber || "")}</p>
+                  <p className="text-xs font-medium text-emerald-700">GST verified successfully</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white">
+                  Verified
+                </span>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "flex overflow-hidden rounded-lg border bg-white shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-blue-600/20",
+                  errors.gstNumber ? "border-red-300 focus-within:ring-red-200" : "border-slate-200",
+                )}
+              >
+                <input
+                  value={String(form.gstNumber || "")}
+                  onChange={(e) => onFieldChange("gstNumber", e.target.value.toUpperCase())}
+                  placeholder="24ADUPV1084A2ZF"
+                  className="min-w-0 flex-1 border-0 bg-transparent px-4 py-3 text-sm font-mono text-slate-900 outline-none placeholder:text-slate-400"
+                  aria-invalid={Boolean(errors.gstNumber)}
+                />
+                <button
+                  type="button"
+                  onClick={onVerifyGst}
+                  disabled={verifyingGst || !String(form.gstNumber || "").trim()}
+                  className={cn(
+                    "flex shrink-0 items-center gap-2 border-l border-slate-200 px-5 text-sm font-semibold transition-all",
+                    "bg-slate-950 text-white hover:bg-slate-800",
+                    "disabled:pointer-events-none disabled:opacity-45",
+                    "active:scale-[0.98]",
+                  )}
+                >
+                  {verifyingGst ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-4 w-4" />
+                  )}
+                  {verifyingGst ? "Verifying…" : "Verify GST"}
+                </button>
+              </div>
+            )}
+            {errors.gstNumber ? (
+              <span className="mt-1.5 block text-xs font-semibold text-red-600">{errors.gstNumber}</span>
+            ) : !isVerified ? (
+              <span className="mt-1.5 block text-xs text-slate-500">
+                Enter your 15-character GSTIN and verify before continuing.
+              </span>
+            ) : null}
+          </label>
+        </div>
+
         <Field label="Legal name fallback" error={errors.legalBusinessName}>
           <TextInput
             value={String(form.legalBusinessName || "")}
@@ -67,21 +125,6 @@ export function GstVerificationStep({
             error={Boolean(errors.legalBusinessName)}
           />
         </Field>
-        <div className="flex items-end">
-          <div className="flex w-full flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <Button type="button" onClick={onVerifyGst} disabled={verifyingGst}>
-              {verifyingGst ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Verify GST
-            </Button>
-            {Boolean(form.gstVerified) ? (
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                <CheckCircle2 className="h-4 w-4" /> GST verified
-              </span>
-            ) : (
-              <span className="text-sm text-slate-500">GST must be verified before activation.</span>
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

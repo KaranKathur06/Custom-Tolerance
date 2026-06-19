@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, TextInput } from "@/components/onboarding/OnboardingV3Wizard";
+import { PrivacyVisibilitySelect } from "@/components/onboarding/PrivacyVisibilitySelect";
+import type { ProfileVisibilityLevel } from "@/lib/marketplace/profile-visibility";
 import type { StepProps } from "./types";
 
 export function BasicInformationStep({
@@ -11,6 +13,10 @@ export function BasicInformationStep({
   onFieldChange,
   mobileSection,
 }: StepProps & { mobileSection: ReactNode }) {
+  const emailVisibility = (form.emailVisibility as ProfileVisibilityLevel) ?? "MEMBERS_ONLY";
+  const factoryAddressVisibility = (form.factoryAddressVisibility as ProfileVisibilityLevel) ?? "MEMBERS_ONLY";
+  const mobileVisibility = (form.mobileVisibility as ProfileVisibilityLevel) ?? "PRIVATE";
+
   return (
     <div className="mt-6 space-y-6">
       <p className="text-sm text-slate-600">Confirm contact details, email verification, mobile verification, and factory address.</p>
@@ -29,25 +35,49 @@ export function BasicInformationStep({
             error={Boolean(errors.designation)}
           />
         </Field>
-        <Field label="Business email" required error={errors.businessEmail}>
-          <TextInput
-            value={String(form.businessEmail || "")}
-            onChange={(e) => onFieldChange("businessEmail", e.target.value)}
-            error={Boolean(errors.businessEmail)}
+        <div>
+          <Field label="Business email" required error={errors.businessEmail}>
+            <TextInput
+              value={String(form.businessEmail || "")}
+              onChange={(e) => onFieldChange("businessEmail", e.target.value)}
+              error={Boolean(errors.businessEmail)}
+            />
+          </Field>
+          <PrivacyVisibilitySelect
+            className="mt-2"
+            value={emailVisibility}
+            onChange={(v) => onFieldChange("emailVisibility", v)}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {mobileSection}
+          <PrivacyVisibilitySelect
+            className="mt-2"
+            value={mobileVisibility}
+            onChange={(v) => onFieldChange("mobileVisibility", v)}
+          />
+        </div>
+      </div>
+
+      <div>
+        <Field label="Factory address" required error={errors.factoryAddress}>
+          <Textarea
+            value={String(form.factoryAddress || "")}
+            onChange={(e) => onFieldChange("factoryAddress", e.target.value)}
+            rows={3}
+            className={errors.factoryAddress ? "border-red-300" : ""}
           />
         </Field>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {mobileSection}
-      </div>
-      <Field label="Factory address" required error={errors.factoryAddress}>
-        <Textarea
-          value={String(form.factoryAddress || "")}
-          onChange={(e) => onFieldChange("factoryAddress", e.target.value)}
-          rows={3}
-          className={errors.factoryAddress ? "border-red-300" : ""}
+        <PrivacyVisibilitySelect
+          className="mt-2"
+          value={factoryAddressVisibility}
+          onChange={(v) => onFieldChange("factoryAddressVisibility", v)}
         />
-      </Field>
+      </div>
+
       <label className="flex min-h-10 items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
         <input
           type="checkbox"
