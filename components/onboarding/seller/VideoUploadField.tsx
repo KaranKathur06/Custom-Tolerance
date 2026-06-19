@@ -11,6 +11,7 @@ export type VideoUploadAsset = UploadResult;
 
 type VideoUploadFieldProps = {
   label?: string;
+  category?: string;
   video?: VideoUploadAsset | null;
   videoUrl?: string;
   error?: string;
@@ -26,6 +27,7 @@ function isValidYouTubeUrl(url: string): boolean {
 
 export function VideoUploadField({
   label = "Factory Tour Video",
+  category = "factory_tour",
   video,
   videoUrl,
   error,
@@ -45,7 +47,7 @@ export function VideoUploadField({
     }
     setUploading(true);
     try {
-      const result = await uploadSellerFile(file, "seller-videos", { category: "factory_tour" });
+      const result = await uploadSellerFile(file, "seller-videos", { category });
       onVideoChange(result);
       onUrlChange("");
     } catch (err) {

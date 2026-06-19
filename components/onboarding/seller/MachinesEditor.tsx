@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/onboarding/OnboardingV3Wizard";
 import { SingleImageUploadField, type SingleImageAsset } from "./SingleImageUploadField";
 import { DocumentUploadField, type DocumentUploadAsset } from "./DocumentUploadField";
+import { VideoUploadField } from "./VideoUploadField";
 import type { MachineRow } from "./types";
+import type { UploadResult } from "@/lib/marketplace/seller-upload-client";
 
 type MachinesEditorProps = {
   rows: MachineRow[];
@@ -46,10 +48,7 @@ export function MachinesEditor({ rows, errors, onChange }: MachinesEditorProps) 
       </div>
       <div className="space-y-4">
         {rows.map((row, index) => (
-          <div
-            key={index}
-            className="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-3"
-          >
+          <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-4 lg:grid-cols-3">
             <TextInput
               value={row.machineName}
               placeholder="Machine name *"
@@ -84,7 +83,7 @@ export function MachinesEditor({ rows, errors, onChange }: MachinesEditorProps) 
             <SingleImageUploadField
               label="Machine photo"
               category="machine_photos"
-              asset={row.photoFileId ? buildAsset(row.photoFileId, row.photoFileUrl, row.photoStoragePath, "seller-images") : null}
+              asset={row.photoFileId ? buildImageAsset(row.photoFileId, row.photoFileUrl, row.photoStoragePath) : null}
               onChange={(asset) =>
                 updateRow(index, {
                   photoFileId: asset?.id ?? undefined,
@@ -98,7 +97,7 @@ export function MachinesEditor({ rows, errors, onChange }: MachinesEditorProps) 
               documentType="machine_datasheet"
               accept=".pdf"
               maxSizeMB={10}
-              asset={row.datasheetFileId ? buildAsset(row.datasheetFileId, row.datasheetFileUrl, row.datasheetStoragePath, "seller-documents") : null}
+              asset={row.datasheetFileId ? buildDocAsset(row.datasheetFileId, row.datasheetFileUrl, row.datasheetStoragePath) : null}
               onChange={(asset) =>
                 updateRow(index, {
                   datasheetFileId: asset?.id ?? undefined,
@@ -107,7 +106,32 @@ export function MachinesEditor({ rows, errors, onChange }: MachinesEditorProps) 
                 })
               }
             />
-            <div className="flex items-end justify-end md:col-span-1">
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Machine video (optional)</span>
+              <VideoUploadField
+                label="Machine Video"
+                category="machine_videos"
+                video={row.videoFileId ? buildVideoAsset(row) : null}
+                videoUrl={row.videoUrl || ""}
+                onVideoChange={(asset) =>
+                  updateRow(index, {
+                    videoFileId: asset?.id ?? undefined,
+                    videoFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
+                    videoStoragePath: asset?.storagePath ?? undefined,
+                    videoUrl: asset ? "" : row.videoUrl,
+                  })
+                }
+                onUrlChange={(url) =>
+                  updateRow(index, {
+                    videoUrl: url,
+                    videoFileId: url ? undefined : row.videoFileId,
+                    videoFileUrl: url ? undefined : row.videoFileUrl,
+                    videoStoragePath: url ? undefined : row.videoStoragePath,
+                  })
+                }
+              />
+            </div>
+            <div className="flex items-end justify-end">
               <Button
                 type="button"
                 variant="ghost"
@@ -125,17 +149,37 @@ export function MachinesEditor({ rows, errors, onChange }: MachinesEditorProps) 
   );
 }
 
-function buildAsset(
-  id: string,
-  url: string | undefined,
-  storagePath: string | undefined,
-  bucketName: "seller-images" | "seller-documents",
-): SingleImageAsset | DocumentUploadAsset {
+function buildImageAsset(id: string, url: string | undefined, storagePath: string | undefined): SingleImageAsset {
   return {
     id,
     publicUrl: url,
     storagePath: storagePath || "",
-    bucketName,
+    bucketName: "seller-images",
+    originalFilename: "",
+    mimeType: "",
+    fileSize: 0,
+  };
+}
+
+function buildDocAsset(id: string, url: string | undefined, storagePath: string | undefined): DocumentUploadAsset {
+  return {
+    id,
+    publicUrl: url,
+    storagePath: storagePath || "",
+    bucketName: "seller-documents",
+    originalFilename: "",
+    mimeType: "",
+    fileSize: 0,
+  };
+}
+
+function buildVideoAsset(row: MachineRow): UploadResult | null {
+  if (!row.videoFileId) return null;
+  return {
+    id: row.videoFileId,
+    publicUrl: row.videoFileUrl,
+    storagePath: row.videoStoragePath || "",
+    bucketName: "seller-videos",
     originalFilename: "",
     mimeType: "",
     fileSize: 0,

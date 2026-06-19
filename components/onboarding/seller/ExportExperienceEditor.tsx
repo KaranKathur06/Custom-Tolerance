@@ -43,7 +43,7 @@ export function ExportExperienceEditor({ rows, errors, onChange }: ExportExperie
       </div>
       <div className="space-y-4">
         {rows.map((row, index) => (
-          <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-3">
+          <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-4 lg:grid-cols-3">
             <TextInput
               value={row.customerName}
               placeholder="Customer name *"
@@ -67,21 +67,66 @@ export function ExportExperienceEditor({ rows, errors, onChange }: ExportExperie
               onChange={(e) => updateRow(index, { orderValue: e.target.value })}
             />
             <DocumentUploadField
-              label="Proof of Export (PO / Invoice / Shipping Bill)"
-              documentType="proof_of_export"
+              label="Purchase Order (PO)"
+              documentType="export_po"
               accept=".pdf"
               maxSizeMB={10}
-              asset={row.proofFileId ? buildAsset(row.proofFileId, row.proofFileUrl, row.proofStoragePath) : null}
-              error={errors[`exportExperience[${index}].proofFileId`]}
+              asset={row.poFileId ? buildAsset(row.poFileId, row.poFileUrl, row.poStoragePath) : null}
               onChange={(asset) =>
                 updateRow(index, {
-                  proofFileId: asset?.id ?? undefined,
-                  proofFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
-                  proofStoragePath: asset?.storagePath ?? undefined,
+                  poFileId: asset?.id ?? undefined,
+                  poFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
+                  poStoragePath: asset?.storagePath ?? undefined,
                 })
               }
             />
-            <div className="flex items-end justify-end md:col-span-2">
+            <DocumentUploadField
+              label="Invoice"
+              documentType="export_invoice"
+              accept=".pdf"
+              maxSizeMB={10}
+              asset={row.invoiceFileId ? buildAsset(row.invoiceFileId, row.invoiceFileUrl, row.invoiceStoragePath) : null}
+              onChange={(asset) =>
+                updateRow(index, {
+                  invoiceFileId: asset?.id ?? undefined,
+                  invoiceFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
+                  invoiceStoragePath: asset?.storagePath ?? undefined,
+                })
+              }
+            />
+            <DocumentUploadField
+              label="Shipping Bill"
+              documentType="export_shipping_bill"
+              accept=".pdf"
+              maxSizeMB={10}
+              asset={row.shippingBillFileId ? buildAsset(row.shippingBillFileId, row.shippingBillFileUrl, row.shippingBillStoragePath) : null}
+              onChange={(asset) =>
+                updateRow(index, {
+                  shippingBillFileId: asset?.id ?? undefined,
+                  shippingBillFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
+                  shippingBillStoragePath: asset?.storagePath ?? undefined,
+                })
+              }
+            />
+            <DocumentUploadField
+              label="Export Certificate"
+              documentType="export_certificate"
+              accept=".pdf"
+              maxSizeMB={10}
+              asset={
+                row.exportCertificateFileId
+                  ? buildAsset(row.exportCertificateFileId, row.exportCertificateFileUrl, row.exportCertificateStoragePath)
+                  : null
+              }
+              onChange={(asset) =>
+                updateRow(index, {
+                  exportCertificateFileId: asset?.id ?? undefined,
+                  exportCertificateFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
+                  exportCertificateStoragePath: asset?.storagePath ?? undefined,
+                })
+              }
+            />
+            <div className="flex items-end justify-end lg:col-span-3">
               <Button
                 type="button"
                 variant="ghost"

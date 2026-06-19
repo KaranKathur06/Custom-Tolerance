@@ -12,6 +12,7 @@ import {
   Field,
   WizardActions,
   WizardShell,
+  type OnboardingErrorType,
 } from "@/components/onboarding/OnboardingV3Wizard";
 import {
   SELLER_ONBOARDING_V3_STEPS,
@@ -176,6 +177,8 @@ export default function SellerOnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [verifyingGst, setVerifyingGst] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [globalErrorType, setGlobalErrorType] = useState<OnboardingErrorType>("generic");
+  const [gstError, setGstError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [validatedSteps, setValidatedSteps] = useState<string[]>([]);
   const [documents, setDocuments] = useState<Record<string, SellerUploadAsset | undefined>>({});
@@ -214,16 +217,25 @@ export default function SellerOnboardingPage() {
           fetchSellerAssets(true),
         ]);
         if (!sessionResponse.ok) return;
-        const payload = await sessionResponse.json();
-        if (payload.session?.draft_payload) {
-          setForm((prev) => ({ ...prev, ...payload.session.draft_payload, mobileVerified: false }));
+        // Safe JSON parse for session
+        let sessionPayload: Record<string, unknown> | null = null;
+        try {
+          const text = await sessionResponse.text();
+          if (text) sessionPayload = JSON.parse(text);
+        } catch {
+          return;
         }
-        if (Array.isArray(payload.session?.validated_steps)) {
-          setValidatedSteps(payload.session.validated_steps);
+        if (!sessionPayload) return;
+        const session = sessionPayload.session as Record<string, unknown> | null;
+        if (session?.draft_payload && typeof session.draft_payload === "object") {
+          setForm((prev) => ({ ...prev, ...(session.draft_payload as Record<string, unknown>), mobileVerified: false }));
+        }
+        if (Array.isArray(session?.validated_steps)) {
+          setValidatedSteps(session!.validated_steps as string[]);
         }
         normalizeAssets(assets);
       } catch {
-        // ignore
+        // ignore — assets endpoint returns friendly errors
       }
     })();
   }, []);
@@ -243,12 +255,18 @@ export default function SellerOnboardingPage() {
 
     const timer = window.setTimeout(async () => {
       try {
-        const response = await fetch(
-          `/api/onboarding/mobile/status?countryCode=%2B91&mobileNumber=${encodeURIComponent(form.mobileNumber)}`,
-          { credentials: "include" },
-        );
+        let response: Response;
+        try {
+          response = await fetch(
+            `/api/onboarding/mobile/status?countryCode=%2B91&mobileNumber=${encodeURIComponent(form.mobileNumber)}`,
+            { credentials: "include" },
+          );
+        } catch {
+          return;
+        }
         if (!response.ok) return;
-        const payload = (await response.json()) as MobileStatusPayload;
+        const payload = await safeParseJson<MobileStatusPayload>(response);
+        if (!payload) return;
         setMobileStatus((prev) => ({ ...prev, ...payload }));
         setForm((prev) => ({ ...prev, mobileVerified: Boolean(payload.verified) }));
       } catch {
@@ -347,35 +365,67 @@ export default function SellerOnboardingPage() {
   const verifyGst = async () => {
     setVerifyingGst(true);
     setGlobalError(null);
+    setGstError(null);
+    setGlobalErrorType("generic");
     try {
-      const response = await fetch("/api/onboarding/seller/gst/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          gstNumber: form.gstNumber,
-          legalName: form.legalBusinessName,
-          state: form.state,
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        setGlobalError(payload.error?.message ?? "GST verification failed");
+      let response: Response;
+      try {
+        response = await fetch("/api/onboarding/seller/gst/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            gstNumber: form.gstNumber,
+            legalName: form.legalBusinessName,
+            state: form.state,
+          }),
+        });
+      } catch {
+        setGstError("network");
+        setGlobalErrorType("network");
+        setGlobalError("Unable to connect to server. Please check your internet connection.");
         return;
       }
-      const lookup = payload.data.lookup;
+
+      let payload: Record<string, unknown> | null = null;
+      try {
+        const text = await response.text();
+        if (text) payload = JSON.parse(text);
+      } catch {
+        // Invalid JSON
+      }
+
+      if (!response.ok) {
+        setGstError("api");
+        setGlobalErrorType("gst_api");
+        setGlobalError("Unable to verify GST right now. Please try again in a few minutes.");
+        return;
+      }
+
+      if (!payload) {
+        setGstError("api");
+        setGlobalErrorType("gst_api");
+        setGlobalError("Unable to verify GST right now. Please try again in a few minutes.");
+        return;
+      }
+
+      const data = payload.data as Record<string, unknown>;
+      const lookup = (data?.lookup ?? {}) as Record<string, unknown>;
       setForm((prev) => ({
         ...prev,
-        gstVerified: Boolean(payload.data.isVerified),
-        gstProvider: payload.data.developmentMode ? "development_trust_mode" : "live_provider",
+        gstVerified: Boolean(data?.isVerified),
+        gstProvider: data?.developmentMode ? "development_trust_mode" : "live_provider",
         gstDetails: lookup,
-        legalBusinessName: lookup.legalName ?? prev.legalBusinessName,
-        companyName: lookup.tradeName ?? lookup.legalName ?? prev.companyName,
-        tradeName: lookup.tradeName ?? prev.tradeName,
-        state: lookup.gstState ?? prev.state,
+        legalBusinessName: (lookup.legalName as string) ?? prev.legalBusinessName,
+        companyName: (lookup.tradeName as string) ?? (lookup.legalName as string) ?? prev.companyName,
+        tradeName: (lookup.tradeName as string) ?? prev.tradeName,
+        state: (lookup.gstState as string) ?? prev.state,
       }));
-    } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : "GST verification failed");
+      setGstError(null);
+    } catch {
+      setGstError("api");
+      setGlobalErrorType("gst_api");
+      setGlobalError("Unable to verify GST right now. Please try again in a few minutes.");
     } finally {
       setVerifyingGst(false);
     }
@@ -384,39 +434,73 @@ export default function SellerOnboardingPage() {
   const save = async (action: "save" | "submit") => {
     setSaving(true);
     setGlobalError(null);
+    setGlobalErrorType("generic");
     setFieldErrors({});
     try {
-      const response = await fetch("/api/onboarding/seller", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          action,
-          stepKey: activeStep.key,
-          values: { form, documents, images, video },
-        }),
-      });
-      const payload = await response.json();
+      let response: Response;
+      try {
+        response = await fetch("/api/onboarding/seller", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            action,
+            stepKey: activeStep.key,
+            values: { form, documents, images, video },
+          }),
+        });
+      } catch {
+        setGlobalErrorType("network");
+        setGlobalError("Unable to connect to server. Please check your internet connection.");
+        return false;
+      }
+
+      let payload: Record<string, unknown> | null = null;
+      try {
+        const text = await response.text();
+        if (text) payload = JSON.parse(text);
+      } catch {
+        // Invalid JSON from server
+      }
+
       if (!response.ok) {
-        if (payload.error === "VALIDATION_ERROR" && Array.isArray(payload.fieldErrors)) {
+        if (payload && payload.error === "VALIDATION_ERROR" && Array.isArray(payload.fieldErrors)) {
           const errors: Record<string, string> = {};
-          for (const item of payload.fieldErrors) {
+          for (const item of payload.fieldErrors as Array<{ field: string; message: string }>) {
             errors[item.field] = item.message;
           }
           setFieldErrors(errors);
-          setGlobalError(payload.message || "Please complete all required fields before continuing.");
+          setGlobalErrorType("validation");
+          setGlobalError(
+            typeof payload.message === "string" ? payload.message : "Please complete all required fields before continuing.",
+          );
+        } else if (response.status >= 500) {
+          setGlobalErrorType("server");
+          setGlobalError(
+            typeof payload?.message === "string"
+              ? (payload.message as string)
+              : "Something went wrong while saving your onboarding. Your information has not been lost. Please try again.",
+          );
+        } else if (response.status === 401) {
+          setGlobalErrorType("generic");
+          setGlobalError("Your session has expired. Please log in again.");
         } else {
-          setGlobalError(payload.error ?? payload.error?.message ?? "Failed to save seller onboarding");
+          setGlobalErrorType("generic");
+          setGlobalError(
+            typeof payload?.message === "string"
+              ? (payload.message as string)
+              : "Failed to save seller onboarding. Please try again.",
+          );
         }
         return false;
       }
-      if (payload.session?.validated_steps) {
-        setValidatedSteps(payload.session.validated_steps);
+      if (payload && typeof payload === "object" && payload.session) {
+        const session = payload.session as Record<string, unknown>;
+        if (Array.isArray(session.validated_steps)) {
+          setValidatedSteps(session.validated_steps as string[]);
+        }
       }
       return true;
-    } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : "Failed to save");
-      return false;
     } finally {
       setSaving(false);
     }
@@ -464,16 +548,24 @@ export default function SellerOnboardingPage() {
     setMobileOtpError(null);
     setMobileSuccess(null);
     try {
-      const response = await fetch("/api/onboarding/mobile/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ countryCode: "+91", mobileNumber: form.mobileNumber }),
-      });
-      const payload = (await response.json()) as MobileStatusPayload & { error?: string };
+      let response: Response;
+      try {
+        response = await fetch("/api/onboarding/mobile/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ countryCode: "+91", mobileNumber: form.mobileNumber }),
+        });
+      } catch {
+        setMobileStatus((prev) => ({ ...prev, status: "failed", verified: false }));
+        setMobileOtpError("Unable to connect to server. Please check your internet connection.");
+        setMobileModalOpen(true);
+        return;
+      }
+      const payload = (await safeParseJson(response)) as MobileStatusPayload & { error?: string };
       if (!response.ok) {
         setMobileStatus((prev) => ({ ...prev, status: "failed", verified: false }));
-        setMobileOtpError(payload.error ?? "Unable to send OTP.");
+        setMobileOtpError(payload?.error ?? "Unable to send OTP.");
         setMobileModalOpen(true);
         return;
       }
@@ -494,13 +586,19 @@ export default function SellerOnboardingPage() {
     setVerifyingMobileOtp(true);
     setMobileOtpError(null);
     try {
-      const response = await fetch("/api/onboarding/mobile/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ countryCode: "+91", mobileNumber: form.mobileNumber, otp: mobileOtp }),
-      });
-      const payload = (await response.json()) as MobileStatusPayload & { error?: string };
+      let response: Response;
+      try {
+        response = await fetch("/api/onboarding/mobile/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ countryCode: "+91", mobileNumber: form.mobileNumber, otp: mobileOtp }),
+        });
+      } catch {
+        setMobileOtpError("Unable to connect to server. Please check your internet connection.");
+        return;
+      }
+      const payload = (await safeParseJson(response)) as MobileStatusPayload & { error?: string };
       if (!response.ok) {
         setMobileStatus((prev) => ({
           ...prev,
@@ -508,7 +606,7 @@ export default function SellerOnboardingPage() {
           verified: false,
           remainingAttempts: Math.max(0, (prev.remainingAttempts ?? 5) - 1),
         }));
-        setMobileOtpError(payload.error ?? "Invalid OTP.");
+        setMobileOtpError(payload?.error ?? "Invalid OTP.");
         return;
       }
       setMobileStatus((prev) => ({ ...prev, ...payload, status: "verified", verified: true }));
@@ -621,7 +719,23 @@ export default function SellerOnboardingPage() {
       completion={completion}
       validatedSteps={validatedSteps}
       globalError={globalError}
-      onClearGlobalError={() => setGlobalError(null)}
+      globalErrorType={globalErrorType}
+      onClearGlobalError={() => {
+        setGlobalError(null);
+        setGlobalErrorType("generic");
+      }}
+      onRetry={() => {
+        if (globalErrorType === "gst_api" || activeStep.key === "gst_verification") {
+          void verifyGst();
+          return;
+        }
+        void next();
+      }}
+      onSaveDraft={() => void saveDraft()}
+      onStepClick={(stepKey) => {
+        const idx = SELLER_ONBOARDING_V3_STEPS.findIndex((s) => s.key === stepKey);
+        if (idx >= 0) setActiveIndex(idx);
+      }}
       trustItems={[
         { label: "GST", verified: Boolean(form.gstVerified) },
         { label: "Bank", verified: Boolean(form.cancelledChequeDocumentId) },
@@ -636,7 +750,13 @@ export default function SellerOnboardingPage() {
       </div>
 
       {activeStep.key === "gst_verification" ? (
-        <GstVerificationStep {...stepProps} onVerifyGst={() => void verifyGst()} verifyingGst={verifyingGst} />
+        <GstVerificationStep
+          {...stepProps}
+          onVerifyGst={() => void verifyGst()}
+          verifyingGst={verifyingGst}
+          gstError={gstError}
+          onRetryGst={() => void verifyGst()}
+        />
       ) : null}
 
       {activeStep.key === "basic_information" ? (
@@ -881,6 +1001,16 @@ function MobileOtpModal({
 
 function cn(...classes: (string | false | undefined)[]) {
   return classes.filter(Boolean).join(" ");
+}
+
+async function safeParseJson<T>(response: Response): Promise<T | null> {
+  try {
+    const text = await response.text();
+    if (!text) return null;
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }
 
 function isValidMobileNumber(value: string) {

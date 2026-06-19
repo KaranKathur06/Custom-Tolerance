@@ -6,17 +6,22 @@ import {
   Check,
   CheckCircle2,
   Circle,
-  CircleDashed,
   FileWarning,
-  ShieldAlert,
   ShieldCheck,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { CompletionResult, OnboardingStepDefinition } from "@/lib/marketplace/onboarding-v3";
+
+/* ────────────────────────────────────────────────────────────────────────
+   WizardShell — Top stepper, wide form, sticky trust panel
+   ──────────────────────────────────────────────────────────────────────── */
+
+export type OnboardingErrorType = "validation" | "gst_api" | "server" | "network" | "generic";
 
 export function WizardShell({
   title,
@@ -27,7 +32,11 @@ export function WizardShell({
   trustItems,
   validatedSteps = [],
   globalError,
+  globalErrorType = "generic",
   onClearGlobalError,
+  onRetry,
+  onSaveDraft,
+  onStepClick,
   children,
 }: {
   title: string;
@@ -35,18 +44,28 @@ export function WizardShell({
   steps: OnboardingStepDefinition<string>[];
   activeStep: string;
   completion: CompletionResult;
-  trustItems: Array<{ label: string; verified?: boolean; status?: "pending" | "otp_sent" | "verified" | "failed"; statusLabel?: string }>;
+  trustItems: Array<{
+    label: string;
+    verified?: boolean;
+    status?: "pending" | "otp_sent" | "verified" | "failed";
+    statusLabel?: string;
+  }>;
   validatedSteps?: string[];
   globalError?: string | null;
+  globalErrorType?: OnboardingErrorType;
   onClearGlobalError?: () => void;
+  onRetry?: () => void;
+  onSaveDraft?: () => void;
+  onStepClick?: (stepKey: string) => void;
   children: React.ReactNode;
 }) {
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* ── Header bar ── */}
       <div className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div className="mx-auto flex max-w-[1480px] flex-col gap-3 px-10 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">CustomTolerance Onboarding</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Seller Onboarding</p>
             <h1 className="mt-1 text-2xl font-bold text-slate-950">{title}</h1>
             <p className="mt-1 max-w-3xl text-sm text-slate-600">{subtitle}</p>
           </div>
@@ -56,129 +75,231 @@ export function WizardShell({
               <span>{completion.overallPercent}%</span>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full rounded-full bg-blue-700 transition-all" style={{ width: `${completion.overallPercent}%` }} />
+              <div
+                className="h-full rounded-full bg-blue-700 transition-all"
+                style={{ width: `${completion.overallPercent}%` }}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      <main className="mx-auto grid max-w-[1600px] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[300px_1fr_350px] lg:px-8">
-        <StepNav steps={steps} activeStep={activeStep} completion={completion} validatedSteps={validatedSteps} />
-        <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
-          {globalError ? (
-            <div
-              className="sticky top-0 z-10 mb-6 flex items-start gap-3 rounded-md border border-red-200 border-l-4 border-l-red-600 bg-red-50 px-4 py-3 text-red-800 shadow-sm"
-              role="alert"
-            >
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
-              <div className="flex-1 text-sm">
-                <p className="font-semibold">Please complete all required fields before continuing.</p>
-                <p className="mt-1">{globalError}</p>
-              </div>
-              {onClearGlobalError ? (
-                <button
-                  type="button"
-                  onClick={onClearGlobalError}
-                  className="rounded p-1 text-red-600 hover:bg-red-100"
-                  aria-label="Dismiss error"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+      {/* ── Horizontal stepper ── */}
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-[1480px] px-10">
+          <HorizontalStepper
+            steps={steps}
+            activeStep={activeStep}
+            completion={completion}
+            validatedSteps={validatedSteps}
+            onStepClick={onStepClick}
+          />
+        </div>
+      </div>
+
+      {/* ── Main content: Form + Trust Panel ── */}
+      <main className="mx-auto max-w-[1480px] px-10 py-8">
+        <div className="flex gap-8">
+          {/* Form area */}
+          <section className="min-w-0 flex-1">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:p-8">
+              {globalError ? (
+                <GlobalErrorBanner
+                  error={globalError}
+                  errorType={globalErrorType}
+                  onDismiss={onClearGlobalError}
+                  onRetry={onRetry}
+                  onSaveDraft={onSaveDraft}
+                />
               ) : null}
+              {children}
             </div>
-          ) : null}
-          {children}
-        </section>
-        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-          <TrustPanel trustItems={trustItems} />
-          <CompletionPanel completion={completion} />
-          <MissingItemsPanel completion={completion} />
-        </aside>
+          </section>
+
+          {/* Sticky trust panel */}
+          <aside className="hidden w-[320px] shrink-0 lg:block">
+            <div className="sticky top-[100px] space-y-4">
+              <TrustPanel trustItems={trustItems} />
+              <CompletionPanel completion={completion} />
+              <MissingItemsPanel completion={completion} />
+            </div>
+          </aside>
+        </div>
       </main>
     </div>
   );
 }
 
-function StepNav({
+/* ────────────────────────────────────────────────────────────────────────
+   Horizontal Stepper
+   ──────────────────────────────────────────────────────────────────────── */
+
+function HorizontalStepper({
   steps,
   activeStep,
   completion,
   validatedSteps,
+  onStepClick,
 }: {
   steps: OnboardingStepDefinition<string>[];
   activeStep: string;
   completion: CompletionResult;
   validatedSteps: string[];
+  onStepClick?: (stepKey: string) => void;
 }) {
   return (
-    <nav className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm lg:sticky lg:top-4 lg:self-start">
-      <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
-        {steps.map((step, index) => {
-          const section = completion.sections.find((item) => item.key === step.key);
-          const isActive = activeStep === step.key;
-          const isValidated = validatedSteps.includes(step.key);
-          const percent = section?.percent ?? 0;
-          const missingCount = section?.missingFields?.length ?? 0;
-          const isComplete = isValidated && percent >= 100;
-          const isMissing = !isComplete && missingCount > 0;
+    <nav className="flex items-center overflow-x-auto py-0" aria-label="Onboarding steps">
+      {steps.map((step, index) => {
+        const section = completion.sections.find((item) => item.key === step.key);
+        const isActive = activeStep === step.key;
+        const isValidated = validatedSteps.includes(step.key);
+        const percent = section?.percent ?? 0;
+        const isComplete = isValidated && percent >= 100;
+        const isLast = index === steps.length - 1;
 
-          let statusLabel = "Not started";
-          if (isComplete) statusLabel = "Completed";
-          else if (isActive) statusLabel = "In Progress";
-          else if (isValidated) statusLabel = "In Progress";
-          else if (isMissing) statusLabel = "Missing Required Fields";
-
-          return (
-            <div
-              key={step.key}
+        return (
+          <div key={step.key} className="flex items-center">
+            <button
+              type="button"
+              onClick={() => onStepClick?.(step.key)}
               className={cn(
-                "flex items-start gap-3 rounded-md px-3 py-3 text-left",
-                isActive ? "bg-blue-50 text-blue-800" : "text-slate-600",
+                "flex items-center gap-2 whitespace-nowrap px-3 py-4 text-sm font-medium transition-colors",
+                isActive ? "text-blue-700" : isComplete ? "text-emerald-700" : "text-slate-500",
               )}
             >
               <span
                 className={cn(
-                  "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
                   isComplete
-                    ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-700"
                     : isActive
-                      ? "border-blue-200 bg-blue-100 text-blue-700"
-                      : isMissing
-                        ? "border-red-200 bg-red-100 text-red-700"
-                        : "border-slate-200 bg-slate-50 text-slate-500",
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-200"
+                      : "border-slate-300 bg-slate-50 text-slate-400",
                 )}
               >
-                {isComplete ? <Check className="h-4 w-4" /> : isMissing ? <AlertCircle className="h-4 w-4" /> : index + 1}
+                {isComplete ? <Check className="h-3.5 w-3.5" /> : isActive ? <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" /> : index + 1}
               </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{step.title}</p>
-                <p className="mt-0.5 hidden text-xs text-slate-500 lg:block">{step.goal}</p>
-                <div className="mt-1.5 flex items-center gap-2 text-xs">
-                  <span
-                    className={cn(
-                      "font-medium",
-                      isComplete ? "text-emerald-600" : isMissing ? "text-red-600" : "text-slate-500",
-                    )}
-                  >
-                    {statusLabel}
-                  </span>
-                  {!isComplete && missingCount > 0 ? (
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">{missingCount} missing</span>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              <span className={cn(isActive && "font-semibold text-emerald-800")}>{step.title}</span>
+            </button>
+            {!isLast ? (
+              <div className={cn("h-px w-6", isComplete ? "bg-emerald-300" : "bg-slate-200")} />
+            ) : null}
+          </div>
+        );
+      })}
     </nav>
   );
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+   Global Error Banner — Friendly, never exposes technical errors
+   ──────────────────────────────────────────────────────────────────────── */
+
+function GlobalErrorBanner({
+  error,
+  errorType,
+  onDismiss,
+  onRetry,
+  onSaveDraft,
+}: {
+  error: string;
+  errorType: OnboardingErrorType;
+  onDismiss?: () => void;
+  onRetry?: () => void;
+  onSaveDraft?: () => void;
+}) {
+  const isTechnicalError =
+    errorType === "server" ||
+    errorType === "network" ||
+    /json|parse|stack|trace|unexpected|syntaxerror|typeerror|referenceerror|500|502|503|econnrefused/i.test(error);
+
+  const titleByType: Record<OnboardingErrorType, string> = {
+    validation: "Please check the following",
+    gst_api: "GST API Error",
+    server: "Server Error",
+    network: "Network Error",
+    generic: isTechnicalError ? "Something went wrong" : "Please check the following",
+  };
+
+  const messageByType: Record<OnboardingErrorType, string> = {
+    validation: error,
+    gst_api:
+      "Unable to verify GST right now. Please try again in a few minutes. If the issue persists, contact support.",
+    server: "Something went wrong while saving your onboarding. Your information has not been lost. Please try again.",
+    network: "Unable to connect to server. Please check your internet connection.",
+    generic: isTechnicalError
+      ? "Something went wrong while saving your onboarding. Your information has not been lost. Please try again."
+      : error,
+  };
+
+  const title = titleByType[errorType] ?? titleByType.generic;
+  const displayMessage = messageByType[errorType] ?? messageByType.generic;
+  const showRetry = errorType === "server" || errorType === "network" || errorType === "gst_api" || isTechnicalError;
+
+  return (
+    <div
+      className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 border-l-4 border-l-red-600 bg-red-50 px-4 py-3 text-red-800 shadow-sm"
+      role="alert"
+    >
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+      <div className="flex-1 text-sm">
+        <p className="font-semibold">{title}</p>
+        <p className="mt-1">{displayMessage}</p>
+        {showRetry ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {onRetry ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-100"
+                onClick={onRetry}
+              >
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                {errorType === "gst_api" ? "Retry Verification" : "Retry"}
+              </Button>
+            ) : null}
+            {onSaveDraft && errorType === "server" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-100"
+                onClick={onSaveDraft}
+              >
+                Save Draft
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {onDismiss ? (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="rounded p-1 text-red-600 hover:bg-red-100"
+          aria-label="Dismiss error"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Trust Panel
+   ──────────────────────────────────────────────────────────────────────── */
+
 function TrustPanel({
   trustItems,
 }: {
-  trustItems: Array<{ label: string; verified?: boolean; status?: "pending" | "otp_sent" | "verified" | "failed"; statusLabel?: string }>;
+  trustItems: Array<{
+    label: string;
+    verified?: boolean;
+    status?: "pending" | "otp_sent" | "verified" | "failed";
+    statusLabel?: string;
+  }>;
 }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -203,7 +324,15 @@ function TrustPanel({
             <div key={item.label} className="flex items-center justify-between gap-3">
               <span className="text-sm text-slate-600">{item.label}</span>
               <Badge
-                variant={status === "verified" ? "success" : status === "failed" ? "destructive" : status === "otp_sent" ? "warning" : "outline"}
+                variant={
+                  status === "verified"
+                    ? "success"
+                    : status === "failed"
+                      ? "destructive"
+                      : status === "otp_sent"
+                        ? "warning"
+                        : "outline"
+                }
                 className={cn(
                   status === "verified" && "bg-emerald-600",
                   status === "otp_sent" && "bg-amber-500",
@@ -220,6 +349,10 @@ function TrustPanel({
     </div>
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   Completion Panel
+   ──────────────────────────────────────────────────────────────────────── */
 
 function CompletionPanel({ completion }: { completion: CompletionResult }) {
   return (
@@ -246,6 +379,10 @@ function CompletionPanel({ completion }: { completion: CompletionResult }) {
     </div>
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   Missing Items Panel
+   ──────────────────────────────────────────────────────────────────────── */
 
 function MissingItemsPanel({ completion }: { completion: CompletionResult }) {
   const missing = completion.sections.flatMap((section) =>
@@ -293,6 +430,10 @@ function formatMissingFieldLabel(field: string): string {
     .trim();
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+   Shared Form Primitives
+   ──────────────────────────────────────────────────────────────────────── */
+
 export function Field({
   label,
   required,
@@ -307,7 +448,8 @@ export function Field({
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-        {label}{required ? " *" : ""}
+        {label}
+        {required ? " *" : ""}
       </span>
       {children}
       {error ? <span className="mt-1.5 block text-xs font-semibold text-red-600">{error}</span> : null}

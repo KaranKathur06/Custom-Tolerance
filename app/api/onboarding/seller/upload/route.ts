@@ -31,6 +31,47 @@ const EXTENSIONS: Record<string, string> = {
   "video/mp4": "mp4",
 };
 
+const DOCUMENT_STORAGE_FOLDERS: Record<string, string> = {
+  cancelled_cheque: "bank",
+  gst_certificate: "gst",
+  pan_card: "pan",
+  factory_license: "factory-license",
+  iec_certificate: "iec",
+  udyam_certificate: "udyam",
+  duns_certificate: "duns",
+  machine_datasheet: "machines",
+  certificate_pdf: "certifications",
+  export_po: "export/po",
+  export_invoice: "export/invoice",
+  export_shipping_bill: "export/shipping-bill",
+  export_certificate: "export/certificate",
+  proof_of_export: "export",
+};
+
+const IMAGE_STORAGE_FOLDERS: Record<string, string> = {
+  Exterior: "factory/exterior",
+  "Shop Floor": "factory/shop-floor",
+  Machines: "machines",
+  "QC Department": "factory/qc",
+  Warehouse: "warehouse",
+  Office: "office",
+  machine_photos: "machines",
+  certificate_images: "certifications",
+};
+
+function resolveStorageFolder(bucket: string, documentType: string | null, category: string | null): string {
+  if (bucket === "seller-documents" && documentType) {
+    return DOCUMENT_STORAGE_FOLDERS[documentType] || documentType;
+  }
+  if (bucket === "seller-images" && category) {
+    return IMAGE_STORAGE_FOLDERS[category] || category.toLowerCase().replace(/\s+/g, "-");
+  }
+  if (bucket === "seller-videos") {
+    return category === "machine_videos" ? "machines" : "factory-tour";
+  }
+  return documentType || category || "general";
+}
+
 export async function POST(request: Request) {
   const auth = await protectApiRoute(request);
   if (auth.error) {
@@ -84,7 +125,7 @@ export async function POST(request: Request) {
 
   const ext = EXTENSIONS[file.type] || (file.name.split(".").pop() || "bin");
   const safeName = `${randomUUID()}.${ext}`;
-  const folder = documentType || category || "general";
+  const folder = resolveStorageFolder(bucket, documentType, category);
   const storagePath = `${auth.user.id}/${folder}/${safeName}`;
 
   const fileBuffer = await file.arrayBuffer();

@@ -27,20 +27,25 @@ export function ProfileCompletionStep({
 
   return (
     <div className="mt-6 space-y-8">
-      <div>
-        <Field label="Company description" error={errors.companyDescription}>
-          <Textarea
-            value={String(form.companyDescription || "")}
-            onChange={(e) => onFieldChange("companyDescription", e.target.value)}
-            rows={4}
-            className={errors.companyDescription ? "border-red-300" : ""}
-          />
-        </Field>
-      </div>
+      <p className="text-sm text-slate-600">
+        Add factory evidence, machines, certifications, export history, and quality systems to strengthen your seller profile.
+      </p>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Factory Photos</h3>
-        <div className="space-y-4">
+      <Field label="Company description" error={errors.companyDescription}>
+        <Textarea
+          value={String(form.companyDescription || "")}
+          onChange={(e) => onFieldChange("companyDescription", e.target.value)}
+          rows={4}
+          className={errors.companyDescription ? "border-red-300" : ""}
+        />
+      </Field>
+
+      <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-5">
+        <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-slate-500">Factory Gallery</h3>
+        <p className="mb-4 text-xs text-slate-500">
+          Upload photos of your factory, machines, and facilities. Buyers trust sellers with real visual evidence.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {FACTORY_PHOTO_CATEGORIES.map((category) => {
             const limits = FACTORY_PHOTO_LIMITS[category];
             return (
@@ -51,7 +56,7 @@ export function ProfileCompletionStep({
                 required={limits ? limits.min > 0 : false}
                 images={images[category] || []}
                 min={limits?.min ?? 0}
-                max={limits?.max ?? 5}
+                max={limits?.max ?? 10}
                 error={errors[`factoryPhotos_${category}`] || errors.factoryPhotos}
                 onChange={(value) => onImagesChange(category, value)}
               />
@@ -60,7 +65,7 @@ export function ProfileCompletionStep({
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
+      <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-5">
         <MachinesEditor
           rows={machines}
           errors={errors}
@@ -68,7 +73,7 @@ export function ProfileCompletionStep({
         />
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
+      <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-5">
         <CertificationsEditor
           rows={certifications}
           errors={errors}
@@ -76,7 +81,7 @@ export function ProfileCompletionStep({
         />
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
+      <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-5">
         <ExportExperienceEditor
           rows={exportExperience}
           errors={errors}
@@ -84,7 +89,7 @@ export function ProfileCompletionStep({
         />
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
+      <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-5">
         <Field label="Quality systems">
           <MultiSelectChips
             options={QUALITY_SYSTEM_OPTIONS}
@@ -94,7 +99,7 @@ export function ProfileCompletionStep({
         </Field>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
+      <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-5">
         <VideoUploadField
           video={video}
           videoUrl={String(form.factoryTourUrl || "")}

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/onboarding/OnboardingV3Wizard";
 import { DocumentUploadField, type DocumentUploadAsset } from "./DocumentUploadField";
+import { SingleImageUploadField } from "./SingleImageUploadField";
 import type { CertificationRow } from "./types";
 
 type CertificationsEditorProps = {
@@ -42,7 +43,7 @@ export function CertificationsEditor({ rows, errors, onChange }: CertificationsE
       </div>
       <div className="space-y-4">
         {rows.map((row, index) => (
-          <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-3">
+          <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-4 lg:grid-cols-3">
             <TextInput
               value={row.certificateName}
               placeholder="Certificate name *"
@@ -62,10 +63,10 @@ export function CertificationsEditor({ rows, errors, onChange }: CertificationsE
             />
             <DocumentUploadField
               label="Certificate PDF"
-              documentType="certificate"
+              documentType="certificate_pdf"
               accept=".pdf"
               maxSizeMB={10}
-              asset={row.certificateFileId ? buildAsset(row.certificateFileId, row.certificateFileUrl, row.certificateStoragePath) : null}
+              asset={row.certificateFileId ? buildDocAsset(row.certificateFileId, row.certificateFileUrl, row.certificateStoragePath) : null}
               error={errors[`certifications[${index}].certificateFileId`]}
               onChange={(asset) =>
                 updateRow(index, {
@@ -75,7 +76,31 @@ export function CertificationsEditor({ rows, errors, onChange }: CertificationsE
                 })
               }
             />
-            <div className="flex items-end justify-end md:col-span-2">
+            <SingleImageUploadField
+              label="Certificate image"
+              category="certificate_images"
+              asset={
+                row.certificateImageFileId
+                  ? {
+                      id: row.certificateImageFileId,
+                      publicUrl: row.certificateImageFileUrl,
+                      storagePath: row.certificateImageStoragePath || "",
+                      bucketName: "seller-images",
+                      originalFilename: "",
+                      mimeType: "",
+                      fileSize: 0,
+                    }
+                  : null
+              }
+              onChange={(asset) =>
+                updateRow(index, {
+                  certificateImageFileId: asset?.id ?? undefined,
+                  certificateImageFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
+                  certificateImageStoragePath: asset?.storagePath ?? undefined,
+                })
+              }
+            />
+            <div className="flex items-end justify-end">
               <Button
                 type="button"
                 variant="ghost"
@@ -93,7 +118,7 @@ export function CertificationsEditor({ rows, errors, onChange }: CertificationsE
   );
 }
 
-function buildAsset(id: string, url: string | undefined, storagePath: string | undefined): DocumentUploadAsset {
+function buildDocAsset(id: string, url: string | undefined, storagePath: string | undefined): DocumentUploadAsset {
   return {
     id,
     publicUrl: url,

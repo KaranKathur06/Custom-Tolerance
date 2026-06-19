@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, X, Eye, AlertCircle } from "lucide-react";
+import { Upload, X, Eye, AlertCircle, CheckCircle2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { uploadSellerFile, deleteSellerUpload, type UploadResult } from "@/lib/marketplace/seller-upload-client";
@@ -48,7 +48,7 @@ export function ImageUploadGrid({
       );
       onChange([...images, ...results]);
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : "Upload failed");
+      setLocalError(err instanceof Error ? err.message : "Upload failed. Please try again.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -60,15 +60,21 @@ export function ImageUploadGrid({
       await deleteSellerUpload(asset.id, "seller-images");
       onChange(images.filter((img) => img.id !== asset.id));
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : "Delete failed");
+      setLocalError(err instanceof Error ? err.message : "Delete failed. Please try again.");
     }
   };
 
   const canAdd = images.length < max;
+  const meetsMinimum = images.length >= min;
 
   return (
-    <div className={cn("rounded-lg border bg-white p-4", error || localError ? "border-red-300" : "border-slate-200")}>
-      <div className="mb-2 flex items-center justify-between">
+    <div
+      className={cn(
+        "rounded-lg border p-4 transition-colors",
+        meetsMinimum && images.length > 0 ? "border-emerald-200 bg-emerald-50/30" : error || localError ? "border-red-300 bg-red-50/30" : "border-slate-200 bg-white",
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-semibold text-slate-800">
           {label}
           {required ? <span className="text-red-600"> *</span> : null}
@@ -76,14 +82,24 @@ export function ImageUploadGrid({
             {images.length}/{max}
           </span>
         </span>
+        {meetsMinimum && images.length > 0 ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {images.length} uploaded
+          </span>
+        ) : null}
       </div>
 
+      <p className="mb-3 text-xs text-slate-500">
+        JPG / PNG / WEBP · Min {min} · Max {max}
+      </p>
+
       {images.length > 0 ? (
-        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {images.map((image) => (
             <div
               key={image.id}
-              className="group relative overflow-hidden rounded-md border border-slate-200 bg-slate-100"
+              className="group relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
             >
               {image.publicUrl || image.signedUrl ? (
                 <img
@@ -93,28 +109,30 @@ export function ImageUploadGrid({
                 />
               ) : (
                 <div className="flex aspect-square w-full items-center justify-center text-xs text-slate-500">
-                  No preview
+                  <ImageIcon className="h-8 w-8 text-slate-400" />
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-end gap-1 bg-slate-950/60 p-1 opacity-0 transition-opacity group-hover:opacity-100">
-                {(image.publicUrl || image.signedUrl) ? (
-                  <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-white hover:bg-white/20">
-                    <a href={image.publicUrl || image.signedUrl || undefined} target="_blank" rel="noreferrer">
-                      <Eye className="h-3.5 w-3.5" />
-                    </a>
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-slate-950/60 px-2 py-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <p className="truncate text-xs text-white">{image.originalFilename}</p>
+                <div className="flex gap-1">
+                  {(image.publicUrl || image.signedUrl) ? (
+                    <Button type="button" variant="ghost" size="sm" asChild className="h-6 px-1.5 text-white hover:bg-white/20">
+                      <a href={image.publicUrl || image.signedUrl || undefined} target="_blank" rel="noreferrer">
+                        <Eye className="h-3 w-3" />
+                      </a>
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1.5 text-red-300 hover:bg-red-500/30 hover:text-white"
+                    onClick={() => void handleRemove(image)}
+                  >
+                    <X className="h-3 w-3" />
                   </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-white hover:bg-white/20"
-                  onClick={() => void handleRemove(image)}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
+                </div>
               </div>
-              <p className="truncate px-2 py-1 text-xs text-slate-600">{image.originalFilename}</p>
             </div>
           ))}
         </div>
@@ -138,7 +156,7 @@ export function ImageUploadGrid({
           />
           <Upload className="h-5 w-5 text-slate-400" />
           <span className="mt-1 text-xs font-medium text-slate-600">
-            {uploading ? "Uploading..." : "Upload JPG / PNG / WEBP"}
+            {uploading ? "Uploading..." : "Upload Images"}
           </span>
         </label>
       ) : null}

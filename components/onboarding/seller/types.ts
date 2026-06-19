@@ -28,6 +28,10 @@ export type MachineRow = {
   datasheetFileId?: string;
   datasheetFileUrl?: string;
   datasheetStoragePath?: string;
+  videoFileId?: string;
+  videoFileUrl?: string;
+  videoStoragePath?: string;
+  videoUrl?: string;
 };
 
 export type CertificationRow = {
@@ -37,6 +41,9 @@ export type CertificationRow = {
   certificateFileId?: string;
   certificateFileUrl?: string;
   certificateStoragePath?: string;
+  certificateImageFileId?: string;
+  certificateImageFileUrl?: string;
+  certificateImageStoragePath?: string;
 };
 
 export type ExportRow = {
@@ -44,9 +51,18 @@ export type ExportRow = {
   country: string;
   productExported: string;
   orderValue: string;
-  proofFileId?: string;
-  proofFileUrl?: string;
-  proofStoragePath?: string;
+  poFileId?: string;
+  poFileUrl?: string;
+  poStoragePath?: string;
+  invoiceFileId?: string;
+  invoiceFileUrl?: string;
+  invoiceStoragePath?: string;
+  shippingBillFileId?: string;
+  shippingBillFileUrl?: string;
+  shippingBillStoragePath?: string;
+  exportCertificateFileId?: string;
+  exportCertificateFileUrl?: string;
+  exportCertificateStoragePath?: string;
 };
 
 export type FactoryPhotoCategory =

@@ -277,12 +277,12 @@ export const QUALITY_SYSTEM_OPTIONS = ["PPAP", "APQP", "FMEA", "SPC", "MSA", "5S
 export const FACTORY_PHOTO_CATEGORIES = ["Exterior", "Shop Floor", "Machines", "QC Department", "Warehouse", "Office"] as const;
 
 export const FACTORY_PHOTO_LIMITS: Record<string, { min: number; max: number }> = {
-  Exterior: { min: 1, max: 5 },
+  Exterior: { min: 1, max: 10 },
   "Shop Floor": { min: 2, max: 10 },
   Machines: { min: 0, max: 10 },
-  "QC Department": { min: 1, max: 5 },
-  Warehouse: { min: 1, max: 5 },
-  Office: { min: 0, max: 5 },
+  "QC Department": { min: 1, max: 10 },
+  Warehouse: { min: 1, max: 10 },
+  Office: { min: 0, max: 10 },
 };
 
 export const OVERALL_FACTORY_PHOTO_LIMITS = { min: 3, max: 20 };
