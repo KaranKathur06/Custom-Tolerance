@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { canPostRequirement } from "@/lib/constants/roles";
 
 const ADMIN_ROLE_SET = new Set([
   "super_admin",
@@ -193,6 +194,19 @@ export async function middleware(request: NextRequest) {
   }
 
   // Authenticated user on login/register — send to home route (not verify trap)
+  // Seller-portal roles cannot access buyer Post Requirement flow
+  if (
+    user &&
+    (pathname === "/post-requirement" || pathname.startsWith("/post-requirement/"))
+  ) {
+    const effectiveRole = normalizeEdgeRole(
+      user.app_metadata?.role ?? user.user_metadata?.role ?? "",
+    );
+    if (!canPostRequirement(effectiveRole)) {
+      return NextResponse.redirect(new URL("/seller", request.url));
+    }
+  }
+
   if (isAuthRoute && user && !signedOutQuery && !isVerifyEmailRoute) {
     const role = normalizeEdgeRole(
       user.app_metadata?.role ?? user.user_metadata?.role ?? "",
@@ -229,6 +243,7 @@ export const config = {
     "/seller/:path*",
     "/buyer/:path*",
     "/settings/:path*",
+    "/post-requirement",
     "/post-requirement/:path*",
     "/onboarding/:path*",
     "/notifications/:path*",

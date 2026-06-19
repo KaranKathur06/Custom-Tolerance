@@ -3,34 +3,48 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, Loader2, Phone, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { OtpInput, OTP_LENGTH_EXPORT } from "@/components/auth/OtpInput";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Field,
-  MultiSelectChips,
-  NativeSelect,
-  TextInput,
   WizardActions,
   WizardShell,
 } from "@/components/onboarding/OnboardingV3Wizard";
 import {
-  CAPABILITY_CATEGORIES,
-  FACTORY_PHOTO_CATEGORIES,
-  LANGUAGE_OPTIONS,
-  MATERIAL_OPTIONS,
-  QUALITY_SYSTEM_OPTIONS,
   SELLER_ONBOARDING_V3_STEPS,
-  SELLER_TYPES,
-  SUB_CAPABILITIES,
   calculateSellerOnboardingV3Completion,
   getSellerV3HardGateStatus,
 } from "@/lib/marketplace/onboarding-v3";
+import {
+  getMissingFieldsMessage,
+  validateSellerOnboardingStep,
+  SELLER_DOCUMENT_TYPE_KEYS,
+  type SellerUploadAsset,
+} from "@/lib/marketplace/seller-onboarding-validation";
+import { fetchSellerAssets } from "@/lib/marketplace/seller-upload-client";
+import { GstVerificationStep } from "@/components/onboarding/seller/GstVerificationStep";
+import { BasicInformationStep } from "@/components/onboarding/seller/BasicInformationStep";
+import { BusinessDetailsStep } from "@/components/onboarding/seller/BusinessDetailsStep";
+import { BankVerificationStep } from "@/components/onboarding/seller/BankVerificationStep";
+import { RegistrationCompleteStep } from "@/components/onboarding/seller/RegistrationCompleteStep";
+import { ProfileCompletionStep } from "@/components/onboarding/seller/ProfileCompletionStep";
+import type { MachineRow, CertificationRow, ExportRow } from "@/components/onboarding/seller/types";
 
-type MachineRow = { machineName: string; brand: string; model: string; quantity: string; capacity: string; yearPurchased: string };
-type CertificationRow = { certificateName: string; certificateNumber: string; expiryDate: string };
-type ExportRow = { customerName: string; country: string; productExported: string; orderValue: string };
+type MobileTrustStatus = "pending" | "otp_sent" | "verified" | "failed";
+type MobileStatusPayload = {
+  status: MobileTrustStatus;
+  verified: boolean;
+  maskedMobile?: string;
+  expiresInSeconds?: number;
+  cooldownSeconds?: number;
+  remainingAttempts?: number;
+  resendCount?: number;
+  developmentOtp?: string;
+  message?: string;
+};
 
 type SellerForm = Record<string, unknown> & {
   gstNumber: string;
@@ -72,23 +86,29 @@ type SellerForm = Record<string, unknown> & {
   confirmAccountNumber: string;
   ifscCode: string;
   branchName: string;
-  bankVerified: boolean;
   panNumber: string;
-  panUploaded: boolean;
   iecNumber: string;
   msmeNumber: string;
-  factoryLicenseUploaded: boolean;
+  dunsNumber: string;
   sellerAgreement: boolean;
   termsAccepted: boolean;
   privacyAccepted: boolean;
   kycConsent: boolean;
   companyDescription: string;
-  factoryPhotos: Array<{ category: string; fileUrl: string }>;
+  factoryPhotos: Array<{ category: string; fileUrl?: string; id?: string; storagePath?: string }>;
   machines: MachineRow[];
   certifications: CertificationRow[];
   exportExperience: ExportRow[];
   qualitySystems: string[];
   factoryTourUrl: string;
+  factoryTourVideoId?: string;
+  cancelledChequeDocumentId?: string;
+  gstCertificateDocumentId?: string;
+  panCardDocumentId?: string;
+  factoryLicenseDocumentId?: string;
+  iecCertificateDocumentId?: string;
+  udyamCertificateDocumentId?: string;
+  dunsCertificateDocumentId?: string;
 };
 
 const initialForm: SellerForm = {
@@ -131,12 +151,10 @@ const initialForm: SellerForm = {
   confirmAccountNumber: "",
   ifscCode: "",
   branchName: "",
-  bankVerified: false,
   panNumber: "",
-  panUploaded: false,
   iecNumber: "",
   msmeNumber: "",
-  factoryLicenseUploaded: false,
+  dunsNumber: "",
   sellerAgreement: false,
   termsAccepted: false,
   privacyAccepted: false,
@@ -157,7 +175,26 @@ export default function SellerOnboardingPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [verifyingGst, setVerifyingGst] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [validatedSteps, setValidatedSteps] = useState<string[]>([]);
+  const [documents, setDocuments] = useState<Record<string, SellerUploadAsset | undefined>>({});
+  const [images, setImages] = useState<Record<string, SellerUploadAsset[]>>({});
+  const [video, setVideo] = useState<SellerUploadAsset | null>(null);
+  const [mobileStatus, setMobileStatus] = useState<MobileStatusPayload>({
+    status: "pending",
+    verified: false,
+    expiresInSeconds: 0,
+    cooldownSeconds: 0,
+    remainingAttempts: 5,
+    resendCount: 0,
+  });
+  const [mobileModalOpen, setMobileModalOpen] = useState(false);
+  const [mobileOtp, setMobileOtp] = useState("");
+  const [mobileOtpError, setMobileOtpError] = useState<string | null>(null);
+  const [sendingMobileOtp, setSendingMobileOtp] = useState(false);
+  const [verifyingMobileOtp, setVerifyingMobileOtp] = useState(false);
+  const [mobileSuccess, setMobileSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     setForm((prev) => ({
@@ -171,26 +208,145 @@ export default function SellerOnboardingPage() {
 
   useEffect(() => {
     void (async () => {
-      const response = await fetch("/api/onboarding/seller", { credentials: "include" });
-      if (!response.ok) return;
-      const payload = await response.json();
-      if (payload.session?.draft_payload) {
-        setForm((prev) => ({ ...prev, ...payload.session.draft_payload }));
+      try {
+        const [sessionResponse, assets] = await Promise.all([
+          fetch("/api/onboarding/seller", { credentials: "include" }),
+          fetchSellerAssets(true),
+        ]);
+        if (!sessionResponse.ok) return;
+        const payload = await sessionResponse.json();
+        if (payload.session?.draft_payload) {
+          setForm((prev) => ({ ...prev, ...payload.session.draft_payload, mobileVerified: false }));
+        }
+        if (Array.isArray(payload.session?.validated_steps)) {
+          setValidatedSteps(payload.session.validated_steps);
+        }
+        normalizeAssets(assets);
+      } catch {
+        // ignore
       }
     })();
   }, []);
 
-  const completion = useMemo(() => calculateSellerOnboardingV3Completion(form), [form]);
-  const gate = useMemo(() => getSellerV3HardGateStatus(form), [form]);
+  useEffect(() => {
+    if (!isValidMobileNumber(form.mobileNumber)) {
+      setMobileStatus((prev) => ({
+        ...prev,
+        status: "pending",
+        verified: false,
+        maskedMobile: "",
+        expiresInSeconds: 0,
+      }));
+      setForm((prev) => (prev.mobileVerified ? { ...prev, mobileVerified: false } : prev));
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/onboarding/mobile/status?countryCode=%2B91&mobileNumber=${encodeURIComponent(form.mobileNumber)}`,
+          { credentials: "include" },
+        );
+        if (!response.ok) return;
+        const payload = (await response.json()) as MobileStatusPayload;
+        setMobileStatus((prev) => ({ ...prev, ...payload }));
+        setForm((prev) => ({ ...prev, mobileVerified: Boolean(payload.verified) }));
+      } catch {
+        setMobileStatus((prev) => ({ ...prev, status: "failed", verified: false }));
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [form.mobileNumber]);
+
+  useEffect(() => {
+    if (!mobileModalOpen) return;
+    const timer = window.setInterval(() => {
+      setMobileStatus((prev) => ({
+        ...prev,
+        expiresInSeconds: Math.max(0, (prev.expiresInSeconds ?? 0) - 1),
+        cooldownSeconds: Math.max(0, (prev.cooldownSeconds ?? 0) - 1),
+      }));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [mobileModalOpen]);
+
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      cancelledChequeDocumentId: documents[SELLER_DOCUMENT_TYPE_KEYS.cancelledCheque]?.id,
+      gstCertificateDocumentId: documents[SELLER_DOCUMENT_TYPE_KEYS.gstCertificate]?.id,
+      panCardDocumentId: documents[SELLER_DOCUMENT_TYPE_KEYS.panCard]?.id,
+      factoryLicenseDocumentId: documents[SELLER_DOCUMENT_TYPE_KEYS.factoryLicense]?.id,
+      iecCertificateDocumentId: documents[SELLER_DOCUMENT_TYPE_KEYS.iecCertificate]?.id,
+      udyamCertificateDocumentId: documents[SELLER_DOCUMENT_TYPE_KEYS.udyamCertificate]?.id,
+      dunsCertificateDocumentId: documents[SELLER_DOCUMENT_TYPE_KEYS.dunsCertificate]?.id,
+      factoryPhotos: Object.values(images)
+        .flat()
+        .map((img) => ({
+          category: img.category || "general",
+          fileUrl: img.publicUrl || img.signedUrl || undefined,
+          id: img.id,
+          storagePath: img.storagePath,
+        })),
+      factoryTourVideoId: video?.id,
+    }));
+  }, [documents, images, video]);
+
+  const valuesForCompletion = useMemo(() => form, [form]);
+  const completion = useMemo(() => calculateSellerOnboardingV3Completion(valuesForCompletion, validatedSteps), [valuesForCompletion, validatedSteps]);
+  const gate = useMemo(() => getSellerV3HardGateStatus(valuesForCompletion), [valuesForCompletion]);
   const activeStep = SELLER_ONBOARDING_V3_STEPS[activeIndex];
+
+  const normalizeAssets = (assets: {
+    documents: Record<string, SellerUploadAsset | SellerUploadAsset[]>;
+    images: Record<string, SellerUploadAsset[]>;
+    video: SellerUploadAsset | null;
+  }) => {
+    const normalizedDocs: Record<string, SellerUploadAsset | undefined> = {};
+    for (const [key, value] of Object.entries(assets.documents)) {
+      normalizedDocs[key] = Array.isArray(value) ? value[0] : value;
+    }
+    setDocuments(normalizedDocs);
+    setImages(assets.images || {});
+    setVideo(assets.video);
+  };
 
   const updateField = (field: keyof SellerForm, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const updateDocument = (documentType: string, asset: SellerUploadAsset | null) => {
+    setDocuments((prev) => ({ ...prev, [documentType]: asset ?? undefined }));
+  };
+
+  const updateImages = (category: string, value: SellerUploadAsset[]) => {
+    setImages((prev) => ({ ...prev, [category]: value }));
+  };
+
+  const updateVideo = (value: SellerUploadAsset | null) => {
+    setVideo(value);
+  };
+
+  const updateVideoUrl = (url: string) => {
+    setForm((prev) => ({ ...prev, factoryTourUrl: url }));
+  };
+
+  const scrollToFirstError = () => {
+    window.setTimeout(() => {
+      const firstError = document.querySelector(".border-red-300, [aria-invalid='true']");
+      if (firstError && firstError instanceof HTMLElement) {
+        firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstError.focus();
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 50);
+  };
+
   const verifyGst = async () => {
     setVerifyingGst(true);
-    setError(null);
+    setGlobalError(null);
     try {
       const response = await fetch("/api/onboarding/seller/gst/verify", {
         method: "POST",
@@ -204,7 +360,7 @@ export default function SellerOnboardingPage() {
       });
       const payload = await response.json();
       if (!response.ok) {
-        setError(payload.error?.message ?? "GST verification failed");
+        setGlobalError(payload.error?.message ?? "GST verification failed");
         return;
       }
       const lookup = payload.data.lookup;
@@ -217,10 +373,9 @@ export default function SellerOnboardingPage() {
         companyName: lookup.tradeName ?? lookup.legalName ?? prev.companyName,
         tradeName: lookup.tradeName ?? prev.tradeName,
         state: lookup.gstState ?? prev.state,
-        pincode: prev.pincode,
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "GST verification failed");
+      setGlobalError(err instanceof Error ? err.message : "GST verification failed");
     } finally {
       setVerifyingGst(false);
     }
@@ -228,22 +383,39 @@ export default function SellerOnboardingPage() {
 
   const save = async (action: "save" | "submit") => {
     setSaving(true);
-    setError(null);
+    setGlobalError(null);
+    setFieldErrors({});
     try {
       const response = await fetch("/api/onboarding/seller", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ action, stepKey: activeStep.key, values: form }),
+        body: JSON.stringify({
+          action,
+          stepKey: activeStep.key,
+          values: { form, documents, images, video },
+        }),
       });
       const payload = await response.json();
       if (!response.ok) {
-        setError(payload.error ?? payload.error?.message ?? "Failed to save seller onboarding");
+        if (payload.error === "VALIDATION_ERROR" && Array.isArray(payload.fieldErrors)) {
+          const errors: Record<string, string> = {};
+          for (const item of payload.fieldErrors) {
+            errors[item.field] = item.message;
+          }
+          setFieldErrors(errors);
+          setGlobalError(payload.message || "Please complete all required fields before continuing.");
+        } else {
+          setGlobalError(payload.error ?? payload.error?.message ?? "Failed to save seller onboarding");
+        }
         return false;
+      }
+      if (payload.session?.validated_steps) {
+        setValidatedSteps(payload.session.validated_steps);
       }
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setGlobalError(err instanceof Error ? err.message : "Failed to save");
       return false;
     } finally {
       setSaving(false);
@@ -251,9 +423,27 @@ export default function SellerOnboardingPage() {
   };
 
   const next = async () => {
+    const validation = validateSellerOnboardingStep(activeStep.key, { form, documents, images, video });
+    if (!validation.valid) {
+      const errors: Record<string, string> = {};
+      for (const item of validation.fieldErrors) {
+        errors[item.field] = item.message;
+      }
+      setFieldErrors(errors);
+      setGlobalError(getMissingFieldsMessage(validation));
+      scrollToFirstError();
+      return;
+    }
+
+    setFieldErrors({});
+    setGlobalError(null);
+
     const isLast = activeIndex === SELLER_ONBOARDING_V3_STEPS.length - 1;
-    const ok = await save(isLast ? "submit" : "save");
-    if (!ok) return;
+    const ok = await save(isLast ? "submit" : "submit");
+    if (!ok) {
+      scrollToFirstError();
+      return;
+    }
     if (isLast) {
       router.push("/dashboard/seller?submitted=1");
     } else {
@@ -261,18 +451,166 @@ export default function SellerOnboardingPage() {
     }
   };
 
+  const saveDraft = async () => {
+    const ok = await save("save");
+    if (ok) {
+      setGlobalError(null);
+    }
+  };
+
+  const sendMobileOtp = async () => {
+    if (!isValidMobileNumber(form.mobileNumber)) return;
+    setSendingMobileOtp(true);
+    setMobileOtpError(null);
+    setMobileSuccess(null);
+    try {
+      const response = await fetch("/api/onboarding/mobile/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ countryCode: "+91", mobileNumber: form.mobileNumber }),
+      });
+      const payload = (await response.json()) as MobileStatusPayload & { error?: string };
+      if (!response.ok) {
+        setMobileStatus((prev) => ({ ...prev, status: "failed", verified: false }));
+        setMobileOtpError(payload.error ?? "Unable to send OTP.");
+        setMobileModalOpen(true);
+        return;
+      }
+      setMobileStatus((prev) => ({ ...prev, ...payload, status: "otp_sent", verified: false }));
+      setMobileOtp("");
+      setMobileModalOpen(true);
+    } catch (err) {
+      setMobileStatus((prev) => ({ ...prev, status: "failed", verified: false }));
+      setMobileOtpError(err instanceof Error ? err.message : "Unable to send OTP.");
+      setMobileModalOpen(true);
+    } finally {
+      setSendingMobileOtp(false);
+    }
+  };
+
+  const verifyMobileOtp = async () => {
+    if (mobileOtp.length !== OTP_LENGTH_EXPORT) return;
+    setVerifyingMobileOtp(true);
+    setMobileOtpError(null);
+    try {
+      const response = await fetch("/api/onboarding/mobile/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ countryCode: "+91", mobileNumber: form.mobileNumber, otp: mobileOtp }),
+      });
+      const payload = (await response.json()) as MobileStatusPayload & { error?: string };
+      if (!response.ok) {
+        setMobileStatus((prev) => ({
+          ...prev,
+          status: response.status === 429 ? "failed" : prev.status,
+          verified: false,
+          remainingAttempts: Math.max(0, (prev.remainingAttempts ?? 5) - 1),
+        }));
+        setMobileOtpError(payload.error ?? "Invalid OTP.");
+        return;
+      }
+      setMobileStatus((prev) => ({ ...prev, ...payload, status: "verified", verified: true }));
+      setForm((prev) => ({ ...prev, mobileVerified: true }));
+      setMobileModalOpen(false);
+      setMobileOtp("");
+      setMobileSuccess("Mobile Verified Successfully");
+    } catch (err) {
+      setMobileOtpError(err instanceof Error ? err.message : "Verification failed.");
+    } finally {
+      setVerifyingMobileOtp(false);
+    }
+  };
+
+  const changeMobileNumber = async () => {
+    const previousNumber = form.mobileNumber;
+    setMobileSuccess(null);
+    setMobileOtpError(null);
+    setMobileOtp("");
+    setMobileStatus({
+      status: "pending",
+      verified: false,
+      expiresInSeconds: 0,
+      cooldownSeconds: 0,
+      remainingAttempts: 5,
+      resendCount: 0,
+    });
+    setForm((prev) => ({ ...prev, mobileVerified: false }));
+    if (previousNumber) {
+      await fetch("/api/onboarding/mobile/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ countryCode: "+91", mobileNumber: previousNumber }),
+      }).catch(() => undefined);
+    }
+  };
+
+  const updateMobileNumber = (value: string) => {
+    setMobileSuccess(null);
+    setMobileOtpError(null);
+    setForm((prev) => ({
+      ...prev,
+      mobileNumber: value,
+      mobileVerified: prev.mobileNumber === value ? prev.mobileVerified : false,
+    }));
+    if (form.mobileNumber !== value) {
+      setMobileStatus({
+        status: "pending",
+        verified: false,
+        expiresInSeconds: 0,
+        cooldownSeconds: 0,
+        remainingAttempts: 5,
+        resendCount: 0,
+      });
+    }
+  };
+
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
     return (
       <div className="container py-16 text-center">
         <p className="mb-4 text-slate-600">Login to complete seller onboarding.</p>
-        <Link href="/login?redirect=/onboarding/seller"><Button>Login</Button></Link>
+        <Link href="/login?redirect=/onboarding/seller">
+          <Button>Login</Button>
+        </Link>
       </div>
     );
   }
+
+  const mobileSection = (
+    <MobileVerificationField
+      mobileNumber={form.mobileNumber}
+      status={mobileStatus}
+      successMessage={mobileSuccess}
+      sending={sendingMobileOtp}
+      onMobileChange={updateMobileNumber}
+      onVerify={() => void sendMobileOtp()}
+      onChangeNumber={() => void changeMobileNumber()}
+      error={fieldErrors.mobileNumber}
+    />
+  );
+
+  const stepProps = {
+    form,
+    errors: fieldErrors,
+    documents,
+    images,
+    video,
+    onFieldChange: (field: string, value: unknown) => updateField(field as keyof SellerForm, value),
+    onDocumentChange: updateDocument,
+    onImagesChange: updateImages,
+    onVideoChange: updateVideo,
+    onVideoUrlChange: updateVideoUrl,
+  };
 
   return (
     <WizardShell
@@ -281,125 +619,39 @@ export default function SellerOnboardingPage() {
       steps={SELLER_ONBOARDING_V3_STEPS}
       activeStep={activeStep.key}
       completion={completion}
+      validatedSteps={validatedSteps}
+      globalError={globalError}
+      onClearGlobalError={() => setGlobalError(null)}
       trustItems={[
-        { label: "GST", verified: form.gstVerified },
-        { label: "Bank", verified: form.bankVerified },
+        { label: "GST", verified: Boolean(form.gstVerified) },
+        { label: "Bank", verified: Boolean(form.cancelledChequeDocumentId) },
         { label: "Email", verified: form.emailVerified },
-        { label: "Mobile", verified: form.mobileVerified },
-        { label: "Factory license", verified: form.factoryLicenseUploaded },
+        { label: "Mobile", status: mobileStatus.status },
+        { label: "Factory license", verified: Boolean(form.factoryLicenseDocumentId) },
       ]}
     >
       <div>
         <h2 className="text-xl font-bold text-slate-950">{activeStep.title}</h2>
         <p className="mt-1 text-sm text-slate-600">{activeStep.goal}</p>
-        {error ? <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
       </div>
 
       {activeStep.key === "gst_verification" ? (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <Field label="GST number" required><TextInput value={form.gstNumber} onChange={(e) => updateField("gstNumber", e.target.value.toUpperCase())} placeholder="24ADUPV1084A2ZF" /></Field>
-          <Field label="Legal name fallback"><TextInput value={form.legalBusinessName} onChange={(e) => updateField("legalBusinessName", e.target.value)} /></Field>
-          <div className="md:col-span-2 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <Button type="button" onClick={() => void verifyGst()} disabled={verifyingGst}>
-              {verifyingGst ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Verify GST
-            </Button>
-            {form.gstVerified ? <span className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 className="h-4 w-4" /> GST verified</span> : <span className="text-sm text-slate-500">GST must be verified before activation.</span>}
-          </div>
-          <Field label="Company name"><TextInput value={form.companyName} onChange={(e) => updateField("companyName", e.target.value)} /></Field>
-          <Field label="Trade name"><TextInput value={form.tradeName} onChange={(e) => updateField("tradeName", e.target.value)} /></Field>
-          <Field label="State"><TextInput value={form.state} onChange={(e) => updateField("state", e.target.value)} /></Field>
-          <Field label="City"><TextInput value={form.city} onChange={(e) => updateField("city", e.target.value)} /></Field>
-          <Field label="Registered address"><Textarea value={form.registeredAddress} onChange={(e) => updateField("registeredAddress", e.target.value)} rows={3} /></Field>
-          <Field label="Pincode"><TextInput value={form.pincode} onChange={(e) => updateField("pincode", e.target.value)} /></Field>
-        </div>
+        <GstVerificationStep {...stepProps} onVerifyGst={() => void verifyGst()} verifyingGst={verifyingGst} />
       ) : null}
 
       {activeStep.key === "basic_information" ? (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <Field label="Contact person" required><TextInput value={form.contactPersonName} onChange={(e) => updateField("contactPersonName", e.target.value)} /></Field>
-          <Field label="Designation" required><TextInput value={form.designation} onChange={(e) => updateField("designation", e.target.value)} /></Field>
-          <Field label="Business email" required><TextInput value={form.businessEmail} onChange={(e) => updateField("businessEmail", e.target.value)} /></Field>
-          <Field label="Mobile number" required><TextInput value={form.mobileNumber} onChange={(e) => updateField("mobileNumber", e.target.value)} /></Field>
-          <div className="md:col-span-2">
-            <Field label="Factory address" required><Textarea value={form.factoryAddress} onChange={(e) => updateField("factoryAddress", e.target.value)} rows={3} /></Field>
-          </div>
-          <Agreement label="Factory address same as registered address" checked={form.factorySameAsRegistered} onChange={(value) => {
-            updateField("factorySameAsRegistered", value);
-            if (value) updateField("factoryAddress", form.registeredAddress);
-          }} />
-          <Agreement label="Mobile verified" checked={form.mobileVerified} onChange={(value) => updateField("mobileVerified", value)} />
-        </div>
+        <BasicInformationStep {...stepProps} mobileSection={mobileSection} />
       ) : null}
 
-      {activeStep.key === "business_details" ? (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <Field label="Seller type" required><NativeSelect value={form.sellerType} onChange={(value) => updateField("sellerType", value)} options={SELLER_TYPES} /></Field>
-          <Field label="Main industry" required><TextInput value={form.mainIndustry} onChange={(e) => updateField("mainIndustry", e.target.value)} /></Field>
-          <div className="md:col-span-2"><Field label="Capability categories" required><MultiSelectChips options={CAPABILITY_CATEGORIES} value={form.capabilityCategories} onChange={(value) => updateField("capabilityCategories", value)} /></Field></div>
-          <div className="md:col-span-2"><Field label="Sub capabilities" required><MultiSelectChips options={availableSubCapabilities(form.capabilityCategories)} value={form.subCapabilities.map((item) => item.name)} onChange={(value) => updateField("subCapabilities", value.map((name) => ({ categoryName: findSubCapabilityCategory(name), name })))} /></Field></div>
-          <div className="md:col-span-2"><Field label="Materials" required><MultiSelectChips options={MATERIAL_OPTIONS} value={form.materials} onChange={(value) => updateField("materials", value)} /></Field></div>
-          <Field label="Monthly capacity" required><TextInput value={form.monthlyCapacity} onChange={(e) => updateField("monthlyCapacity", e.target.value)} /></Field>
-          <Field label="MOQ" required><TextInput value={form.moq} onChange={(e) => updateField("moq", e.target.value)} /></Field>
-          <Field label="Lead time" required><TextInput value={form.leadTime} onChange={(e) => updateField("leadTime", e.target.value)} /></Field>
-          <Field label="Factory area" required><TextInput value={form.factoryArea} onChange={(e) => updateField("factoryArea", e.target.value)} /></Field>
-          <Field label="Shop floor employees" required><TextInput value={form.shopFloorEmployees} onChange={(e) => updateField("shopFloorEmployees", e.target.value)} /></Field>
-          <Field label="Engineers" required><TextInput value={form.engineers} onChange={(e) => updateField("engineers", e.target.value)} /></Field>
-          <Field label="QC team size" required><TextInput value={form.qcTeamSize} onChange={(e) => updateField("qcTeamSize", e.target.value)} /></Field>
-          <Field label="Countries exporting to"><TextInput value={form.countriesExportingTo.join(", ")} onChange={(e) => updateField("countriesExportingTo", splitCsv(e.target.value))} /></Field>
-          <div className="md:col-span-2"><Field label="Languages supported"><MultiSelectChips options={LANGUAGE_OPTIONS} value={form.languagesSupported} onChange={(value) => updateField("languagesSupported", value)} /></Field></div>
-        </div>
-      ) : null}
+      {activeStep.key === "business_details" ? <BusinessDetailsStep {...stepProps} /> : null}
 
-      {activeStep.key === "bank_financial_verification" ? (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <Field label="Bank name" required><TextInput value={form.bankName} onChange={(e) => updateField("bankName", e.target.value)} /></Field>
-          <Field label="Account holder name" required><TextInput value={form.accountHolderName} onChange={(e) => updateField("accountHolderName", e.target.value)} /></Field>
-          <Field label="Account number" required><TextInput value={form.accountNumber} onChange={(e) => updateField("accountNumber", e.target.value)} /></Field>
-          <Field label="Confirm account number" required><TextInput value={form.confirmAccountNumber} onChange={(e) => updateField("confirmAccountNumber", e.target.value)} /></Field>
-          <Field label="IFSC code" required><TextInput value={form.ifscCode} onChange={(e) => updateField("ifscCode", e.target.value.toUpperCase())} /></Field>
-          <Field label="Branch name" required><TextInput value={form.branchName} onChange={(e) => updateField("branchName", e.target.value)} /></Field>
-          <Field label="PAN number" required><TextInput value={form.panNumber} onChange={(e) => updateField("panNumber", e.target.value.toUpperCase())} /></Field>
-          <Field label="IEC number"><TextInput value={form.iecNumber} onChange={(e) => updateField("iecNumber", e.target.value)} /></Field>
-          <Field label="Udyam number"><TextInput value={form.msmeNumber} onChange={(e) => updateField("msmeNumber", e.target.value)} /></Field>
-          <Agreement label="Bank verified" checked={form.bankVerified} onChange={(value) => updateField("bankVerified", value)} />
-          <Agreement label="PAN uploaded" checked={form.panUploaded} onChange={(value) => updateField("panUploaded", value)} />
-          <Agreement label="Factory license uploaded" checked={form.factoryLicenseUploaded} onChange={(value) => updateField("factoryLicenseUploaded", value)} />
-          <Agreement label="Seller Agreement" checked={form.sellerAgreement} onChange={(value) => updateField("sellerAgreement", value)} />
-          <Agreement label="Terms and Conditions" checked={form.termsAccepted} onChange={(value) => updateField("termsAccepted", value)} />
-          <Agreement label="Privacy Policy" checked={form.privacyAccepted} onChange={(value) => updateField("privacyAccepted", value)} />
-          <Agreement label="KYC Consent" checked={form.kycConsent} onChange={(value) => updateField("kycConsent", value)} />
-        </div>
-      ) : null}
+      {activeStep.key === "bank_financial_verification" ? <BankVerificationStep {...stepProps} /> : null}
 
       {activeStep.key === "registration_complete" ? (
-        <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-5">
-          <h3 className="text-lg font-bold text-slate-950">Business account created</h3>
-          <p className="mt-2 text-sm text-slate-600">Profile completion is {completion.overallPercent}%. Complete the remaining profile sections to increase visibility, rank higher in search, receive RFQs, and qualify for verified badges.</p>
-          {!gate.canActivate ? (
-            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-amber-800"><ShieldAlert className="h-4 w-4" /> Activation requirements</div>
-              <ul className="mt-2 list-disc pl-5 text-sm text-amber-800">
-                {gate.missingRequirements.map((item) => <li key={item}>{item}</li>)}
-              </ul>
-            </div>
-          ) : null}
-        </div>
+        <RegistrationCompleteStep completion={completion} gate={gate} />
       ) : null}
 
-      {activeStep.key === "profile_completion" ? (
-        <div className="mt-6 space-y-6">
-          <div>
-            <Field label="Company description"><Textarea value={form.companyDescription} onChange={(e) => updateField("companyDescription", e.target.value)} rows={3} /></Field>
-          </div>
-          <div><Field label="Factory photos"><MultiSelectChips options={FACTORY_PHOTO_CATEGORIES} value={form.factoryPhotos.map((item) => item.category)} onChange={(value) => updateField("factoryPhotos", value.map((category) => ({ category, fileUrl: "pending-upload" })))} /></Field></div>
-          <MachinesEditor rows={form.machines} onChange={(rows) => updateField("machines", rows)} />
-          <CertificationsEditor rows={form.certifications} onChange={(rows) => updateField("certifications", rows)} />
-          <ExportEditor rows={form.exportExperience} onChange={(rows) => updateField("exportExperience", rows)} />
-          <Field label="Quality systems"><MultiSelectChips options={QUALITY_SYSTEM_OPTIONS} value={form.qualitySystems} onChange={(value) => updateField("qualitySystems", value)} /></Field>
-          <Field label="Factory tour URL"><TextInput value={form.factoryTourUrl} onChange={(e) => updateField("factoryTourUrl", e.target.value)} /></Field>
-        </div>
-      ) : null}
+      {activeStep.key === "profile_completion" ? <ProfileCompletionStep {...stepProps} /> : null}
 
       <WizardActions
         saving={saving}
@@ -407,87 +659,246 @@ export default function SellerOnboardingPage() {
         canNext
         submitLabel={activeIndex === SELLER_ONBOARDING_V3_STEPS.length - 1 ? "Submit for review" : undefined}
         onBack={() => setActiveIndex((index) => Math.max(0, index - 1))}
-        onSave={() => void save("save")}
+        onSave={() => void saveDraft()}
         onNext={() => void next()}
       />
+
+      {mobileModalOpen ? (
+        <MobileOtpModal
+          mobileNumber={form.mobileNumber}
+          status={mobileStatus}
+          otp={mobileOtp}
+          error={mobileOtpError}
+          verifying={verifyingMobileOtp}
+          resending={sendingMobileOtp}
+          onOtpChange={setMobileOtp}
+          onCancel={() => setMobileModalOpen(false)}
+          onVerify={() => void verifyMobileOtp()}
+          onResend={() => void sendMobileOtp()}
+        />
+      ) : null}
     </WizardShell>
   );
 }
 
-function Agreement({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
+function MobileVerificationField({
+  mobileNumber,
+  status,
+  successMessage,
+  sending,
+  onMobileChange,
+  onVerify,
+  onChangeNumber,
+  error,
+}: {
+  mobileNumber: string;
+  status: MobileStatusPayload;
+  successMessage: string | null;
+  sending: boolean;
+  onMobileChange: (value: string) => void;
+  onVerify: () => void;
+  onChangeNumber: () => void;
+  error?: string;
+}) {
+  const verified = status.verified || status.status === "verified";
+  const canVerify = isValidMobileNumber(mobileNumber) && !verified && !sending;
+
   return (
-    <label className="flex min-h-10 items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      {label}
-    </label>
+    <div className="space-y-2">
+      <Field label="Mobile number" required error={error}>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            value={mobileNumber}
+            inputMode="tel"
+            placeholder="+91 9876543210"
+            readOnly={verified}
+            onChange={(e) => onMobileChange(e.target.value)}
+            className={cn(
+              "h-10 w-full rounded-md border bg-white px-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-600",
+              verified ? "bg-slate-50 text-slate-700" : "",
+              error ? "border-red-300" : "border-slate-200",
+            )}
+          />
+          {verified ? (
+            <div className="flex gap-2">
+              <span className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-bold text-emerald-700">
+                <ShieldCheck className="h-4 w-4" />
+                Verified
+              </span>
+              <Button type="button" variant="outline" onClick={onChangeNumber} className="border-slate-200">
+                Change Number
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canVerify}
+              onClick={onVerify}
+              className="border-blue-700 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+            >
+              {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}
+              Verify Mobile
+            </Button>
+          )}
+        </div>
+      </Field>
+      {verified ? (
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          {successMessage ?? "Mobile number verified by secure OTP."}
+        </p>
+      ) : (
+        <p className="text-xs text-slate-500">Pending system verification. Sellers cannot self-certify this trust check.</p>
+      )}
+    </div>
   );
 }
 
-function MachinesEditor({ rows, onChange }: { rows: MachineRow[]; onChange: (rows: MachineRow[]) => void }) {
-  return <SimpleRows title="Machines" rows={rows} onChange={onChange} blank={{ machineName: "", brand: "", model: "", quantity: "1", capacity: "", yearPurchased: "" }} fields={["machineName", "brand", "model", "quantity", "capacity", "yearPurchased"]} />;
-}
-
-function CertificationsEditor({ rows, onChange }: { rows: CertificationRow[]; onChange: (rows: CertificationRow[]) => void }) {
-  return <SimpleRows title="Certifications" rows={rows} onChange={onChange} blank={{ certificateName: "", certificateNumber: "", expiryDate: "" }} fields={["certificateName", "certificateNumber", "expiryDate"]} />;
-}
-
-function ExportEditor({ rows, onChange }: { rows: ExportRow[]; onChange: (rows: ExportRow[]) => void }) {
-  return <SimpleRows title="Export experience" rows={rows} onChange={onChange} blank={{ customerName: "", country: "", productExported: "", orderValue: "" }} fields={["customerName", "country", "productExported", "orderValue"]} />;
-}
-
-function SimpleRows<T extends Record<string, string>>({
-  title,
-  rows,
-  blank,
-  fields,
-  onChange,
+function MobileOtpModal({
+  mobileNumber,
+  status,
+  otp,
+  error,
+  verifying,
+  resending,
+  onOtpChange,
+  onCancel,
+  onVerify,
+  onResend,
 }: {
-  title: string;
-  rows: T[];
-  blank: T;
-  fields: Array<keyof T>;
-  onChange: (rows: T[]) => void;
+  mobileNumber: string;
+  status: MobileStatusPayload;
+  otp: string;
+  error: string | null;
+  verifying: boolean;
+  resending: boolean;
+  onOtpChange: (value: string) => void;
+  onCancel: () => void;
+  onVerify: () => void;
+  onResend: () => void;
 }) {
+  const expiresInSeconds = status.expiresInSeconds ?? 0;
+  const cooldownSeconds = status.cooldownSeconds ?? 0;
+  const remainingAttempts = status.remainingAttempts ?? 5;
+  const canVerify = otp.length === OTP_LENGTH_EXPORT && !verifying && expiresInSeconds > 0 && remainingAttempts > 0;
+  const canResend = cooldownSeconds <= 0 && !resending && !verifying;
+
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-950">{title}</h3>
-        <Button type="button" variant="outline" size="sm" onClick={() => onChange([...rows, blank])}>Add</Button>
-      </div>
-      <div className="space-y-3">
-        {rows.map((row, index) => (
-          <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-3">
-            {fields.map((field) => (
-              <TextInput
-                key={String(field)}
-                value={row[field]}
-                placeholder={String(field).replace(/([A-Z])/g, " $1")}
-                onChange={(event) => {
-                  const next = rows.slice();
-                  next[index] = { ...row, [field]: event.target.value };
-                  onChange(next);
-                }}
-              />
-            ))}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-[480px] rounded-[14px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:p-8">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="flex flex-1 justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/10">
+              <Phone className="h-8 w-8 text-blue-700" />
+            </div>
           </div>
-        ))}
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close mobile OTP verification"
+            className="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <h2 className="text-center text-2xl font-extrabold tracking-tight text-slate-900">Mobile OTP Verification</h2>
+        <p className="mt-2 text-center text-sm text-slate-600">Enter the OTP sent to</p>
+        <p className="mt-1 text-center text-sm font-bold text-slate-900">{formatMobileForDisplay(mobileNumber)}</p>
+
+        {status.developmentOtp ? (
+          <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Development OTP: <span className="font-mono font-bold">{status.developmentOtp}</span>
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="mt-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+
+        <div className="mt-8">
+          <OtpInput
+            value={otp}
+            onChange={onOtpChange}
+            disabled={verifying || remainingAttempts === 0}
+            error={Boolean(error)}
+            idPrefix="mobile-otp"
+          />
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1.5">
+            <Clock3 className="h-3.5 w-3.5" />
+            <span className={expiresInSeconds <= 60 ? "font-mono font-bold text-red-500" : "font-mono font-bold text-slate-700"}>
+              {formatCountdown(expiresInSeconds)}
+            </span>
+          </span>
+          <span>{remainingAttempts} attempts left</span>
+        </div>
+
+        {expiresInSeconds <= 0 ? (
+          <p className="mt-2 text-xs font-semibold text-red-600">OTP expired. Please request a new OTP.</p>
+        ) : null}
+
+        <div className="mt-7 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={verifying}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={onVerify}
+            disabled={!canVerify}
+            className="bg-slate-950 text-white hover:bg-slate-800"
+          >
+            {verifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Verify OTP
+          </Button>
+        </div>
+
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={onResend}
+            disabled={!canResend}
+            className={
+              canResend
+                ? "inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-800"
+                : "inline-flex cursor-not-allowed items-center gap-1.5 text-sm font-semibold text-slate-300"
+            }
+          >
+            {resending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {cooldownSeconds > 0 ? `Resend OTP in ${cooldownSeconds}s` : "Resend OTP"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function splitCsv(value: string) {
-  return value.split(",").map((item) => item.trim()).filter(Boolean);
+function cn(...classes: (string | false | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
 }
 
-function availableSubCapabilities(categories: string[]) {
-  const values = categories.flatMap((category) => SUB_CAPABILITIES[category] ?? []);
-  return values.length ? values : ["General Manufacturing"];
+function isValidMobileNumber(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const normalized = digits.startsWith("91") && digits.length === 12 ? digits.slice(2) : digits;
+  return normalized.length === 10;
 }
 
-function findSubCapabilityCategory(name: string) {
-  for (const [category, options] of Object.entries(SUB_CAPABILITIES)) {
-    if (options.includes(name)) return category;
-  }
-  return "General";
+function formatMobileForDisplay(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const normalized = digits.startsWith("91") && digits.length === 12 ? digits.slice(2) : digits;
+  if (normalized.length === 10) return `+91 ${normalized.slice(0, 5)} ${normalized.slice(5)}`;
+  return value || "+91";
+}
+
+function formatCountdown(seconds: number) {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 }

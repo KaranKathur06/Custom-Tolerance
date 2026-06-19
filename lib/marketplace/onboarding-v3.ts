@@ -120,8 +120,10 @@ export const SELLER_ONBOARDING_V3_STEPS: OnboardingStepDefinition<SellerOnboardi
       "ifscCode",
       "branchName",
       "panNumber",
-      "panUploaded",
-      "factoryLicenseUploaded",
+      "cancelledChequeDocumentId",
+      "gstCertificateDocumentId",
+      "panCardDocumentId",
+      "factoryLicenseDocumentId",
       "sellerAgreement",
       "termsAccepted",
       "privacyAccepted",
@@ -274,6 +276,17 @@ export const LANGUAGE_OPTIONS = ["English", "Hindi", "German", "French", "Chines
 export const QUALITY_SYSTEM_OPTIONS = ["PPAP", "APQP", "FMEA", "SPC", "MSA", "5S", "Kaizen", "Lean Manufacturing"] as const;
 export const FACTORY_PHOTO_CATEGORIES = ["Exterior", "Shop Floor", "Machines", "QC Department", "Warehouse", "Office"] as const;
 
+export const FACTORY_PHOTO_LIMITS: Record<string, { min: number; max: number }> = {
+  Exterior: { min: 1, max: 5 },
+  "Shop Floor": { min: 2, max: 10 },
+  Machines: { min: 0, max: 10 },
+  "QC Department": { min: 1, max: 5 },
+  Warehouse: { min: 1, max: 5 },
+  Office: { min: 0, max: 5 },
+};
+
+export const OVERALL_FACTORY_PHOTO_LIMITS = { min: 3, max: 20 };
+
 export type CompletionSection = {
   key: string;
   label: string;
@@ -300,7 +313,7 @@ function sectionPercent(requiredFields: string[], values: Record<string, unknown
 
   const missingFields = requiredFields.filter((field) => {
     if (field === "confirmAccountNumber") {
-      return values.accountNumber !== values.confirmAccountNumber || !hasValue(values.confirmAccountNumber);
+      return String(values.accountNumber || "") !== String(values.confirmAccountNumber || "") || !hasValue(values.confirmAccountNumber);
     }
     return !hasValue(values[field]);
   });
@@ -323,14 +336,35 @@ export function calculateBuyerOnboardingV3Completion(values: Record<string, unkn
   };
 }
 
-export function calculateSellerOnboardingV3Completion(values: Record<string, unknown>): CompletionResult {
+export function calculateSellerOnboardingV3Completion(
+  values: Record<string, unknown>,
+  validatedSteps: string[] = [],
+): CompletionResult {
   const baseSections = SELLER_ONBOARDING_V3_STEPS.slice(0, 4).map((step) => {
+    const isValidated = validatedSteps.includes(step.key);
+    if (!isValidated) {
+      return {
+        key: step.key,
+        label: step.title,
+        percent: 0,
+        missingFields: step.requiredFields,
+      };
+    }
     const result = sectionPercent(step.requiredFields, values);
     return { key: step.key, label: step.title, ...result };
   });
 
+  const factoryPhotoArray = Array.isArray(values.factoryPhotos) ? (values.factoryPhotos as unknown[]) : [];
+  const factoryPhotoCount = factoryPhotoArray.length;
+  const factoryPhotoTarget = OVERALL_FACTORY_PHOTO_LIMITS.min;
+
   const profileSections: CompletionSection[] = [
-    scoreArraySection("factory_photos", "Factory Photos", values.factoryPhotos, 3),
+    {
+      key: "factory_photos",
+      label: "Factory Photos",
+      percent: Math.min(100, Math.round((factoryPhotoCount / factoryPhotoTarget) * 100)),
+      missingFields: factoryPhotoCount >= factoryPhotoTarget ? [] : ["Factory Photos"],
+    },
     scoreArraySection("machines", "Machines", values.machines, 1),
     scoreArraySection("certifications", "Certifications", values.certifications, 1),
     scoreArraySection("export_experience", "Export Experience", values.exportExperience, 1),
@@ -364,22 +398,31 @@ export function getBuyerV3MissingActionLabels(values: Record<string, unknown>) {
 }
 
 export function getSellerV3HardGateStatus(values: Record<string, unknown>) {
-  const requirements = [
-    ["gstVerified", "Verify GST"],
-    ["panUploaded", "Upload PAN"],
-    ["bankVerified", "Verify bank account"],
-    ["factoryLicenseUploaded", "Upload factory license"],
-    ["emailVerified", "Verify email"],
-    ["mobileVerified", "Verify mobile"],
-    ["sellerAgreement", "Accept seller agreement"],
-    ["termsAccepted", "Accept terms"],
-    ["privacyAccepted", "Accept privacy policy"],
-    ["kycConsent", "Accept KYC consent"],
-  ] as const;
+  const requirements: Array<{ key: string; label: string; required?: boolean }> = [
+    { key: "gstVerified", label: "Verify GST" },
+    { key: "cancelledChequeDocumentId", label: "Upload cancelled cheque" },
+    { key: "gstCertificateDocumentId", label: "Upload GST certificate" },
+    { key: "panCardDocumentId", label: "Upload PAN card" },
+    { key: "factoryLicenseDocumentId", label: "Upload factory license" },
+    { key: "emailVerified", label: "Verify email" },
+    { key: "mobileVerified", label: "Verify mobile" },
+    { key: "sellerAgreement", label: "Accept seller agreement" },
+    { key: "termsAccepted", label: "Accept terms" },
+    { key: "privacyAccepted", label: "Accept privacy policy" },
+    { key: "kycConsent", label: "Accept KYC consent" },
+  ];
+
+  const isExporter = String(values.sellerType || "") === "Exporter";
+  if (isExporter) {
+    requirements.push(
+      { key: "iecNumber", label: "Add IEC number" },
+      { key: "iecCertificateDocumentId", label: "Upload IEC certificate" },
+    );
+  }
 
   const missingRequirements = requirements
-    .filter(([key]) => !hasValue(values[key]))
-    .map(([, label]) => label);
+    .filter((req) => !hasValue(values[req.key]))
+    .map((req) => req.label);
 
   return {
     canActivate: missingRequirements.length === 0,

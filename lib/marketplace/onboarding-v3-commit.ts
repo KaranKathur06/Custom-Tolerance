@@ -7,6 +7,7 @@ import {
   calculateSellerOnboardingV3Completion,
   getSellerV3HardGateStatus,
 } from "./onboarding-v3";
+import { type SellerUploadAsset } from "./seller-onboarding-validation";
 
 export type BuyerOnboardingV3CommitResult = {
   buyerProfileId: string;
@@ -181,43 +182,113 @@ export async function commitBuyerOnboardingV3(
   };
 }
 
+function getDocumentAsset(
+  payload: Record<string, unknown>,
+  documentType: string,
+): SellerUploadAsset | undefined {
+  const docs = payload.documents as Record<string, SellerUploadAsset | undefined> | undefined;
+  return docs?.[documentType];
+}
+
+function buildDocumentRecords(
+  payload: Record<string, unknown>,
+): Array<{ documentType: string; fileUrl?: string; storagePath?: string }> {
+  const docs = payload.documents as Record<string, SellerUploadAsset | undefined> | undefined;
+  if (!docs) return [];
+  return Object.entries(docs)
+    .filter(([, asset]) => asset && asset.id && asset.storagePath)
+    .map(([documentType, asset]) => ({
+      documentType,
+      fileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
+      storagePath: asset?.storagePath,
+    }));
+}
+
+function buildFactoryPhotoRecords(
+  payload: Record<string, unknown>,
+): Array<{ category: string; fileUrl?: string; storagePath?: string }> {
+  const photos = payload.factoryPhotos as Array<{ category?: string; fileUrl?: string; storagePath?: string }> | undefined;
+  return (photos || []).map((photo) => ({
+    category: photo.category || "general",
+    fileUrl: photo.fileUrl,
+    storagePath: photo.storagePath,
+  }));
+}
+
+async function persistSellerVideo(
+  supabase: SupabaseClient,
+  userId: string,
+  sellerProfileId: string,
+  companyId: string,
+  payload: Record<string, unknown>,
+) {
+  const video = payload.video as SellerUploadAsset | null | undefined;
+  if (!video?.id || !video.storagePath) return;
+
+  await supabase
+    .from("supplier_media")
+    .delete()
+    .eq("seller_profile_id", sellerProfileId)
+    .eq("media_type", "video");
+
+  const { error } = await supabase.from("supplier_media").insert({
+    seller_profile_id: sellerProfileId,
+    company_id: companyId,
+    media_type: "video",
+    category: "factory_tour",
+    file_url: video.publicUrl || video.signedUrl,
+    storage_path: video.storagePath,
+    bucket_name: video.bucketName,
+    mime_type: video.mimeType,
+    file_size_bytes: video.fileSize,
+    original_filename: video.originalFilename,
+    created_by: userId,
+  });
+
+  if (error) throw new Error(`Failed to persist factory tour video: ${error.message}`);
+}
+
 export async function commitSellerOnboardingV3(
   supabase: SupabaseClient,
   userId: string,
   payload: Record<string, unknown>,
   options: { submitForReview?: boolean } = {},
 ): Promise<SellerOnboardingV3CommitResult> {
-  const completion = calculateSellerOnboardingV3Completion(payload);
+  const validatedSteps = Array.isArray(payload.validatedSteps) ? (payload.validatedSteps as string[]) : [];
+  const completion = calculateSellerOnboardingV3Completion(payload, validatedSteps);
   const gate = getSellerV3HardGateStatus(payload);
+
+  const draftWithUploads = {
+    ...payload,
+    documents: buildDocumentRecords(payload),
+    factoryPhotos: buildFactoryPhotoRecords(payload),
+    companyName: draftString(payload, "companyName") ?? draftString(payload, "legalBusinessName"),
+    legalBusinessName: draftString(payload, "legalBusinessName") ?? draftString(payload, "companyName"),
+    businessType: draftString(payload, "sellerType"),
+    companyDescription: draftString(payload, "companyDescription") ?? "Industrial manufacturing supplier",
+    numberOfEmployees: draftString(payload, "shopFloorEmployees"),
+    yearEstablished: draftString(payload, "yearEstablished"),
+    website: draftString(payload, "website") ?? draftString(payload, "companyWebsite"),
+    linkedinUrl: draftString(payload, "linkedinUrl"),
+    fullAddress: draftString(payload, "registeredAddress") ?? draftString(payload, "factoryAddress"),
+    pincode: draftString(payload, "pincode"),
+    capabilities: buildLegacyCapabilities(payload),
+  };
 
   const baseResult = await commitSupplierVerificationProfile(
     supabase,
     userId,
-    {
-      ...payload,
-      companyName: draftString(payload, "companyName") ?? draftString(payload, "legalBusinessName"),
-      legalBusinessName: draftString(payload, "legalBusinessName") ?? draftString(payload, "companyName"),
-      businessType: draftString(payload, "sellerType"),
-      companyDescription: draftString(payload, "companyDescription") ?? "Industrial manufacturing supplier",
-      numberOfEmployees: draftString(payload, "shopFloorEmployees"),
-      yearEstablished: draftString(payload, "yearEstablished"),
-      website: draftString(payload, "website") ?? draftString(payload, "companyWebsite"),
-      linkedinUrl: draftString(payload, "linkedinUrl"),
-      fullAddress: draftString(payload, "registeredAddress") ?? draftString(payload, "factoryAddress"),
-      pincode: draftString(payload, "pincode"),
-      panCard: draftBool(payload, "panUploaded"),
-      companyRegistration: draftBool(payload, "factoryLicenseUploaded"),
-      capabilities: buildLegacyCapabilities(payload),
-    },
+    draftWithUploads,
     { submitForReview: false },
   );
 
   const sellerProfileId = baseResult.sellerProfileId;
   const companyId = baseResult.companyId;
 
-  await persistSellerKyc(supabase, userId, sellerProfileId, companyId, payload);
-  await persistSellerBank(supabase, userId, sellerProfileId, companyId, payload);
-  await persistSellerManufacturingIntelligence(supabase, userId, sellerProfileId, companyId, payload);
+  await persistSellerKyc(supabase, userId, sellerProfileId, companyId, draftWithUploads);
+  await persistSellerBank(supabase, userId, sellerProfileId, companyId, draftWithUploads);
+  await persistSellerManufacturingIntelligence(supabase, userId, sellerProfileId, companyId, draftWithUploads);
+  await persistSellerVideo(supabase, userId, sellerProfileId, companyId, payload);
 
   const nextStatus = options.submitForReview && gate.canActivate ? "UNDER_REVIEW" : "PROFILE_INCOMPLETE";
 
@@ -276,11 +347,12 @@ async function persistSellerKyc(
   companyId: string,
   payload: Record<string, unknown>,
 ) {
+  const isExporter = String(payload.sellerType || "") === "Exporter";
   const checks = [
     {
       verification_type: "gst",
       identifier: draftString(payload, "gstNumber"),
-      provider: draftString(payload, "gstProvider"),
+      provider: draftString(payload, "gstProvider") || "live_provider",
       is_verified: draftBool(payload, "gstVerified"),
       evidence: payload.gstDetails ?? {},
     },
@@ -288,30 +360,34 @@ async function persistSellerKyc(
       verification_type: "pan",
       identifier: draftString(payload, "panNumber"),
       provider: "document_upload",
-      is_verified: draftBool(payload, "panUploaded"),
-      evidence: { uploaded: draftBool(payload, "panUploaded") },
-    },
-    {
-      verification_type: "iec",
-      identifier: draftString(payload, "iecNumber"),
-      provider: "document_upload",
-      is_verified: Boolean(draftString(payload, "iecNumber")),
-      evidence: { uploaded: Boolean(draftString(payload, "iecDocumentUrl")) },
+      is_verified: false,
+      evidence: { documentId: getDocumentAsset(payload, "pan_card")?.id },
     },
     {
       verification_type: "factory_license",
       identifier: "factory_license",
       provider: "document_upload",
-      is_verified: draftBool(payload, "factoryLicenseUploaded"),
-      evidence: { uploaded: draftBool(payload, "factoryLicenseUploaded") },
+      is_verified: false,
+      evidence: { documentId: getDocumentAsset(payload, "factory_license")?.id },
     },
     {
       verification_type: "udyam",
-      identifier: draftString(payload, "udyamNumber"),
+      identifier: draftString(payload, "msmeNumber"),
       provider: "document_upload",
-      is_verified: Boolean(draftString(payload, "udyamNumber")),
-      evidence: { uploaded: Boolean(draftString(payload, "udyamCertificateUrl")) },
+      is_verified: false,
+      evidence: { documentId: getDocumentAsset(payload, "udyam_certificate")?.id },
     },
+    ...(isExporter
+      ? [
+          {
+            verification_type: "iec",
+            identifier: draftString(payload, "iecNumber"),
+            provider: "document_upload",
+            is_verified: false,
+            evidence: { documentId: getDocumentAsset(payload, "iec_certificate")?.id },
+          },
+        ]
+      : []),
   ].filter((check) => Boolean(check.identifier) || check.verification_type === "factory_license");
 
   for (const check of checks) {
@@ -347,7 +423,7 @@ async function persistSellerBank(
   const bankName = draftString(payload, "bankName");
   if (!accountNumber && !bankName) return;
 
-  const verified = draftBool(payload, "bankVerified");
+  const cancelledChequeDocumentId = draftString(payload, "cancelledChequeDocumentId");
   const { error } = await supabase.from("seller_bank_details").upsert(
     {
       seller_profile_id: sellerProfileId,
@@ -359,8 +435,9 @@ async function persistSellerBank(
       account_number_fingerprint: accountFingerprint(accountNumber),
       ifsc_code: draftString(payload, "ifscCode"),
       branch_name: draftString(payload, "branchName"),
-      verification_status: verified ? "approved" : "pending",
-      verified_at: verified ? new Date().toISOString() : null,
+      cancelled_cheque_document_id: cancelledChequeDocumentId || null,
+      verification_status: cancelledChequeDocumentId ? "pending" : "draft",
+      verified_at: null,
       created_by: userId,
       updated_at: new Date().toISOString(),
     },
@@ -428,6 +505,10 @@ async function persistSellerManufacturingIntelligence(
       quantity: toPositiveInt(machine.quantity) ?? 1,
       capacity: nullableString(machine.capacity),
       year_purchased: toPositiveInt(machine.yearPurchased),
+      photo_storage_path: nullableString(machine.photoStoragePath),
+      photo_url: nullableString(machine.photoFileUrl),
+      datasheet_storage_path: nullableString(machine.datasheetStoragePath),
+      datasheet_url: nullableString(machine.datasheetFileUrl),
       created_by: userId,
     })),
   );
@@ -443,8 +524,8 @@ async function persistSellerManufacturingIntelligence(
       certificate_name: String(certification.certificateName ?? certification.name ?? "Certification"),
       certificate_number: nullableString(certification.certificateNumber),
       expiry_date: nullableString(certification.expiryDate),
-      document_url: nullableString(certification.documentUrl),
-      storage_path: nullableString(certification.storagePath),
+      document_url: nullableString(certification.certificateFileUrl),
+      storage_path: nullableString(certification.certificateStoragePath),
       verification_status: "pending",
       created_by: userId,
     })),
@@ -462,8 +543,8 @@ async function persistSellerManufacturingIntelligence(
       country: String(experience.country ?? "Unknown"),
       product_exported: nullableString(experience.productExported),
       order_value: nullableString(experience.orderValue),
-      proof_document_url: nullableString(experience.proofDocumentUrl),
-      storage_path: nullableString(experience.storagePath),
+      proof_document_url: nullableString(experience.proofFileUrl),
+      storage_path: nullableString(experience.proofStoragePath),
       created_by: userId,
     })),
   );

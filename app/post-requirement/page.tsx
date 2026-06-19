@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   AlertCircle, ArrowRight, CheckCircle, IndianRupee, Loader2,
   MapPin, Package, ShieldCheck, Upload,
@@ -15,9 +16,11 @@ import { BuyerProcurementSection } from '@/components/dashboard/BuyerProcurement
 import { ProcurementGateNotice } from '@/components/marketplace/ProcurementGateNotice';
 import { evaluateProcurementGate } from '@/lib/marketplace/procurement-gates';
 import { getBuyerProcurementContext } from '@/lib/marketplace/procurement-context';
+import { canPostRequirement } from '@/lib/constants/roles';
 
 export default function PostRequirementPage() {
-  const { isAuthenticated, profile, buyerProfile, user, loading: authLoading, developmentTrustMode } = useAuth();
+  const router = useRouter();
+  const { isAuthenticated, profile, buyerProfile, user, loading: authLoading, developmentTrustMode, role } = useAuth();
   const { data: taxonomy } = useTaxonomyRegistry();
 
   const [step, setStep] = useState(1);
@@ -25,6 +28,13 @@ export default function PostRequirementPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [createdRfqSlug, setCreatedRfqSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (role && !canPostRequirement(role)) {
+      router.replace('/seller');
+    }
+  }, [authLoading, role, router]);
 
   const procurementCtx = getBuyerProcurementContext({
     profile,

@@ -16,6 +16,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 import { resolveAuthRole, type AppRole } from '@/lib/auth/profile-role';
 import { getAuthenticatedNavItems, getOnboardingHref } from '@/lib/marketplace/auth-navigation';
+import { canPostRequirement } from '@/lib/constants/roles';
 import { NavbarNotificationBell } from '@/components/marketplace/NavbarNotificationBell';
 import { useTaxonomyRegistry } from '@/lib/marketplace/use-taxonomy-registry';
 import type { TaxonomyNode } from '@/lib/marketplace/taxonomy';
@@ -227,6 +228,7 @@ export function Header() {
   });
 
   const navItems = isAuthenticated ? getAuthenticatedNavItems(role) : [];
+  const showPostRequirement = canPostRequirement(role);
 
   useEffect(() => { setMobileOpen(false); setActiveMenu(null); }, [pathname]);
 
@@ -387,11 +389,13 @@ export function Header() {
                     <Link href={dashboardHref} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Dashboard">
                       <LayoutDashboard className="h-4 w-4" />
                     </Link>
-                    <Link href="/post-requirement">
-                      <Button size="sm" className="ml-1 border-none bg-gradient-to-br from-[#1e3a8a] to-[#3b82f6] font-bold text-white shadow-[0_4px_14px_rgba(59,130,246,0.25)] hover:-translate-y-0.5">
-                        Post Requirement
-                      </Button>
-                    </Link>
+                    {showPostRequirement && (
+                      <Link href="/post-requirement">
+                        <Button size="sm" className="ml-1 border-none bg-gradient-to-br from-[#1e3a8a] to-[#3b82f6] font-bold text-white shadow-[0_4px_14px_rgba(59,130,246,0.25)] hover:-translate-y-0.5">
+                          Post Requirement
+                        </Button>
+                      </Link>
+                    )}
 
                     {roleLoading && !profile?.full_name ? (
                       <div className="h-9 w-9 animate-pulse rounded-full bg-slate-100" aria-hidden="true" />
@@ -525,7 +529,9 @@ export function Header() {
                   <Link key={`m-${item.label}`} href={item.href} className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">{item.label}</Link>
                 ))}
                 <div className="my-2 border-t border-slate-100" />
-                <Link href="/post-requirement" className="block rounded-lg px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50">Post Requirement</Link>
+                {showPostRequirement && (
+                  <Link href="/post-requirement" className="block rounded-lg px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50">Post Requirement</Link>
+                )}
                 <Link href="/settings" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                   <Settings className="h-4 w-4" /> Settings
                 </Link>

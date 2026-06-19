@@ -94,6 +94,25 @@ export function isSellerRole(role: string | null | undefined): boolean {
   return (SELLER_ROLES as readonly string[]).includes(role);
 }
 
+/** Roles that use the seller portal and should not post buyer requirements */
+export const SELLER_PORTAL_ROLES = [
+  ROLES.SELLER,
+  ROLES.MANUFACTURER,
+  ROLES.DISTRIBUTOR,
+  ROLES.LOGISTICS,
+] as const;
+
+export function isSellerPortalRole(role: string | null | undefined): boolean {
+  if (!role) return false;
+  return (SELLER_PORTAL_ROLES as readonly string[]).includes(role);
+}
+
+/** Whether the user may access Post Requirement flows (header CTA, /post-requirement) */
+export function canPostRequirement(role: string | null | undefined): boolean {
+  if (!role || role === ROLES.BUYER || role === ROLES.BOTH) return true;
+  return !isSellerPortalRole(role);
+}
+
 /**
  * Check if a role requires 2FA for elevated access.
  */
