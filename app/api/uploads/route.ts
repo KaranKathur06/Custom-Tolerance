@@ -53,6 +53,22 @@ const UPLOAD_RULES: Record<string, { maxSize: number; allowedTypes: string[]; ma
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     maxFiles: 20,
   },
+  'rfq-drawings': {
+    maxSize: 500 * 1024 * 1024,
+    allowedTypes: [
+      'application/pdf',
+      'application/zip',
+      'application/x-zip-compressed',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'application/octet-stream',
+    ],
+    maxFiles: 50,
+  },
 };
 
 export async function POST(request: Request) {
