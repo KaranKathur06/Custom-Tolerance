@@ -40,8 +40,11 @@ export async function getSellerV3ActivationContext(supabase: SupabaseClient, use
     return {
       sellerProfile: null,
       requiredDocumentsUploaded: false,
+      registrationDocumentsVerified: false,
+      trustDocumentsVerified: false,
       bankVerified: false,
       countryOrigin: null,
+      verificationRegion: null,
       verificationType: null,
     };
   }
@@ -60,7 +63,7 @@ export async function getSellerV3ActivationContext(supabase: SupabaseClient, use
     (kycs ?? []).filter((item) => item.is_verified).map((item) => item.verification_type),
   );
 
-  const requiredDocumentsUploaded = strategy.phase1RequiredKycTypes.every((t) => verified.has(t));
+  const registrationDocumentsVerified = strategy.phase1RequiredKycTypes.every((t) => verified.has(t));
 
   const { data: bank } = await supabase
     .from("seller_bank_details")
@@ -68,14 +71,24 @@ export async function getSellerV3ActivationContext(supabase: SupabaseClient, use
     .eq("seller_profile_id", sellerProfile.id)
     .maybeSingle();
 
+  // Phase 2 signals are trust-building (non-blocking). v1 approximation:
+  // - bank verified counts as a trust document signal.
+  // - factory media/certifications export history are not computed here yet.
+  const trustDocumentsVerified = Boolean(bank?.verification_status === "approved");
+
   return {
     sellerProfile: {
       ...sellerProfile,
       onboarding_status: sellerProfile.onboarding_status as SupplierOnboardingStatus,
     },
-    requiredDocumentsUploaded,
+    // Backward-compatible field (old name):
+    requiredDocumentsUploaded: registrationDocumentsVerified,
+    // New explicit fields:
+    registrationDocumentsVerified,
+    trustDocumentsVerified,
     bankVerified: bank?.verification_status === "approved",
     countryOrigin,
+    verificationRegion: strategy.verificationRegion,
     verificationType: strategy.verificationType,
   };
 }

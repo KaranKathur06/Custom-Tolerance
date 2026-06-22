@@ -97,6 +97,19 @@ export function WizardShell({
         </div>
       </div>
 
+      {/* ── Sticky top summary system (migration-safe) ── */}
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-[1480px] px-10">
+          <div className="py-3">
+            <StickyOnboardingSummary
+              trustItems={trustItems}
+              completion={completion}
+              validatedSteps={validatedSteps}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* ── Main content: Form + Trust Panel ── */}
       <main className="mx-auto max-w-[1480px] px-10 py-8">
         <div className="flex gap-8">
@@ -116,7 +129,7 @@ export function WizardShell({
             </div>
           </section>
 
-          {/* Sticky trust panel */}
+          {/* Legacy sidebar (kept during migration) */}
           <aside className="hidden w-[320px] shrink-0 lg:block">
             <div className="sticky top-[100px] space-y-4">
               <TrustPanel trustItems={trustItems} />
@@ -283,6 +296,100 @@ function GlobalErrorBanner({
           <X className="h-4 w-4" />
         </button>
       ) : null}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Sticky Onboarding Summary (migration-safe wrapper)
+   - Renders existing info in a compact top bar.
+   - Keeps legacy sidebar intact to avoid regressions.
+   ──────────────────────────────────────────────────────────────────────── */
+
+function StickyOnboardingSummary({
+  trustItems,
+  completion,
+  validatedSteps,
+}: {
+  trustItems: Array<{
+    label: string;
+    verified?: boolean;
+    status?: "pending" | "otp_sent" | "verified" | "failed";
+    statusLabel?: string;
+  }>;
+  completion: CompletionResult;
+  validatedSteps: string[];
+}) {
+  const primaryTrust = trustItems.slice(0, 4);
+  const allValidated = validatedSteps.length > 0;
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-blue-700" />
+          <h2 className="text-sm font-bold text-slate-950">Onboarding progress</h2>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-sm">
+            Registration strength: {completion.overallPercent}%
+          </div>
+          {allValidated ? (
+            <div className="rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">
+              Steps saved
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="w-full sm:w-auto">
+        <div className="flex flex-wrap gap-2">
+          {primaryTrust.map((item) => {
+            const status = item.status ?? (item.verified ? "verified" : "pending");
+            const statusLabel =
+              item.statusLabel ??
+              (status === "otp_sent"
+                ? "OTP Sent"
+                : status === "failed"
+                  ? "Verification Failed"
+                  : status === "verified"
+                    ? "Verified"
+                    : "Pending");
+
+            return (
+              <div
+                key={item.label}
+                className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs shadow-sm"
+              >
+                <span className="truncate text-slate-600">{item.label}</span>
+                <Badge
+                  variant={
+                    status === "verified"
+                      ? "success"
+                      : status === "failed"
+                        ? "destructive"
+                        : status === "otp_sent"
+                          ? "warning"
+                          : "outline"
+                  }
+                  className={cn(
+                    status === "verified" && "bg-emerald-600",
+                    status === "otp_sent" && "bg-amber-500",
+                    status === "failed" && "bg-red-600",
+                    status === "pending" && "border-slate-200 text-slate-500",
+                  )}
+                >
+                  {statusLabel}
+                </Badge>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* subtle hint: legacy sections remain in sidebar for migration safety */}
+        <p className="mt-2 text-xs text-slate-500">Trust & missing requirements are also shown on the right panel (migration-safe).</p>
+      </div>
     </div>
   );
 }

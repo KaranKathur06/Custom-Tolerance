@@ -47,10 +47,15 @@ export type CertificationRow = {
 };
 
 export type ExportRow = {
-  customerName: string;
+  customerIndustry: string;
   country: string;
-  productExported: string;
-  orderValue: string;
+  productsExported: string;
+  yearStarted: string;
+  annualExportValue: string;
+  // legacy aliases kept for backward compat
+  customerName?: string;
+  productExported?: string;
+  orderValue?: string;
   poFileId?: string;
   poFileUrl?: string;
   poStoragePath?: string;
@@ -63,6 +68,17 @@ export type ExportRow = {
   exportCertificateFileId?: string;
   exportCertificateFileUrl?: string;
   exportCertificateStoragePath?: string;
+};
+
+export type ProductRow = {
+  productName: string;
+  capability: string;
+  materials: string[];
+  toleranceCapability: string;
+  monthlyCapacity: string;
+  moq: string;
+  leadTime: string;
+  customTolerance?: string;
 };
 
 export type FactoryPhotoCategory =

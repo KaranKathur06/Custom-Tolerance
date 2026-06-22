@@ -21,7 +21,10 @@ export function ExportExperienceEditor({ rows, errors, onChange }: ExportExperie
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-950">Export Experience</h3>
+        <div>
+          <h3 className="text-sm font-bold text-slate-950">Export Experience</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Add export records to build buyer confidence.</p>
+        </div>
         <Button
           type="button"
           variant="outline"
@@ -30,25 +33,26 @@ export function ExportExperienceEditor({ rows, errors, onChange }: ExportExperie
             onChange([
               ...rows,
               {
-                customerName: "",
+                customerIndustry: "",
                 country: "",
-                productExported: "",
-                orderValue: "",
+                productsExported: "",
+                yearStarted: "",
+                annualExportValue: "",
               },
             ])
           }
         >
-          Add Export
+          Add Export Record
         </Button>
       </div>
       <div className="space-y-4">
         {rows.map((row, index) => (
           <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-4 lg:grid-cols-3">
             <TextInput
-              value={row.customerName}
-              placeholder="Customer name *"
-              onChange={(e) => updateRow(index, { customerName: e.target.value })}
-              className={errors[`exportExperience[${index}].customerName`] ? "border-red-300" : ""}
+              value={row.customerIndustry}
+              placeholder="Customer Industry"
+              onChange={(e) => updateRow(index, { customerIndustry: e.target.value })}
+              className={errors[`exportExperience[${index}].customerIndustry`] ? "border-red-300" : ""}
             />
             <TextInput
               value={row.country}
@@ -57,17 +61,22 @@ export function ExportExperienceEditor({ rows, errors, onChange }: ExportExperie
               className={errors[`exportExperience[${index}].country`] ? "border-red-300" : ""}
             />
             <TextInput
-              value={row.productExported}
-              placeholder="Product exported"
-              onChange={(e) => updateRow(index, { productExported: e.target.value })}
+              value={row.productsExported}
+              placeholder="Products Exported"
+              onChange={(e) => updateRow(index, { productsExported: e.target.value })}
             />
             <TextInput
-              value={row.orderValue}
-              placeholder="Order value"
-              onChange={(e) => updateRow(index, { orderValue: e.target.value })}
+              value={row.yearStarted}
+              placeholder="Year Started"
+              onChange={(e) => updateRow(index, { yearStarted: e.target.value })}
+            />
+            <TextInput
+              value={row.annualExportValue}
+              placeholder="Annual Export Value"
+              onChange={(e) => updateRow(index, { annualExportValue: e.target.value })}
             />
             <DocumentUploadField
-              label="Purchase Order (PO)"
+              label="PO (Optional)"
               documentType="export_po"
               accept=".pdf"
               maxSizeMB={10}
@@ -81,7 +90,7 @@ export function ExportExperienceEditor({ rows, errors, onChange }: ExportExperie
               }
             />
             <DocumentUploadField
-              label="Invoice"
+              label="Invoice (Optional)"
               documentType="export_invoice"
               accept=".pdf"
               maxSizeMB={10}
@@ -95,7 +104,7 @@ export function ExportExperienceEditor({ rows, errors, onChange }: ExportExperie
               }
             />
             <DocumentUploadField
-              label="Shipping Bill"
+              label="Shipping Bill (Optional)"
               documentType="export_shipping_bill"
               accept=".pdf"
               maxSizeMB={10}
@@ -109,7 +118,7 @@ export function ExportExperienceEditor({ rows, errors, onChange }: ExportExperie
               }
             />
             <DocumentUploadField
-              label="Export Certificate"
+              label="Certificate (Optional)"
               documentType="export_certificate"
               accept=".pdf"
               maxSizeMB={10}

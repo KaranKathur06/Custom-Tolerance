@@ -282,14 +282,14 @@ export async function commitSellerOnboardingV3(
     factoryPhotos: buildFactoryPhotoRecords(payload),
     companyName: draftString(payload, "companyName") ?? draftString(payload, "legalBusinessName"),
     legalBusinessName: draftString(payload, "legalBusinessName") ?? draftString(payload, "companyName"),
-    businessType: draftString(payload, "sellerType"),
+    businessType: draftStringArray(payload, "sellerTypes").join(", ") || draftString(payload, "sellerType"),
     companyDescription: draftString(payload, "companyDescription") ?? "Industrial manufacturing supplier",
-    numberOfEmployees: draftString(payload, "shopFloorEmployees"),
+    numberOfEmployees: draftString(payload, "totalEmployees") ?? draftString(payload, "shopFloorEmployees"),
     yearEstablished: draftString(payload, "yearEstablished"),
     website: draftString(payload, "website") ?? draftString(payload, "companyWebsite"),
     linkedinUrl: draftString(payload, "linkedinUrl"),
-    fullAddress: draftString(payload, "registeredAddress") ?? draftString(payload, "factoryAddress"),
-    pincode: draftString(payload, "pincode"),
+    fullAddress: draftString(payload, "addressLine1") ?? draftString(payload, "registeredAddress") ?? draftString(payload, "factoryAddress"),
+    pincode: draftString(payload, "postalCode") ?? draftString(payload, "pincode"),
     capabilities: buildLegacyCapabilities(payload),
   };
 
@@ -306,13 +306,39 @@ export async function commitSellerOnboardingV3(
   await persistSellerKyc(supabase, userId, sellerProfileId, companyId, draftWithUploads);
   await persistSellerBank(supabase, userId, sellerProfileId, companyId, draftWithUploads);
   await persistSellerManufacturingIntelligence(supabase, userId, sellerProfileId, companyId, draftWithUploads);
+  await persistSellerProducts(supabase, userId, sellerProfileId, companyId, draftWithUploads);
+  await persistSellerRdServices(supabase, userId, sellerProfileId, draftWithUploads);
   await persistSellerVideo(supabase, userId, sellerProfileId, companyId, payload);
 
   const nextStatus = options.submitForReview && gate.canActivate ? "UNDER_REVIEW" : "PROFILE_INCOMPLETE";
 
+  // Persist new redesign fields to seller_profiles
+  const redesignPatch: Record<string, unknown> = {
+    seller_types: draftStringArray(payload, "sellerTypes"),
+    has_rd_team: draftBool(payload, "hasRdTeam"),
+    rd_team_size: draftString(payload, "rdTeamSize"),
+    factory_area_value: draftString(payload, "factoryArea") ? parseFloat(String(payload.factoryArea).replace(/[^0-9.]/g, "")) || null : null,
+    factory_area_unit: draftString(payload, "factoryAreaUnit") || "sq.m",
+    total_employees: draftString(payload, "totalEmployees"),
+    innovation_ready: draftBool(payload, "hasRdTeam") && Array.isArray(payload.rdServices) && (payload.rdServices as string[]).length > 0,
+    address_line_1: draftString(payload, "addressLine1"),
+    address_line_2: draftString(payload, "addressLine2"),
+    factory_address_line_1: draftString(payload, "factoryAddressLine1"),
+    factory_address_line_2: draftString(payload, "factoryAddressLine2"),
+    postal_code: draftString(payload, "postalCode"),
+    factory_postal_code: draftString(payload, "factoryPostalCode"),
+    verification_type: draftString(payload, "verificationType"),
+    company_registration_number: draftString(payload, "companyRegistrationNumber"),
+    country_of_registration: draftString(payload, "countryOfRegistration"),
+    website: draftString(payload, "website"),
+    whatsapp: draftString(payload, "whatsapp"),
+    linkedin_url: draftString(payload, "linkedinUrl"),
+  };
+
   await supabase
     .from("seller_profiles")
     .update({
+      ...redesignPatch,
       profile_completion_percent: completion.overallPercent,
       onboarding_status: nextStatus,
       verification_status: options.submitForReview && gate.canActivate ? "in_review" : "pending",
@@ -564,12 +590,19 @@ async function persistSellerManufacturingIntelligence(
     normalizeObjectArray(payload.exportExperience).map((experience) => ({
       seller_profile_id: sellerProfileId,
       company_id: companyId,
-      customer_name: nullableString(experience.customerName),
+      customer_name: nullableString(experience.customerIndustry ?? experience.customerName),
+      customer_industry: nullableString(experience.customerIndustry),
       country: String(experience.country ?? "Unknown"),
-      product_exported: nullableString(experience.productExported),
-      order_value: nullableString(experience.orderValue),
+      product_exported: nullableString(experience.productsExported ?? experience.productExported),
+      year_started: nullableString(experience.yearStarted),
+      annual_export_value: nullableString(experience.annualExportValue ?? experience.orderValue),
+      order_value: nullableString(experience.orderValue ?? experience.annualExportValue),
       proof_document_url: nullableString(experience.proofFileUrl),
       storage_path: nullableString(experience.proofStoragePath),
+      po_document_url: nullableString(experience.poFileUrl),
+      invoice_document_url: nullableString(experience.invoiceFileUrl),
+      shipping_bill_document_url: nullableString(experience.shippingBillFileUrl),
+      certificate_document_url: nullableString(experience.exportCertificateFileUrl),
       created_by: userId,
     })),
   );
@@ -604,4 +637,55 @@ function toPositiveInt(value: unknown): number | null {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
   return null;
+}
+
+async function persistSellerProducts(
+  supabase: SupabaseClient,
+  userId: string,
+  sellerProfileId: string,
+  companyId: string,
+  payload: Record<string, unknown>,
+) {
+  await replaceRows(
+    supabase,
+    "seller_products",
+    "seller_profile_id",
+    sellerProfileId,
+    normalizeObjectArray(payload.products).map((product) => ({
+      seller_profile_id: sellerProfileId,
+      company_id: companyId,
+      profile_id: userId,
+      product_name: String(product.productName ?? product.name ?? "Product"),
+      capability: nullableString(product.capability),
+      materials: Array.isArray(product.materials) ? (product.materials as string[]) : [],
+      tolerance_capability: nullableString(product.toleranceCapability),
+      monthly_capacity: nullableString(product.monthlyCapacity),
+      moq: nullableString(product.moq),
+      lead_time: nullableString(product.leadTime),
+      custom_tolerance: nullableString(product.customTolerance),
+      created_by: userId,
+    })),
+  );
+}
+
+async function persistSellerRdServices(
+  supabase: SupabaseClient,
+  userId: string,
+  sellerProfileId: string,
+  payload: Record<string, unknown>,
+) {
+  if (!draftBool(payload, "hasRdTeam")) {
+    await replaceRows(supabase, "seller_rd_services", "seller_profile_id", sellerProfileId, []);
+    return;
+  }
+  await replaceRows(
+    supabase,
+    "seller_rd_services",
+    "seller_profile_id",
+    sellerProfileId,
+    draftStringArray(payload, "rdServices").map((service_name) => ({
+      seller_profile_id: sellerProfileId,
+      service_name,
+    })),
+  );
 }

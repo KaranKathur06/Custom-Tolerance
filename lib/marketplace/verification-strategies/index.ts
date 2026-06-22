@@ -1,5 +1,9 @@
-export type VerificationStrategy = {
-  key: "INDIA" | "GLOBAL_DEFAULT";
+  export type VerificationStrategy = {
+  /**
+   * Verification region controls which verification engine + rules apply.
+   * Initially only INDIA + GLOBAL_DEFAULT are supported (v1).
+   */
+  verificationRegion: "INDIA" | "GLOBAL_DEFAULT";
   verificationType: "GST" | "COMPANY_REGISTRATION" | "DUNS";
   /**
    * KYC verification types as stored in `seller_kyc_verifications.verification_type`.
@@ -8,7 +12,9 @@ export type VerificationStrategy = {
   phase1RequiredKycTypes: string[];
 };
 
-export function getVerificationStrategy(countryCodeOrId: string | null | undefined): VerificationStrategy {
+export function getVerificationStrategy(
+  countryCodeOrId: string | null | undefined,
+): VerificationStrategy {
   // Minimal, backend-compatible heuristic:
   // - If country is India (we can't rely on code format), treat as INDIA.
   // - Otherwise use GLOBAL_DEFAULT.
@@ -22,14 +28,14 @@ export function getVerificationStrategy(countryCodeOrId: string | null | undefin
 
   if (isIndia) {
     return {
-      key: "INDIA",
+      verificationRegion: "INDIA",
       verificationType: "GST",
       phase1RequiredKycTypes: ["gst", "pan", "factory_license"],
     };
   }
 
   return {
-    key: "GLOBAL_DEFAULT",
+    verificationRegion: "GLOBAL_DEFAULT",
     verificationType: "COMPANY_REGISTRATION",
     phase1RequiredKycTypes: ["company_registration"],
   };

@@ -26,13 +26,12 @@ import {
   type SellerUploadAsset,
 } from "@/lib/marketplace/seller-onboarding-validation";
 import { fetchSellerAssets } from "@/lib/marketplace/seller-upload-client";
-import { GstVerificationStep } from "@/components/onboarding/seller/GstVerificationStep";
+import { CompanyVerificationStep } from "@/components/onboarding/seller/CompanyVerificationStep";
 import { BasicInformationStep } from "@/components/onboarding/seller/BasicInformationStep";
 import { BusinessDetailsStep } from "@/components/onboarding/seller/BusinessDetailsStep";
-import { BankVerificationStep } from "@/components/onboarding/seller/BankVerificationStep";
+import { BankDetailsStep } from "@/components/onboarding/seller/BankDetailsStep";
 import { RegistrationCompleteStep } from "@/components/onboarding/seller/RegistrationCompleteStep";
-import { ProfileCompletionStep } from "@/components/onboarding/seller/ProfileCompletionStep";
-import type { MachineRow, CertificationRow, ExportRow } from "@/components/onboarding/seller/types";
+import type { MachineRow, CertificationRow, ExportRow, ProductRow } from "@/components/onboarding/seller/types";
 
 type MobileTrustStatus = "pending" | "otp_sent" | "verified" | "failed";
 type MobileStatusPayload = {
@@ -48,27 +47,72 @@ type MobileStatusPayload = {
 };
 
 type SellerForm = Record<string, unknown> & {
+  countryOrigin: string;
+  verificationRegion: string;
+
   gstNumber: string;
   gstVerified: boolean;
+  companyVerificationVerified: boolean;
+
   gstProvider: string;
   gstDetails: Record<string, unknown>;
   companyName: string;
   legalBusinessName: string;
-  tradeName: string;
-  registeredAddress: string;
-  state: string;
+
+  // Structured registered address
+  addressLine1: string;
+  addressLine2: string;
   city: string;
-  pincode: string;
+  state: string;
+  postalCode: string;
+
+  // International verification
+  verificationType: string;
+  companyRegistrationNumber: string;
+  countryOfRegistration: string;
+
+  // Contact
   contactPersonName: string;
   designation: string;
   mobileNumber: string;
   businessEmail: string;
-  factoryAddress: string;
+  website: string;
+  linkedinUrl: string;
+  whatsapp: string;
+
+  // Structured factory address
+  factoryAddressLine1: string;
+  factoryAddressLine2: string;
+  factoryCity: string;
+  factoryState: string;
+  factoryPostalCode: string;
   factorySameAsRegistered: boolean;
+
   emailVerified: boolean;
   mobileVerified: boolean;
-  sellerType: string;
-  mainIndustry: string;
+
+  // Seller types (multi-select)
+  sellerTypes: string[];
+
+  // Products
+  products: ProductRow[];
+
+  // R&D
+  hasRdTeam: boolean;
+  rdTeamSize: string;
+  rdServices: string[];
+  innovationReady: boolean;
+
+  // Factory & Team
+  factoryAreaValue: string;
+  factoryAreaUnit: string;
+  totalEmployees: string;
+  engineers: string;
+  qcTeamSize: string;
+  countriesExportingTo: string[];
+  languagesSupported: string[];
+
+  // Legacy capability fields
   capabilityCategories: string[];
   subCapabilities: Array<{ categoryName: string; name: string }>;
   materials: string[];
@@ -77,10 +121,8 @@ type SellerForm = Record<string, unknown> & {
   leadTime: string;
   factoryArea: string;
   shopFloorEmployees: string;
-  engineers: string;
-  qcTeamSize: string;
-  countriesExportingTo: string[];
-  languagesSupported: string[];
+
+  // Bank
   bankName: string;
   accountHolderName: string;
   accountNumber: string;
@@ -91,10 +133,19 @@ type SellerForm = Record<string, unknown> & {
   iecNumber: string;
   msmeNumber: string;
   dunsNumber: string;
+  routingNumber: string;
+  swiftCode: string;
+  iban: string;
+  sortCode: string;
+  bicCode: string;
+
+  // Agreements
   sellerAgreement: boolean;
   termsAccepted: boolean;
   privacyAccepted: boolean;
   kycConsent: boolean;
+
+  // Content
   companyDescription: string;
   factoryPhotos: Array<{ category: string; fileUrl?: string; id?: string; storagePath?: string }>;
   machines: MachineRow[];
@@ -103,6 +154,8 @@ type SellerForm = Record<string, unknown> & {
   qualitySystems: string[];
   factoryTourUrl: string;
   factoryTourVideoId?: string;
+
+  // Document IDs
   cancelledChequeDocumentId?: string;
   gstCertificateDocumentId?: string;
   panCardDocumentId?: string;
@@ -110,30 +163,76 @@ type SellerForm = Record<string, unknown> & {
   iecCertificateDocumentId?: string;
   udyamCertificateDocumentId?: string;
   dunsCertificateDocumentId?: string;
+  verificationCertificateDocumentId?: string;
 };
 
 const initialForm: SellerForm = {
+  countryOrigin: "",
+  verificationRegion: "GLOBAL_DEFAULT",
+
   gstNumber: "",
   gstVerified: false,
+  companyVerificationVerified: false,
+
   gstProvider: "",
   gstDetails: {},
   companyName: "",
   legalBusinessName: "",
-  tradeName: "",
-  registeredAddress: "",
-  state: "",
+
+  // Structured registered address
+  addressLine1: "",
+  addressLine2: "",
   city: "",
-  pincode: "",
+  state: "",
+  postalCode: "",
+
+  // International verification
+  verificationType: "",
+  companyRegistrationNumber: "",
+  countryOfRegistration: "",
+
+  // Contact
   contactPersonName: "",
   designation: "",
   mobileNumber: "",
   businessEmail: "",
-  factoryAddress: "",
+  website: "",
+  linkedinUrl: "",
+  whatsapp: "",
+
+  // Structured factory address
+  factoryAddressLine1: "",
+  factoryAddressLine2: "",
+  factoryCity: "",
+  factoryState: "",
+  factoryPostalCode: "",
   factorySameAsRegistered: false,
+
   emailVerified: false,
   mobileVerified: false,
-  sellerType: "",
-  mainIndustry: "Industrial Goods",
+
+  // Seller types
+  sellerTypes: [],
+
+  // Products
+  products: [],
+
+  // R&D
+  hasRdTeam: false,
+  rdTeamSize: "",
+  rdServices: [],
+  innovationReady: false,
+
+  // Factory & Team
+  factoryAreaValue: "",
+  factoryAreaUnit: "sq.m",
+  totalEmployees: "",
+  engineers: "",
+  qcTeamSize: "",
+  countriesExportingTo: [],
+  languagesSupported: [],
+
+  // Legacy capability fields
   capabilityCategories: [],
   subCapabilities: [],
   materials: [],
@@ -142,10 +241,8 @@ const initialForm: SellerForm = {
   leadTime: "",
   factoryArea: "",
   shopFloorEmployees: "",
-  engineers: "",
-  qcTeamSize: "",
-  countriesExportingTo: [],
-  languagesSupported: [],
+
+  // Bank
   bankName: "",
   accountHolderName: "",
   accountNumber: "",
@@ -156,10 +253,19 @@ const initialForm: SellerForm = {
   iecNumber: "",
   msmeNumber: "",
   dunsNumber: "",
+  routingNumber: "",
+  swiftCode: "",
+  iban: "",
+  sortCode: "",
+  bicCode: "",
+
+  // Agreements
   sellerAgreement: false,
   termsAccepted: false,
   privacyAccepted: false,
   kycConsent: false,
+
+  // Content
   companyDescription: "",
   factoryPhotos: [],
   machines: [],
@@ -167,9 +273,13 @@ const initialForm: SellerForm = {
   exportExperience: [],
   qualitySystems: [],
   factoryTourUrl: "",
+
+  // Privacy visibility
   emailVisibility: "MEMBERS_ONLY",
   mobileVisibility: "PRIVATE",
   whatsappVisibility: "PRIVATE",
+  websiteVisibility: "PUBLIC",
+  linkedinVisibility: "PUBLIC",
   factoryAddressVisibility: "MEMBERS_ONLY",
   gstVisibility: "PUBLIC",
 };
@@ -419,11 +529,11 @@ export default function SellerOnboardingPage() {
       setForm((prev) => ({
         ...prev,
         gstVerified: Boolean(data?.isVerified),
+        companyVerificationVerified: Boolean(data?.isVerified),
         gstProvider: data?.developmentMode ? "development_trust_mode" : "live_provider",
         gstDetails: lookup,
         legalBusinessName: (lookup.legalName as string) ?? prev.legalBusinessName,
         companyName: (lookup.tradeName as string) ?? (lookup.legalName as string) ?? prev.companyName,
-        tradeName: (lookup.tradeName as string) ?? prev.tradeName,
         state: (lookup.gstState as string) ?? prev.state,
       }));
       setGstError(null);
@@ -512,6 +622,9 @@ export default function SellerOnboardingPage() {
   };
 
   const next = async () => {
+    // registration_complete has no Next button — handled by RegistrationCompleteStep CTAs
+    if (activeStep.key === "registration_complete") return;
+
     const validation = validateSellerOnboardingStep(activeStep.key, { form, documents, images, video });
     if (!validation.valid) {
       const errors: Record<string, string> = {};
@@ -718,7 +831,7 @@ export default function SellerOnboardingPage() {
   return (
     <WizardShell
       title="Seller verification"
-      subtitle="Verify GST, KYC, capabilities, bank details, factory evidence, and production depth before marketplace activation."
+      subtitle="Verify your business identity and complete your seller profile for marketplace activation."
       steps={SELLER_ONBOARDING_V3_STEPS}
       activeStep={activeStep.key}
       completion={completion}
@@ -730,7 +843,7 @@ export default function SellerOnboardingPage() {
         setGlobalErrorType("generic");
       }}
       onRetry={() => {
-        if (globalErrorType === "gst_api" || activeStep.key === "gst_verification") {
+        if (globalErrorType === "gst_api" || activeStep.key === "company_verification") {
           void verifyGst();
           return;
         }
@@ -742,11 +855,10 @@ export default function SellerOnboardingPage() {
         if (idx >= 0) setActiveIndex(idx);
       }}
       trustItems={[
-        { label: "GST", verified: Boolean(form.gstVerified) },
-        { label: "Bank", verified: Boolean(form.cancelledChequeDocumentId) },
+        { label: "Company", verified: Boolean(form.gstVerified || form.companyVerificationVerified || form.verificationCertificateDocumentId) },
         { label: "Email", verified: form.emailVerified },
         { label: "Mobile", status: mobileStatus.status },
-        { label: "Factory license", verified: Boolean(form.factoryLicenseDocumentId) },
+        { label: "Bank", verified: Boolean(form.cancelledChequeDocumentId) },
       ]}
     >
       <div>
@@ -754,8 +866,8 @@ export default function SellerOnboardingPage() {
         <p className="mt-1 text-sm text-slate-600">{activeStep.goal}</p>
       </div>
 
-      {activeStep.key === "gst_verification" ? (
-        <GstVerificationStep
+      {activeStep.key === "company_verification" ? (
+        <CompanyVerificationStep
           {...stepProps}
           onVerifyGst={() => void verifyGst()}
           verifyingGst={verifyingGst}
@@ -768,28 +880,31 @@ export default function SellerOnboardingPage() {
         <BasicInformationStep {...stepProps} mobileSection={mobileSection} />
       ) : null}
 
-      {activeStep.key === "business_details" ? <BusinessDetailsStep {...stepProps} /> : null}
-
-      {activeStep.key === "bank_financial_verification" ? <BankVerificationStep {...stepProps} /> : null}
-
       {activeStep.key === "registration_complete" ? (
         <RegistrationCompleteStep
           form={form}
           completion={completion}
           gate={gate}
-          onEditPrivacy={() => {
-            const idx = SELLER_ONBOARDING_V3_STEPS.findIndex((s) => s.key === "basic_information");
-            if (idx >= 0) setActiveIndex(idx);
+          onCompleteProfile={() => {
+            setActiveIndex((index) => Math.min(SELLER_ONBOARDING_V3_STEPS.length - 1, index + 1));
+          }}
+          onSkipForNow={() => {
+            void (async () => {
+              await save("submit");
+              router.push("/dashboard/seller?submitted=1");
+            })();
           }}
         />
       ) : null}
 
-      {activeStep.key === "profile_completion" ? <ProfileCompletionStep {...stepProps} /> : null}
+      {activeStep.key === "business_details" ? <BusinessDetailsStep {...stepProps} /> : null}
+
+      {activeStep.key === "bank_details" ? <BankDetailsStep {...stepProps} /> : null}
 
       <WizardActions
         saving={saving}
-        canBack={activeIndex > 0}
-        canNext
+        canBack={activeIndex > 0 && activeStep.key !== "registration_complete"}
+        canNext={activeStep.key !== "registration_complete"}
         submitLabel={activeIndex === SELLER_ONBOARDING_V3_STEPS.length - 1 ? "Submit for review" : undefined}
         onBack={() => setActiveIndex((index) => Math.max(0, index - 1))}
         onSave={() => void saveDraft()}

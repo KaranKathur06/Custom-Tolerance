@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       );
     }
     const action = ((body.action as string | undefined) ?? "save") as "save" | "submit";
-    const stepKey = (body.stepKey as string | undefined) ?? "gst_verification";
+    const stepKey = (body.stepKey as string | undefined) ?? "company_verification";
     const values = ((body.values ?? body.draftPayload ?? {}) as Record<string, unknown>) ?? {};
 
     const isNested = values && typeof values === "object" && "form" in values;
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     const completion = calculateSellerOnboardingV3Completion(payload, nextValidatedSteps);
     const gate = getSellerV3HardGateStatus(payload);
 
-    const isFinalSubmit = action === "submit" && gate.canActivate;
+    const isFinalSubmit = action === "submit" && stepKey === "bank_details" && gate.canActivate;
 
     const sessionPatch = {
       user_id: user.id,

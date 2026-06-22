@@ -4,10 +4,9 @@ import {
   type SellerOnboardingV3StepKey,
   SELLER_TYPES,
   CAPABILITY_CATEGORIES,
-  SUB_CAPABILITIES,
-  MATERIAL_OPTIONS,
   FACTORY_PHOTO_CATEGORIES,
 } from "./onboarding-v3";
+import { getBankFieldConfig } from "@/lib/location/bank-fields";
 
 export type SellerUploadAsset = {
   id: string;
@@ -82,41 +81,33 @@ function fieldError(field: string, message: string): SellerValidationResult["fie
 
 function formatFieldLabel(field: string): string {
   const labels: Record<string, string> = {
+    countryOrigin: "Country of Origin",
     gstNumber: "GST Number",
     gstVerified: "GST Verification",
     legalBusinessName: "Legal Business Name",
+    addressLine1: "Address Line 1",
+    city: "City",
+    state: "State",
+    postalCode: "Postal Code",
+    verificationType: "Verification Type",
+    dunsNumber: "DUNS Number",
+    companyRegistrationNumber: "Company Registration Number",
     contactPersonName: "Contact Person",
     designation: "Designation",
     mobileNumber: "Mobile Number",
     mobileVerified: "Mobile Verification",
     businessEmail: "Business Email",
     emailVerified: "Email Verification",
-    factoryAddress: "Factory Address",
-    sellerType: "Seller Type",
-    mainIndustry: "Main Industry",
+    sellerTypes: "Seller Type",
     capabilityCategories: "Capability Categories",
-    subCapabilities: "Sub Capabilities",
-    materials: "Materials",
-    monthlyCapacity: "Monthly Capacity",
-    moq: "MOQ",
-    leadTime: "Lead Time",
-    factoryArea: "Factory Area",
-    shopFloorEmployees: "Shop Floor Employees",
-    engineers: "Engineers",
-    qcTeamSize: "QC Team Size",
+    products: "Products",
     bankName: "Bank Name",
     accountHolderName: "Account Holder Name",
     accountNumber: "Account Number",
     confirmAccountNumber: "Confirm Account Number",
     ifscCode: "IFSC Code",
     branchName: "Branch Name",
-    panNumber: "PAN Number",
-    iecNumber: "IEC Number",
     cancelledChequeDocumentId: "Cancelled Cheque",
-    gstCertificateDocumentId: "GST Certificate",
-    panCardDocumentId: "PAN Card",
-    factoryLicenseDocumentId: "Factory License",
-    iecCertificateDocumentId: "IEC Certificate",
     sellerAgreement: "Seller Agreement",
     termsAccepted: "Terms & Conditions",
     privacyAccepted: "Privacy Policy",
@@ -149,15 +140,38 @@ export function validateSellerOnboardingStep(
     fieldErrors.push(fieldError(field, message));
   };
 
-  const { form, documents, images, video } = input;
-  const sellerType = String(form.sellerType ?? "");
-  const isExporter = sellerType === "Exporter";
+  const { form, documents } = input;
+  const countryOrigin = String(form.countryOrigin ?? "").toLowerCase();
+  const isIndia = countryOrigin === "india";
 
   switch (stepKey) {
-    case "gst_verification": {
-      if (!isNonEmptyString(form.gstNumber)) addError("gstNumber", "GST number is required.");
-      if (!isTruthy(form.gstVerified)) addError("gstVerified", "GST must be verified before continuing.");
+    case "company_verification": {
+      if (!isNonEmptyString(form.countryOrigin)) addError("countryOrigin", "Country of origin is required.");
       if (!isNonEmptyString(form.legalBusinessName)) addError("legalBusinessName", "Legal business name is required.");
+
+      // Structured address
+      if (!isNonEmptyString(form.addressLine1)) addError("addressLine1", "Address line 1 is required.");
+      if (!isNonEmptyString(form.city)) addError("city", "City is required.");
+      if (!isNonEmptyString(form.state)) addError("state", "State is required.");
+      if (!isNonEmptyString(form.postalCode)) addError("postalCode", "Postal code is required.");
+
+      if (isIndia) {
+        // India: GST required
+        if (!isNonEmptyString(form.gstNumber)) addError("gstNumber", "GST number is required.");
+        if (!isTruthy(form.gstVerified)) addError("gstVerified", "GST must be verified before continuing.");
+      } else {
+        // International: verification type required
+        const verificationType = String(form.verificationType ?? "");
+        if (!verificationType) addError("verificationType", "Please select a verification type.");
+        if (verificationType === "DUNS Number") {
+          if (!isNonEmptyString(form.dunsNumber)) addError("dunsNumber", "DUNS number is required.");
+        }
+        if (verificationType === "Company Registration Number") {
+          if (!isNonEmptyString(form.companyRegistrationNumber)) {
+            addError("companyRegistrationNumber", "Company registration number is required.");
+          }
+        }
+      }
       break;
     }
 
@@ -168,59 +182,40 @@ export function validateSellerOnboardingStep(
       if (!isTruthy(form.mobileVerified)) addError("mobileVerified", "Mobile number must be verified.");
       if (!isNonEmptyString(form.businessEmail)) addError("businessEmail", "Business email is required.");
       if (!isTruthy(form.emailVerified)) addError("emailVerified", "Email must be verified.");
-      if (!isNonEmptyString(form.factoryAddress)) addError("factoryAddress", "Factory address is required.");
+      break;
+    }
+
+    case "registration_complete": {
+      // No required fields Ã¢â‚¬â€ display-only step
       break;
     }
 
     case "business_details": {
-      if (!isNonEmptyString(form.sellerType)) addError("sellerType", "Seller type is required.");
-      if (!isNonEmptyString(form.mainIndustry)) addError("mainIndustry", "Main industry is required.");
-      if (!isStringArray(form.capabilityCategories)) addError("capabilityCategories", "Select at least one capability category.");
-      if (!Array.isArray(form.subCapabilities) || (form.subCapabilities as unknown[]).length === 0) {
-        addError("subCapabilities", "Select at least one sub capability.");
+      const sellerTypes = form.sellerTypes;
+      if (!Array.isArray(sellerTypes) || sellerTypes.length === 0) {
+        addError("sellerTypes", "Select at least one seller type.");
       }
-      if (!isStringArray(form.materials)) addError("materials", "Select at least one material.");
-      if (!isNonEmptyString(form.monthlyCapacity)) addError("monthlyCapacity", "Please enter monthly production capacity.");
-      if (!isNonEmptyString(form.moq)) addError("moq", "MOQ is required.");
-      if (!isNonEmptyString(form.leadTime)) addError("leadTime", "Lead time is required.");
-      if (!isNonEmptyString(form.factoryArea)) addError("factoryArea", "Factory area is required.");
-      if (!isNonEmptyString(form.shopFloorEmployees)) addError("shopFloorEmployees", "Shop floor employee count is required.");
-      if (!isNonEmptyString(form.engineers)) addError("engineers", "Engineer count is required.");
-      if (!isNonEmptyString(form.qcTeamSize)) addError("qcTeamSize", "QC team size is required.");
       break;
     }
 
-    case "bank_financial_verification": {
-      if (!isNonEmptyString(form.bankName)) addError("bankName", "Bank name is required.");
-      if (!isNonEmptyString(form.accountHolderName)) addError("accountHolderName", "Account holder name is required.");
-      if (!isNonEmptyString(form.accountNumber)) addError("accountNumber", "Account number is required.");
-      if (!isNonEmptyString(form.confirmAccountNumber)) {
-        addError("confirmAccountNumber", "Please confirm account number.");
-      } else if (form.accountNumber !== form.confirmAccountNumber) {
-        addError("confirmAccountNumber", "Account numbers do not match.");
-      }
-      if (!isNonEmptyString(form.ifscCode)) addError("ifscCode", "IFSC code is required.");
-      if (!isNonEmptyString(form.branchName)) addError("branchName", "Branch name is required.");
-      if (!isNonEmptyString(form.panNumber)) addError("panNumber", "PAN number is required.");
+    case "bank_details": {
+      const countryOrigin = String(form.countryOrigin || "");
+      const bankConfig = getBankFieldConfig(countryOrigin);
 
-      if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.cancelledCheque)) {
-        addError("cancelledChequeDocumentId", "Cancelled cheque upload is required.");
-      }
-      if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.gstCertificate)) {
-        addError("gstCertificateDocumentId", "GST certificate upload is required.");
-      }
-      if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.panCard)) {
-        addError("panCardDocumentId", "PAN card upload is required.");
-      }
-      if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.factoryLicense)) {
-        addError("factoryLicenseDocumentId", "Factory license upload is required.");
-      }
-
-      if (isExporter) {
-        if (!isNonEmptyString(form.iecNumber)) addError("iecNumber", "IEC number is required for exporters.");
-        if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.iecCertificate)) {
-          addError("iecCertificateDocumentId", "IEC certificate upload is required for exporters.");
+      // Validate country-aware required bank fields
+      for (const fieldDef of bankConfig.fields) {
+        if (fieldDef.required && !isNonEmptyString(form[fieldDef.key])) {
+          addError(fieldDef.key, `${fieldDef.label} is required.`);
         }
+      }
+
+      // Account mismatch check
+      if (
+        isNonEmptyString(form.accountNumber) &&
+        isNonEmptyString(form.confirmAccountNumber) &&
+        form.accountNumber !== form.confirmAccountNumber
+      ) {
+        addError("confirmAccountNumber", "Account numbers do not match.");
       }
 
       if (!isTruthy(form.sellerAgreement)) addError("sellerAgreement", "You must accept the Seller Agreement.");
@@ -230,75 +225,6 @@ export function validateSellerOnboardingStep(
       break;
     }
 
-    case "profile_completion": {
-      let totalPhotos = 0;
-      for (const category of FACTORY_PHOTO_CATEGORIES) {
-        const items = images[category] ?? [];
-        totalPhotos += items.length;
-        const limits = FACTORY_PHOTO_LIMITS[category];
-        if (limits) {
-          if (items.length < limits.min) {
-            addError(
-              `factoryPhotos_${category}`,
-              `${category} requires at least ${limits.min} photo${limits.min === 1 ? "" : "s"}.`,
-            );
-          }
-          if (items.length > limits.max) {
-            addError(
-              `factoryPhotos_${category}`,
-              `${category} allows at most ${limits.max} photos.`,
-            );
-          }
-        }
-      }
-      if (totalPhotos < OVERALL_FACTORY_PHOTO_LIMITS.min) {
-        addError("factoryPhotos", `Factory photos require at least ${OVERALL_FACTORY_PHOTO_LIMITS.min} images total.`);
-      }
-      if (totalPhotos > OVERALL_FACTORY_PHOTO_LIMITS.max) {
-        addError("factoryPhotos", `Factory photos allow at most ${OVERALL_FACTORY_PHOTO_LIMITS.max} images total.`);
-      }
-
-      const machines = Array.isArray(form.machines) ? (form.machines as Record<string, unknown>[]) : [];
-      if (machines.length === 0) {
-        addError("machines", "Add at least one machine.");
-      }
-      for (let i = 0; i < machines.length; i++) {
-        const row = machines[i];
-        if (!isNonEmptyString(row.machineName)) {
-          addError(`machines[${i}].machineName`, "Machine name is required.");
-        }
-      }
-
-      const certifications = Array.isArray(form.certifications) ? (form.certifications as Record<string, unknown>[]) : [];
-      for (let i = 0; i < certifications.length; i++) {
-        const row = certifications[i];
-        if (!isNonEmptyString(row.certificateName)) {
-          addError(`certifications[${i}].certificateName`, "Certificate name is required.");
-        }
-        if (!isNonEmptyString(row.certificateFileId ?? row.documentUrl)) {
-          addError(`certifications[${i}].certificateFileId`, "Certificate PDF upload is required.");
-        }
-      }
-
-      const exportExperience = Array.isArray(form.exportExperience)
-        ? (form.exportExperience as Record<string, unknown>[])
-        : [];
-      for (let i = 0; i < exportExperience.length; i++) {
-        const row = exportExperience[i];
-        if (!isNonEmptyString(row.customerName)) {
-          addError(`exportExperience[${i}].customerName`, "Customer name is required.");
-        }
-        if (!isNonEmptyString(row.country)) {
-          addError(`exportExperience[${i}].country`, "Country is required.");
-        }
-        if (!isNonEmptyString(row.proofFileId ?? row.proofDocumentUrl)) {
-          addError(`exportExperience[${i}].proofFileId`, "Proof of export upload is required.");
-        }
-      }
-      break;
-    }
-
-    case "registration_complete":
     default:
       break;
   }

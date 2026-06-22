@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
 import { getServerDevelopmentTrustMode } from "@/lib/marketplace/trust-mode-server";
 import {
@@ -14,15 +15,40 @@ import { getVerificationStrategy } from "@/lib/marketplace/verification-strategi
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  console.log("===== ONBOARDING STATUS =====");
+
   const user = await getServerUser();
+  const supabase = createSupabaseServerClient();
+
   if (!user) {
-    return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
+    console.log("NO USER (getServerUser returned null/undefined)");
+    return NextResponse.json(
+      { success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+      { status: 401 },
+    );
   }
 
-  const supabase = createSupabaseServerClient();
   if (!supabase) {
-    return NextResponse.json({ success: false, error: { code: "DB_UNAVAILABLE", message: "Database unavailable" } }, { status: 503 });
+    console.log("NO SUPABASE CLIENT (createSupabaseServerClient returned falsy)");
+    return NextResponse.json(
+      { success: false, error: { code: "DB_UNAVAILABLE", message: "Database unavailable" } },
+      { status: 503 },
+    );
   }
+
+  const authUserResult = await supabase.auth.getUser();
+  console.log("AUTH USER", authUserResult?.data?.user ?? null);
+  if (authUserResult?.error) console.log("AUTH USER ERROR", authUserResult.error);
+
+  try {
+    const cookieNames = cookies()
+      .getAll()
+      .map((c) => c.name);
+    console.log("COOKIE NAMES", cookieNames);
+  } catch (e) {
+    console.log("COOKIE READ ERROR", e);
+  }
+
 
   const developmentTrustMode = await getServerDevelopmentTrustMode(supabase);
 
@@ -33,6 +59,19 @@ export async function GET() {
     .maybeSingle();
 
   const sellerId = sellerResult.data?.id;
+
+  if (!sellerResult.data) {
+    console.log("NO seller_profiles row for user.id", user.id);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: "SELLER_NOT_FOUND", message: "Seller profile not found" },
+      },
+      { status: 404 },
+    );
+  }
+
+  const seller = sellerResult.data;
 
   const [sessionResult, companyResult, docsResult, mediaResult, trustResult] = await Promise.all([
       supabase
@@ -71,7 +110,6 @@ export async function GET() {
         : Promise.resolve({ data: null }),
     ]);
 
-  const seller = sellerResult.data;
   const draft = (sessionResult.data?.draft_payload ?? {}) as Record<string, unknown>;
   const company = companyResult.data;
 
@@ -91,7 +129,8 @@ export async function GET() {
   const uploadedDocTypes = new Set((docsResult.data ?? []).map((d) => d.document_type));
   const countryOrigin = company?.country_id?.toString?.() ?? null;
   const strategy = getVerificationStrategy(countryOrigin);
-  const requiredDocumentsUploaded = strategy.phase1RequiredKycTypes.every((t) => uploadedDocTypes.has(t));
+  const registrationDocumentsVerified = strategy.phase1RequiredKycTypes.every((t) => uploadedDocTypes.has(t));
+  const requiredDocumentsUploaded = registrationDocumentsVerified; // backward-compatible alias
 
   const onboardingStatus = (seller?.onboarding_status ?? "REGISTERED") as SupplierOnboardingStatus;
 
@@ -104,6 +143,12 @@ export async function GET() {
     requiredDocumentsUploaded,
     developmentTrustMode,
   });
+
+  const { data: bank } = await supabase
+    .from("seller_bank_details")
+    .select("verification_status")
+    .eq("seller_profile_id", seller?.id ?? null)
+    .maybeSingle();
 
   const trustBreakdown = calculateSupplierTrustScore({
     profileCompletionPercent: completion.overallPercent,
@@ -134,7 +179,12 @@ export async function GET() {
       remainingItems: remaining,
       emailVerified,
       mobileVerified,
+      // Backward-compatible alias:
       requiredDocumentsUploaded,
+      // New explicit Phase 1 vs Phase 2 semantics:
+      registrationDocumentsVerified,
+      trustDocumentsVerified: Boolean(bank?.verification_status === "approved"),
+      verificationRegion: strategy.verificationRegion,
       marketplaceUnlocked: marketplaceGate.allowed && !marketplaceGate.hardBlocked,
       marketplaceGate,
       trustScore: trustResult.data?.trust_score ?? trustBreakdown.trustScore,
