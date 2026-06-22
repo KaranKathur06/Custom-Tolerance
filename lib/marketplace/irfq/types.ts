@@ -53,6 +53,16 @@ export type IrfqDraftPayload = {
   supplierLocationPref?: Record<string, boolean>;
   supplierRequirements?: Record<string, boolean>;
   advancedSupplierFilters?: Record<string, unknown>;
+  capabilityMatrixFilters?: {
+    requiredMachines?: string[];
+    maxPartLengthMm?: number | null;
+    maxPartWidthMm?: number | null;
+    maxPartHeightMm?: number | null;
+    minToleranceMm?: number | null;
+    minDailyCapacity?: number | null;
+    minMonthlyCapacity?: number | null;
+    requiredInspection?: string[];
+  };
 };
 
 export type IrfqItemInput = {
@@ -98,6 +108,22 @@ export type IrfqReferenceData = {
   factorySizeRanges: Array<{ slug: string; label: string }>;
   productionCapacity: Array<{ slug: string; label: string }>;
   experienceYears: Array<{ slug: string; label: string; minYears: number }>;
+  machineTypes: Array<{ slug: string; name: string; category: string }>;
+  inspectionEquipment: Array<{ slug: string; name: string }>;
+  certifications: Array<{ slug: string; name: string; category: string }>;
+};
+
+export type IrfqRiskAssessmentResult = {
+  riskLevel: "low" | "medium" | "high";
+  riskScore: number;
+  factors: Array<{
+    code: string;
+    severity: "low" | "medium" | "high";
+    message: string;
+    suggestion?: string;
+  }>;
+  supplierPoolSize: number;
+  suggestions: string[];
 };
 
 export const IRFQ_COMPOSER_STEPS = [

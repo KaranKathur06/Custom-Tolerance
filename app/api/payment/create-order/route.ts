@@ -66,10 +66,11 @@ export async function POST(request: Request) {
 
   await auth.supabase.from("payments").insert({
     user_id: auth.user.id,
-    external_id: order.id,
+    razorpay_order_id: order.id,
     amount: amount / 100,
     currency,
     status: "PENDING",
+    plan: planId ?? null,
     metadata: { planId, razorpayOrderId: order.id },
   });
 

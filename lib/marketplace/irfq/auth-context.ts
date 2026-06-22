@@ -15,16 +15,28 @@ export async function getIrfqAuthContext(supabase: SupabaseClient, userId: strin
     Math.max(0, buyerGateContext.trustLevel ?? 0),
   ) as 0 | 1 | 2 | 3 | 4;
 
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("plan, status")
+  const { data: irfqSub } = await supabase
+    .from("irfq_subscriptions")
+    .select("plan_slug, status")
     .eq("user_id", userId)
-    .eq("status", "ACTIVE")
+    .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  const subscriptionPlan = resolveUserIrfqPlan(membership?.plan, trustLevel);
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("plan, status")
+    .eq("user_id", userId)
+    .in("status", ["active", "ACTIVE"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let subscriptionPlan = resolveUserIrfqPlan(membership?.plan, trustLevel);
+  if (irfqSub?.plan_slug) {
+    subscriptionPlan = irfqSub.plan_slug as typeof subscriptionPlan;
+  }
 
   const publishGate = evaluateProcurementGate({
     action: "publish_rfq",

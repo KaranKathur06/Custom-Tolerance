@@ -58,6 +58,7 @@ export function useIrfqDraft(initialMethod: IrfqCreationMethod = "manual") {
           currencyCode: rfq.currency_code ?? prev.currencyCode,
           supplierLocationPref: rfq.supplier_location_pref ?? prev.supplierLocationPref,
           supplierRequirements: rfq.supplier_requirements ?? prev.supplierRequirements,
+          capabilityMatrixFilters: rfq.capability_matrix_filters ?? prev.capabilityMatrixFilters,
         }));
       })
       .catch(() => undefined);

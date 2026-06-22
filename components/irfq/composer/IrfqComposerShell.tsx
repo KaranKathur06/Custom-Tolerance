@@ -19,13 +19,18 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useTaxonomyRegistry } from "@/lib/marketplace/use-taxonomy-registry";
 import { useIrfqDraft } from "@/lib/hooks/useIrfqDraft";
+import { useIrfqSubscription } from "@/lib/hooks/useIrfqSubscription";
 import { CreationMethodSelector } from "./CreationMethodSelector";
+import { CapabilityMatrixFilters } from "./CapabilityMatrixFilters";
+import { RfqRiskIndicator } from "./RfqRiskIndicator";
+import { SubscriptionGateBanner } from "./SubscriptionGateBanner";
 import {
   IRFQ_COMPOSER_STEPS,
   type IrfqCreationMethod,
+  type IrfqRiskAssessmentResult,
 } from "@/lib/marketplace/irfq/types";
 import { validateDraftStep } from "@/lib/marketplace/irfq/validation";
-import { canUseAdvancedFilters } from "@/lib/marketplace/irfq/subscription-gates";
+import { canUseAdvancedFilters, canUseCapabilityMatrixFilters } from "@/lib/marketplace/irfq/subscription-gates";
 
 type IrfqComposerShellProps = {
   supplierSlug?: string | null;
@@ -48,6 +53,8 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
     materialGrade: "",
     tolerance: "pm0_1mm",
   });
+  const [riskAssessment, setRiskAssessment] = useState<IrfqRiskAssessmentResult | null>(null);
+  const [riskLoading, setRiskLoading] = useState(false);
 
   const {
     draftId,
@@ -64,8 +71,24 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
     clearDraftStorage,
   } = useIrfqDraft(creationMethod);
 
-  const subscriptionPlan = "free" as const;
+  const { plan: subscriptionPlan, limits, usage, loading: subscriptionLoading } =
+    useIrfqSubscription(isAuthenticated);
   const progress = step < 0 ? 0 : ((step + 1) / IRFQ_COMPOSER_STEPS.length) * 100;
+
+  useEffect(() => {
+    if (step !== 7 || !draftId) return;
+    setRiskLoading(true);
+    fetch(`/api/v2/rfqs/${draftId}/risk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payload }),
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) setRiskAssessment(json.data);
+      })
+      .finally(() => setRiskLoading(false));
+  }, [step, draftId, payload]);
 
   useEffect(() => {
     updatePayload({ creationMethod });
@@ -271,6 +294,14 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
           <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm text-blue-800">
             Targeting supplier: <strong>{supplierSlug}</strong>
           </p>
+        ) : null}
+
+        {!subscriptionLoading && isAuthenticated ? (
+          <SubscriptionGateBanner
+            plan={subscriptionPlan}
+            rfqsCreated={usage.rfqsCreated}
+            rfqsLimit={limits.rfqsPerMonth}
+          />
         ) : null}
 
         {error ? (
@@ -507,6 +538,12 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
                   Upgrade to Premium to unlock advanced supplier filters (turnover, factory size, certifications)
                 </div>
               ) : null}
+              <CapabilityMatrixFilters
+                payload={payload}
+                referenceData={referenceData}
+                locked={!canUseCapabilityMatrixFilters(subscriptionPlan)}
+                onChange={(capabilityMatrixFilters) => updatePayload({ capabilityMatrixFilters })}
+              />
             </div>
           ) : null}
 
@@ -616,6 +653,7 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
           {step === 7 ? (
             <div className="space-y-4">
               <h2 className="text-xl font-bold">Review & Publish</h2>
+              <RfqRiskIndicator assessment={riskAssessment} loading={riskLoading} />
               <dl className="grid gap-2 text-sm sm:grid-cols-2">
                 <div><dt className="text-slate-500">Title</dt><dd className="font-medium">{payload.rfqTitle || payload.projectName || "—"}</dd></div>
                 <div><dt className="text-slate-500">Project type</dt><dd className="font-medium">{payload.projectType || "—"}</dd></div>
@@ -623,7 +661,8 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
                 <div><dt className="text-slate-500">Files</dt><dd className="font-medium">{files.length} attached</dd></div>
               </dl>
               <p className="text-sm text-slate-600">
-                On publish, CT-IRFQ will match up to 5 suppliers (Free plan) and notify qualified manufacturers.
+                On publish, CT-IRFQ will match up to{" "}
+                {limits.maxSupplierMatches ?? "unlimited"} suppliers ({subscriptionPlan} plan) and notify qualified manufacturers.
               </p>
             </div>
           ) : null}

@@ -71,6 +71,23 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
+  if (
+    payload.capabilityMatrixFilters &&
+    Object.keys(payload.capabilityMatrixFilters).length > 0 &&
+    !canUseAdvancedFilters(ctx.subscriptionPlan)
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "SUBSCRIPTION_GATE",
+          message: "Upgrade to Premium to use supplier capability matrix filters",
+        },
+      },
+      { status: 403 },
+    );
+  }
+
   const { data: rfqRow } = await auth.supabase
     .from("rfqs")
     .select("project_name, rfq_title, title, project_type, delivery_state, delivery_city, supplier_location_pref")
@@ -110,6 +127,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       success: true,
       data: result.rfq,
       matches: result.matches,
+      risk: result.risk,
       href: `/rfq/${result.rfq.slug}`,
       gate: ctx.publishGate.message ? ctx.publishGate : undefined,
     });

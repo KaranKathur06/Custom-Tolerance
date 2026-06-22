@@ -80,3 +80,7 @@ export function canUseCreationMethod(
 export function canUseAdvancedFilters(plan: IrfqSubscriptionPlan): boolean {
   return getIrfqPlanLimits(plan).advancedFilters;
 }
+
+export function canUseCapabilityMatrixFilters(plan: IrfqSubscriptionPlan): boolean {
+  return getIrfqPlanLimits(plan).advancedFilters;
+}

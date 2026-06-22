@@ -27,6 +27,9 @@ export async function loadIrfqReferenceData(
     factorySizeRanges,
     productionCapacity,
     experienceYears,
+    machineTypes,
+    inspectionEquipment,
+    certifications,
   ] = await Promise.all([
     supabase.from("ref_project_types").select("slug, name").order("sort_order"),
     supabase.from("ref_units").select("slug, name").order("sort_order"),
@@ -44,6 +47,9 @@ export async function loadIrfqReferenceData(
     supabase.from("ref_factory_size_ranges").select("slug, label").order("sort_order"),
     supabase.from("ref_production_capacity").select("slug, label").order("sort_order"),
     supabase.from("ref_experience_years").select("slug, label, min_years").order("sort_order"),
+    supabase.from("ref_machine_types").select("slug, name, category").order("sort_order"),
+    supabase.from("ref_inspection_equipment").select("slug, name").order("sort_order"),
+    supabase.from("ref_certifications").select("slug, name, category").order("sort_order"),
   ]);
 
   return {
@@ -76,6 +82,9 @@ export async function loadIrfqReferenceData(
       label: e.label,
       minYears: e.min_years,
     })),
+    machineTypes: machineTypes.error ? [] : (machineTypes.data ?? []),
+    inspectionEquipment: inspectionEquipment.error ? [] : (inspectionEquipment.data ?? []),
+    certifications: certifications.error ? [] : (certifications.data ?? []),
   };
 }
 

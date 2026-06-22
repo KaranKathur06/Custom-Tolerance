@@ -9,7 +9,7 @@ import {
 import { evaluateSupplierMarketplaceGate } from "@/lib/marketplace/supplier-marketplace-gates";
 import type { SupplierOnboardingStatus } from "@/lib/marketplace/supplier-onboarding-status";
 import { getSupplierVerificationBadges, calculateSupplierTrustScore } from "@/lib/marketplace/supplier-trust-score";
-import { MANDATORY_DOCUMENT_TYPES } from "@/lib/marketplace/supplier-profile-completion";
+import { getVerificationStrategy } from "@/lib/marketplace/verification-strategies";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ export async function GET() {
         .maybeSingle(),
       supabase
         .from("companies")
-        .select("id, name, gst_number, email_verified, phone_verified, verification_status")
+        .select("id, name, gst_number, email_verified, phone_verified, verification_status, country_id")
         .or(`owner_id.eq.${user.id},profile_id.eq.${user.id}`)
         .is("deleted_at", null)
         .limit(1)
@@ -89,7 +89,9 @@ export async function GET() {
   const remaining = getRemainingCompletionItems(completion);
 
   const uploadedDocTypes = new Set((docsResult.data ?? []).map((d) => d.document_type));
-  const requiredDocumentsUploaded = MANDATORY_DOCUMENT_TYPES.every((t) => uploadedDocTypes.has(t));
+  const countryOrigin = company?.country_id?.toString?.() ?? null;
+  const strategy = getVerificationStrategy(countryOrigin);
+  const requiredDocumentsUploaded = strategy.phase1RequiredKycTypes.every((t) => uploadedDocTypes.has(t));
 
   const onboardingStatus = (seller?.onboarding_status ?? "REGISTERED") as SupplierOnboardingStatus;
 
@@ -106,7 +108,7 @@ export async function GET() {
   const trustBreakdown = calculateSupplierTrustScore({
     profileCompletionPercent: completion.overallPercent,
     documentsUploaded: docsResult.data?.length ?? 0,
-    documentsRequired: MANDATORY_DOCUMENT_TYPES.length,
+    documentsRequired: strategy.phase1RequiredKycTypes.length,
     documentsApproved: (docsResult.data ?? []).filter((d) => d.verification_status === "approved").length,
     emailVerified,
     mobileVerified,

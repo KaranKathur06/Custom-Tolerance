@@ -4,6 +4,8 @@ import { countRfqItems } from "./items";
 import { validatePublishRequirements } from "./validation";
 import type { IrfqSubscriptionPlan } from "./types";
 import { getIrfqPlanLimits } from "./subscription-gates";
+import { upsertRfqCapabilityRequirements } from "./subscription-service";
+import { computeRfqRiskAssessment, persistRfqRiskAssessment } from "./risk-scoring";
 
 export async function incrementRfqUsage(
   supabase: SupabaseClient,
@@ -61,6 +63,24 @@ export async function publishIrfqDraft(
     throw new Error("Monthly RFQ limit reached. Upgrade to Premium for unlimited RFQs.");
   }
 
+  const { data: itemRows } = await supabase
+    .from("rfq_items")
+    .select("tolerance")
+    .eq("rfq_id", rfqId);
+  const itemTolerances = (itemRows ?? [])
+    .map((row) => row.tolerance as string | null)
+    .filter(Boolean) as string[];
+
+  await upsertRfqCapabilityRequirements(supabase, rfqId, payload, itemTolerances);
+
+  const riskAssessment = await computeRfqRiskAssessment(
+    supabase,
+    rfqId,
+    payload,
+    itemTolerances,
+  );
+  await persistRfqRiskAssessment(supabase, rfqId, riskAssessment);
+
   const { data, error } = await supabase
     .from("rfqs")
     .update({
@@ -115,5 +135,5 @@ export async function publishIrfqDraft(
     metadata: { slug: data.slug, matches: matches?.length ?? 0 },
   });
 
-  return { rfq: data, matches: matches ?? [] };
+  return { rfq: data, matches: matches ?? [], risk: riskAssessment };
 }
