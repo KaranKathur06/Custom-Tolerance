@@ -33,7 +33,6 @@ import {
 } from '@/lib/auth/rbac';
 import { authLog, authWarn } from '@/lib/auth/auth-logger';
 import { isSuperAdminOtpBypassEligible } from '@/lib/auth/admin-otp-bypass';
-import { evaluateAdminReviewAccess } from '@/lib/auth/admin-review-access';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 export type ProtectOptions = {
@@ -104,22 +103,6 @@ export async function protectApiRoute(
     return {
       error: { code: 'AUTH_REQUIRED', message: 'Authentication required' },
       status: 401,
-    };
-  }
-
-  const reviewAccess = evaluateAdminReviewAccess(user);
-  if (reviewAccess.isReviewer && !reviewAccess.active) {
-    authWarn('protectApiRoute', 'expired reviewer denied', {
-      userId: user.id,
-      reason: reviewAccess.reason,
-      path: new URL(request.url).pathname,
-    });
-    return {
-      error: {
-        code: 'REVIEW_ACCESS_EXPIRED',
-        message: 'Temporary admin review access has expired or been disabled',
-      },
-      status: 403,
     };
   }
 

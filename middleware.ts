@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { canPostRequirement } from "@/lib/constants/roles";
-import { evaluateAdminReviewAccess } from "@/lib/auth/admin-review-access";
 
 const ADMIN_ROLE_SET = new Set([
   "super_admin",
@@ -59,12 +58,6 @@ function isAdminVerified(request: NextRequest): boolean {
   }
 }
 
-function redirectWithResponseCookies(url: URL, response: NextResponse): NextResponse {
-  const redirect = NextResponse.redirect(url);
-  response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
-  return redirect;
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
@@ -115,16 +108,6 @@ export async function middleware(request: NextRequest) {
     }
 
     return response;
-  }
-
-  const reviewAccess = evaluateAdminReviewAccess(user);
-  if (reviewAccess.isReviewer && !reviewAccess.active) {
-    await supabase.auth.signOut({ scope: "local" });
-    response.cookies.set(ADMIN_VERIFIED_COOKIE, "", { path: "/", maxAge: 0 });
-
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("reviewExpired", "1");
-    return redirectWithResponseCookies(loginUrl, response);
   }
 
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));

@@ -17,15 +17,10 @@ export async function createAdminElevatedSession(
     userAgent: string | null;
     devicePlatform?: string | null;
     deviceMobile?: string | null;
-    maxExpiresAt?: Date;
   },
 ): Promise<{ sessionToken: string; expiresAt: Date; error?: string }> {
   const sessionToken = generateAdminSessionToken();
-  const defaultExpiresAt = new Date(Date.now() + ADMIN_SESSION_DURATION_HOURS * 60 * 60 * 1000);
-  const expiresAt =
-    params.maxExpiresAt && params.maxExpiresAt < defaultExpiresAt
-      ? params.maxExpiresAt
-      : defaultExpiresAt;
+  const expiresAt = new Date(Date.now() + ADMIN_SESSION_DURATION_HOURS * 60 * 60 * 1000);
 
   const { error } = await db.from("admin_sessions").insert({
     user_id: params.userId,
@@ -55,8 +50,6 @@ export function applyAdminVerifiedCookie(
     bypass?: boolean;
   },
 ): void {
-  const maxAge = Math.max(0, Math.floor((params.expiresAt.getTime() - Date.now()) / 1000));
-
   response.cookies.set(
     ADMIN_VERIFIED_COOKIE,
     JSON.stringify({
@@ -71,7 +64,7 @@ export function applyAdminVerifiedCookie(
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge,
+      maxAge: ADMIN_SESSION_DURATION_HOURS * 60 * 60,
     },
   );
 }
