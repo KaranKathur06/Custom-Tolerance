@@ -155,7 +155,7 @@ function SearchableMultiSelect({
             </button>
           ))}
         {filtered.length === 0 ? (
-          <p className="text-xs text-slate-400">No results for "{query}"</p>
+          <p className="text-xs text-slate-400">No results for &quot;{query}&quot;</p>
         ) : null}
       </div>
 
@@ -266,7 +266,7 @@ export function BusinessDetailsStep({
         defaultOpen={false}
       >
         <p className="mb-3 text-xs text-slate-500">
-          Tell buyers how you're willing to work. These become RFQ matching filters.
+          Tell buyers how you&apos;re willing to work. These become RFQ matching filters.
         </p>
         <Field label="Select all that apply" error={errors.buyerServices}>
           <MultiSelectChips
