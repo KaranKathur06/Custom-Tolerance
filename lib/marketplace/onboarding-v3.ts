@@ -22,112 +22,115 @@ export type OnboardingStepDefinition<TStepKey extends string> = {
   phase?: "registration" | "profile_boost";
 };
 
-export const BUYER_ONBOARDING_V3_STEPS: OnboardingStepDefinition<BuyerOnboardingV3StepKey>[] = [
-  {
-    key: "buyer_registration",
-    title: "Buyer Registration",
-    goal: "Verify your company identity and procurement contact details.",
-    requiredFields: [
-      "companyName",
-      "businessEmail",
-      "emailVerified",
-      "country",
-      "state",
-      "city",
-      "companyWebsite",
-      "companyType",
-      "fullName",
-      "designation",
-      "mobileNumber",
-      "mobileVerified",
-      "industries",
-      "categoryInterests",
-      "buyerAgreement",
-      "termsAccepted",
-      "privacyAccepted",
-    ],
-  },
-  {
-    key: "business_information",
-    title: "Business Information",
-    goal: "Capture buying behavior for RFQ matching and supplier recommendations.",
-    requiredFields: [
-      "annualProcurementBudget",
-      "orderFrequency",
-      "procurementMethods",
-      "importExperience",
-      "preferredIncoterms",
-      "preferredPaymentTerms",
-    ],
-  },
-  {
-    key: "profile_completion",
-    title: "Profile Completion",
-    goal: "Strengthen buyer trust with public business context.",
-    requiredFields: ["companyDescription", "procurementTeamSize"],
-  },
-];
+export const BUYER_ONBOARDING_V3_STEPS: OnboardingStepDefinition<BuyerOnboardingV3StepKey>[] =
+  [
+    {
+      key: "buyer_registration",
+      title: "Buyer Registration",
+      goal: "Verify your company identity and procurement contact details.",
+      requiredFields: [
+        "companyName",
+        "businessEmail",
+        "emailVerified",
+        "country",
+        "state",
+        "city",
+        "companyWebsite",
+        // companyTypes is an array; hasValue returns true when length >= 1
+        "companyTypes",
+        "fullName",
+        "designation",
+        "mobileNumber",
+        "industries",
+        "categoryInterests",
+        "buyerAgreement",
+        "termsAccepted",
+        "privacyAccepted",
+      ],
+    },
+    {
+      key: "business_information",
+      title: "Business Information",
+      goal: "Capture buying behavior for RFQ matching and supplier recommendations.",
+      requiredFields: [
+        "annualProcurementBudget",
+        "orderFrequency",
+        "procurementMethods",
+        "importExperience",
+        "countriesImportedFrom",
+        "preferredIncoterms",
+        "preferredPaymentTerms",
+      ],
+    },
+    {
+      key: "profile_completion",
+      title: "Profile Completion",
+      goal: "Strengthen buyer trust with public business context.",
+      requiredFields: ["companyDescription", "procurementTeamSize"],
+    },
+  ];
 
-export const SELLER_ONBOARDING_V3_STEPS: OnboardingStepDefinition<SellerOnboardingV3StepKey>[] = [
-  {
-    key: "company_verification",
-    title: "Company Verification",
-    goal: "Verify your business identity. Country determines verification requirements.",
-    requiredFields: [
-      "countryOrigin",
-      "legalBusinessName",
-      "addressLine1",
-      "city",
-      "state",
-      "postalCode",
-    ],
-    phase: "registration",
-  },
-  {
-    key: "basic_information",
-    title: "Basic Information",
-    goal: "Confirm contact details, email, mobile, and factory address.",
-    requiredFields: [
-      "contactPersonName",
-      "designation",
-      "mobileNumber",
-      "mobileVerified",
-      "businessEmail",
-      "emailVerified",
-    ],
-    phase: "registration",
-  },
-  {
-    key: "registration_complete",
-    title: "Registration Complete",
-    goal: "Your marketplace account is now active.",
-    requiredFields: [],
-    phase: "registration",
-  },
-  {
-    key: "business_details",
-    title: "Business Details",
-    goal: "Describe capabilities, products, factory, team, and quality systems for higher visibility.",
-    requiredFields: ["sellerTypes"],
-    phase: "profile_boost",
-  },
-  {
-    key: "bank_details",
-    title: "Bank Details",
-    goal: "Add bank details and upload KYC documents for trust verification.",
-    requiredFields: [
-      "bankName",
-      "accountHolderName",
-      "accountNumber",
-      "confirmAccountNumber",
-      "sellerAgreement",
-      "termsAccepted",
-      "privacyAccepted",
-      "kycConsent",
-    ],
-    phase: "profile_boost",
-  },
-];
+export const SELLER_ONBOARDING_V3_STEPS: OnboardingStepDefinition<SellerOnboardingV3StepKey>[] =
+  [
+    {
+      key: "company_verification",
+      title: "Company Verification",
+      goal: "Verify your business identity. Country determines verification requirements.",
+      requiredFields: [
+        "countryOrigin",
+        "legalBusinessName",
+        "addressLine1",
+        "city",
+        "state",
+        "postalCode",
+      ],
+      phase: "registration",
+    },
+    {
+      key: "basic_information",
+      title: "Basic Information",
+      goal: "Confirm contact details, email, mobile, and factory address.",
+      requiredFields: [
+        "contactPersonName",
+        "designation",
+        "mobileNumber",
+        "mobileVerified",
+        "businessEmail",
+        "emailVerified",
+      ],
+      phase: "registration",
+    },
+    {
+      key: "registration_complete",
+      title: "Registration Complete",
+      goal: "Your marketplace account is now active.",
+      requiredFields: [],
+      phase: "registration",
+    },
+    {
+      key: "business_details",
+      title: "Business Details",
+      goal: "Describe your business nature, industries, capabilities, and team for higher visibility.",
+      requiredFields: ["sellerTypes", "businessNature"],
+      phase: "profile_boost",
+    },
+    {
+      key: "bank_details",
+      title: "Bank Details",
+      goal: "Add bank details and upload KYC documents for trust verification.",
+      requiredFields: [
+        "bankName",
+        "accountHolderName",
+        "accountNumber",
+        "confirmAccountNumber",
+        "sellerAgreement",
+        "termsAccepted",
+        "privacyAccepted",
+        "kycConsent",
+      ],
+      phase: "profile_boost",
+    },
+  ];
 
 export const COMPANY_TYPES = [
   "OEM",
@@ -201,7 +204,13 @@ export const ANNUAL_PROCUREMENT_BUDGETS = [
   "$5M+",
 ] as const;
 
-export const ORDER_FREQUENCIES = ["One Time", "Monthly", "Quarterly", "Yearly", "Continuous"] as const;
+export const ORDER_FREQUENCIES = [
+  "One Time",
+  "Monthly",
+  "Quarterly",
+  "Yearly",
+  "Continuous",
+] as const;
 export const PROCUREMENT_METHODS = [
   "RFQ Based",
   "Contract Manufacturing",
@@ -209,9 +218,29 @@ export const PROCUREMENT_METHODS = [
   "Direct Purchase",
   "Repeat Orders",
 ] as const;
-export const IMPORT_EXPERIENCE_OPTIONS = ["No", "1-2 Years", "3-5 Years", "5+ Years"] as const;
-export const INCOTERMS = ["EXW", "FOB", "CIF", "DDP", "FCA", "CPT", "CIP"] as const;
-export const PAYMENT_TERMS = ["Advance", "LC", "Net 30", "Net 60", "Net 90", "Escrow"] as const;
+export const IMPORT_EXPERIENCE_OPTIONS = [
+  "No",
+  "1-2 Years",
+  "3-5 Years",
+  "5+ Years",
+] as const;
+export const INCOTERMS = [
+  "EXW",
+  "FOB",
+  "CIF",
+  "DDP",
+  "FCA",
+  "CPT",
+  "CIP",
+] as const;
+export const PAYMENT_TERMS = [
+  "Advance",
+  "LC",
+  "Net 30",
+  "Net 60",
+  "Net 90",
+  "Escrow",
+] as const;
 export const PROCUREMENT_TEAM_SIZES = ["1-5", "6-20", "21-50", "50+"] as const;
 
 export const SELLER_TYPES = [
@@ -221,6 +250,9 @@ export const SELLER_TYPES = [
   "OEM",
   "ODM",
   "Contract Manufacturer",
+  "Private Label Manufacturer",
+  "Job Work Provider",
+  "Prototype Shop",
   "Service Provider",
   "Design & Engineering Company",
   "Distributor",
@@ -228,8 +260,164 @@ export const SELLER_TYPES = [
   "Tool Room",
   "Prototype Manufacturer",
   "Assembly Supplier",
+  "Individual Trader",
+  "Merchant Exporter",
   "Other",
 ] as const;
+
+export const BUSINESS_NATURE_OPTIONS = [
+  "Manufacturing Company",
+  "Trading Company",
+  "Individual Trader",
+  "Distributor",
+  "Service Company",
+  "Other",
+] as const;
+
+export const NON_MANUFACTURER_NATURES = [
+  "Trading Company",
+  "Individual Trader",
+  "Service Company",
+] as const;
+
+export const INDUSTRIES_SERVED_OPTIONS = [
+  "Automotive",
+  "Aerospace",
+  "Defence",
+  "Medical",
+  "Oil & Gas",
+  "Agriculture",
+  "Marine",
+  "Railway",
+  "Construction",
+  "Electronics",
+  "Energy",
+  "Food Processing",
+  "Heavy Engineering",
+  "Pharmaceutical",
+  "Textiles",
+  "Mining",
+  "Chemical",
+  "Packaging",
+  "Paper & Print",
+  "Rubber & Plastics",
+  "Semiconductor",
+  "Shipbuilding",
+  "Power Generation",
+  "Water & Waste Treatment",
+] as const;
+
+export const CAPABILITIES_OPTIONS = [
+  "CNC Turning",
+  "CNC Milling",
+  "VMC Machining",
+  "HMC Machining",
+  "Swiss Machining",
+  "EDM",
+  "Wire EDM",
+  "Laser Cutting",
+  "Waterjet Cutting",
+  "Plasma Cutting",
+  "Sheet Metal Fabrication",
+  "Welding",
+  "TIG Welding",
+  "MIG Welding",
+  "Spot Welding",
+  "Powder Coating",
+  "Anodizing",
+  "Electroplating",
+  "Surface Treatment",
+  "Heat Treatment",
+  "Injection Moulding",
+  "Blow Moulding",
+  "Casting",
+  "Die Casting",
+  "Sand Casting",
+  "Investment Casting",
+  "Forging",
+  "Hot Forging",
+  "Cold Forging",
+  "Stamping",
+  "Bending",
+  "Rolling",
+  "Extrusion",
+  "Drawing",
+  "Grinding",
+  "Honing",
+  "Lapping",
+  "Assembly",
+  "Sub-Assembly",
+  "3D Printing",
+  "Design Engineering",
+  "Reverse Engineering",
+  "Tool Design",
+  "CAD / CAM",
+  "Prototype Manufacturing",
+  "Testing & Inspection",
+  "Rubber Moulding",
+  "Plastic Moulding",
+  "Fasteners",
+] as const;
+
+export const BUYER_SERVICES_OPTIONS = [
+  "Unbranded (No Brand)",
+  "Contract Manufacturing",
+  "Buyer's Brand / Private Label",
+  "OEM",
+  "Custom Product Development",
+  "Prototype / Sample Development",
+  "Job Work Services",
+  "Final Finished Products",
+  "White Label",
+  "Design Assistance",
+  "Reverse Engineering",
+  "Packaging Services",
+  "Assembly Services",
+] as const;
+
+export const SUPPLIER_INTERESTS_OPTIONS = [
+  "Manufacturing under our own brand",
+  "Manufacturing for Buyer's Brand",
+  "OEM Partnerships",
+  "Licensing Opportunities",
+  "Long-term Supply Contracts",
+  "Prototype Development",
+  "Export Partnerships",
+  "Distribution Partners",
+  "Technology Collaboration",
+  "Joint Ventures",
+  "Custom Manufacturing",
+  "Government Projects",
+] as const;
+
+export const YEARS_IN_BUSINESS_OPTIONS = [
+  "0 - 1",
+  "2 - 5",
+  "5 - 10",
+  "10 - 20",
+  "20+",
+] as const;
+
+export const PRODUCTION_CAPACITY_UNITS = [
+  "pcs",
+  "kg",
+  "tons",
+  "MT",
+  "liters",
+  "meters",
+  "sq.m",
+  "cu.m",
+  "sets",
+  "rolls",
+  "boxes",
+  "cartons",
+  "bags",
+  "pairs",
+  "units",
+  "custom",
+] as const;
+
+export const VIDEO_URL_PLATFORMS = ["YouTube", "Vimeo", "Loom", "Company URL"] as const;
 
 export const CAPABILITY_CATEGORIES = [
   "CNC Machining",
@@ -291,9 +479,26 @@ export const LEAD_TIME_OPTIONS = [
 ] as const;
 
 export const SUB_CAPABILITIES: Record<string, string[]> = {
-  Casting: ["Sand Casting", "Investment Casting", "Die Casting", "Gravity Casting"],
-  "CNC Machining": ["CNC Turning", "CNC Milling", "VMC", "HMC", "Swiss Machining", "EDM"],
-  Forging: ["Open Die Forging", "Closed Die Forging", "Hot Forging", "Cold Forging"],
+  Casting: [
+    "Sand Casting",
+    "Investment Casting",
+    "Die Casting",
+    "Gravity Casting",
+  ],
+  "CNC Machining": [
+    "CNC Turning",
+    "CNC Milling",
+    "VMC",
+    "HMC",
+    "Swiss Machining",
+    "EDM",
+  ],
+  Forging: [
+    "Open Die Forging",
+    "Closed Die Forging",
+    "Hot Forging",
+    "Cold Forging",
+  ],
   "Sheet Metal": ["Laser Cutting", "Bending", "Stamping", "Welding"],
 };
 
@@ -310,7 +515,15 @@ export const MATERIAL_OPTIONS = [
   "Cast Iron",
 ] as const;
 
-export const LANGUAGE_OPTIONS = ["English", "Hindi", "German", "French", "Chinese", "Spanish", "Other"] as const;
+export const LANGUAGE_OPTIONS = [
+  "English",
+  "Hindi",
+  "German",
+  "French",
+  "Chinese",
+  "Spanish",
+  "Other",
+] as const;
 
 export const QUALITY_SYSTEM_OPTIONS = [
   "PPAP",
@@ -326,9 +539,19 @@ export const QUALITY_SYSTEM_OPTIONS = [
   "Other",
 ] as const;
 
-export const FACTORY_PHOTO_CATEGORIES = ["Exterior", "Shop Floor", "Machines", "QC Department", "Warehouse", "Office"] as const;
+export const FACTORY_PHOTO_CATEGORIES = [
+  "Exterior",
+  "Shop Floor",
+  "Machines",
+  "QC Department",
+  "Warehouse",
+  "Office",
+] as const;
 
-export const FACTORY_PHOTO_LIMITS: Record<string, { min: number; max: number }> = {
+export const FACTORY_PHOTO_LIMITS: Record<
+  string,
+  { min: number; max: number }
+> = {
   Exterior: { min: 1, max: 10 },
   "Shop Floor": { min: 2, max: 10 },
   Machines: { min: 0, max: 10 },
@@ -360,11 +583,30 @@ export const TOTAL_EMPLOYEES_OPTIONS = [
   "1,000+",
 ] as const;
 
-export const ENGINEERS_OPTIONS = ["0", "1 - 5", "6 - 10", "11 - 25", "26 - 50", "50+"] as const;
+export const ENGINEERS_OPTIONS = [
+  "0",
+  "1 - 5",
+  "6 - 10",
+  "11 - 25",
+  "26 - 50",
+  "50+",
+] as const;
 
-export const QC_TEAM_OPTIONS = ["0", "1 - 2", "3 - 5", "6 - 10", "11 - 25", "25+"] as const;
+export const QC_TEAM_OPTIONS = [
+  "0",
+  "1 - 2",
+  "3 - 5",
+  "6 - 10",
+  "11 - 25",
+  "25+",
+] as const;
 
-export const RD_TEAM_SIZE_OPTIONS = ["1 - 5", "6 - 10", "11 - 25", "25+"] as const;
+export const RD_TEAM_SIZE_OPTIONS = [
+  "1 - 5",
+  "6 - 10",
+  "11 - 25",
+  "25+",
+] as const;
 
 export const RD_SERVICE_OPTIONS = [
   "Product Design",
@@ -406,32 +648,47 @@ function hasValue(value: unknown): boolean {
   return value !== null && value !== undefined;
 }
 
-function sectionPercent(requiredFields: string[], values: Record<string, unknown>) {
+function sectionPercent(
+  requiredFields: string[],
+  values: Record<string, unknown>,
+) {
   if (!requiredFields.length) {
     return { percent: 100, missingFields: [] };
   }
 
   const missingFields = requiredFields.filter((field) => {
     if (field === "confirmAccountNumber") {
-      return String(values.accountNumber || "") !== String(values.confirmAccountNumber || "") || !hasValue(values.confirmAccountNumber);
+      return (
+        String(values.accountNumber || "") !==
+          String(values.confirmAccountNumber || "") ||
+        !hasValue(values.confirmAccountNumber)
+      );
     }
     return !hasValue(values[field]);
   });
 
   return {
-    percent: Math.round(((requiredFields.length - missingFields.length) / requiredFields.length) * 100),
+    percent: Math.round(
+      ((requiredFields.length - missingFields.length) / requiredFields.length) *
+        100,
+    ),
     missingFields,
   };
 }
 
-export function calculateBuyerOnboardingV3Completion(values: Record<string, unknown>): CompletionResult {
+export function calculateBuyerOnboardingV3Completion(
+  values: Record<string, unknown>,
+): CompletionResult {
   const sections = BUYER_ONBOARDING_V3_STEPS.map((step) => {
     const result = sectionPercent(step.requiredFields, values);
     return { key: step.key, label: step.title, ...result };
   });
 
   return {
-    overallPercent: Math.round(sections.reduce((sum, section) => sum + section.percent, 0) / sections.length),
+    overallPercent: Math.round(
+      sections.reduce((sum, section) => sum + section.percent, 0) /
+        sections.length,
+    ),
     sections,
   };
 }
@@ -441,7 +698,9 @@ export function calculateSellerOnboardingV3Completion(
   validatedSteps: string[] = [],
 ): CompletionResult {
   // Phase 1 (Registration): company_verification, basic_information, registration_complete
-  const phase1Steps = SELLER_ONBOARDING_V3_STEPS.filter((s) => s.phase === "registration");
+  const phase1Steps = SELLER_ONBOARDING_V3_STEPS.filter(
+    (s) => s.phase === "registration",
+  );
   const phase1Sections = phase1Steps.map((step) => {
     const isValidated = validatedSteps.includes(step.key);
     if (!isValidated && step.requiredFields.length > 0) {
@@ -457,9 +716,13 @@ export function calculateSellerOnboardingV3Completion(
   });
 
   // registration_complete: only 100% if all other Phase 1 steps pass
-  const regCompleteIndex = phase1Sections.findIndex((s) => s.key === "registration_complete");
+  const regCompleteIndex = phase1Sections.findIndex(
+    (s) => s.key === "registration_complete",
+  );
   if (regCompleteIndex >= 0) {
-    const otherPhase1 = phase1Sections.filter((s) => s.key !== "registration_complete");
+    const otherPhase1 = phase1Sections.filter(
+      (s) => s.key !== "registration_complete",
+    );
     const allPhase1Pass = otherPhase1.every((s) => s.percent >= 100);
     if (!allPhase1Pass) {
       phase1Sections[regCompleteIndex] = {
@@ -471,38 +734,71 @@ export function calculateSellerOnboardingV3Completion(
   }
 
   // Phase 2 (Profile Boost): business_details, bank_details
-  const phase2Sections = SELLER_ONBOARDING_V3_STEPS.filter((s) => s.phase === "profile_boost").map((step) => {
+  const phase2Sections = SELLER_ONBOARDING_V3_STEPS.filter(
+    (s) => s.phase === "profile_boost",
+  ).map((step) => {
     const result = sectionPercent(step.requiredFields, values);
     return { key: step.key, label: step.title, ...result };
   });
 
   // Profile bonus sections (array-based scoring)
-  const factoryPhotoArray = Array.isArray(values.factoryPhotos) ? (values.factoryPhotos as unknown[]) : [];
+  const factoryPhotoArray = Array.isArray(values.factoryPhotos)
+    ? (values.factoryPhotos as unknown[])
+    : [];
   const factoryPhotoCount = factoryPhotoArray.length;
   const factoryPhotoTarget = OVERALL_FACTORY_PHOTO_LIMITS.min;
+
+  // Business-nature-aware: trading/service companies are not penalised for missing factory photos
+  const businessNature = String(values.businessNature || "");
+  const isNonManufacturer = (NON_MANUFACTURER_NATURES as readonly string[]).includes(businessNature);
+  const factoryPhotoPercent = isNonManufacturer
+    ? 100 // Not applicable — don't penalise
+    : Math.min(100, Math.round((factoryPhotoCount / factoryPhotoTarget) * 100));
+
+  const videoUrls = Array.isArray(values.videoUrls) ? (values.videoUrls as string[]) : [];
+  const hasVideoUrl = videoUrls.some((url) => typeof url === "string" && url.trim().length > 0);
 
   const profileSections: CompletionSection[] = [
     {
       key: "factory_photos",
       label: "Factory Photos",
-      percent: Math.min(100, Math.round((factoryPhotoCount / factoryPhotoTarget) * 100)),
-      missingFields: factoryPhotoCount >= factoryPhotoTarget ? [] : ["Factory Photos"],
+      percent: factoryPhotoPercent,
+      missingFields:
+        factoryPhotoPercent >= 100 ? [] : ["Factory Photos"],
     },
     scoreArraySection("machines", "Machines", values.machines, 1),
     scoreArraySection("certifications", "Certifications", values.certifications, 1),
-    scoreArraySection("products", "Products", values.products, 1),
     scoreArraySection("quality_systems", "Quality Systems", values.qualitySystems, 1),
+    // New profile intelligence sections
+    scoreArraySection("industries_served", "Industries Served", values.industriesServed, 3),
+    scoreArraySection("capabilities", "Capabilities", values.capabilities, 5),
+    scoreArraySection("buyer_services", "Buyer Services", values.buyerServices, 3),
+    scoreArraySection("supplier_interests", "Supplier Interests", values.supplierInterests, 3),
+    {
+      key: "factory_video",
+      label: "Factory Video URL",
+      percent: hasVideoUrl ? 100 : 0,
+      missingFields: hasVideoUrl ? [] : ["Factory Video URL"],
+    },
   ];
 
   const sections = [...phase1Sections, ...phase2Sections, ...profileSections];
 
   return {
-    overallPercent: Math.round(sections.reduce((sum, section) => sum + section.percent, 0) / sections.length),
+    overallPercent: Math.round(
+      sections.reduce((sum, section) => sum + section.percent, 0) /
+        sections.length,
+    ),
     sections,
   };
 }
 
-function scoreArraySection(key: string, label: string, value: unknown, targetCount: number): CompletionSection {
+function scoreArraySection(
+  key: string,
+  label: string,
+  value: unknown,
+  targetCount: number,
+): CompletionSection {
   const count = Array.isArray(value) ? value.length : 0;
   const percent = Math.min(100, Math.round((count / targetCount) * 100));
   return {
@@ -516,14 +812,18 @@ function scoreArraySection(key: string, label: string, value: unknown, targetCou
 export function getBuyerV3MissingActionLabels(values: Record<string, unknown>) {
   const completion = calculateBuyerOnboardingV3Completion(values);
   return completion.sections.flatMap((section) =>
-    section.missingFields.map((field) => ({ section: section.label, label: formatFieldLabel(field) })),
+    section.missingFields.map((field) => ({
+      section: section.label,
+      label: formatFieldLabel(field),
+    })),
   );
 }
 
 export function getSellerV3HardGateStatus(values: Record<string, unknown>) {
   const isIndia = String(values.countryOrigin || "").toLowerCase() === "india";
 
-  // Phase 1 gate: identity verification only (no agreements — those are Phase 2)
+  // Phase 1 gate: identity verification only
+  // Factory License is NEVER a hard gate — it's optional for all seller types
   const requirements: Array<{ key: string; label: string }> = [
     { key: "emailVerified", label: "Verify email" },
     { key: "mobileVerified", label: "Verify mobile" },
@@ -535,14 +835,21 @@ export function getSellerV3HardGateStatus(values: Record<string, unknown>) {
       { key: "gstCertificateDocumentId", label: "Upload GST certificate" },
     );
   } else {
-    requirements.push(
-      { key: "verificationDocumentId", label: "Upload verification certificate" },
-    );
+    // International: verification document (DUNS or company reg) is required
+    // but factory license is never required — any business type can register
+    const verificationType = String(values.verificationType || "");
+    if (verificationType === "DUNS Number") {
+      requirements.push({ key: "dunsCertificateDocumentId", label: "Upload DUNS certificate" });
+    } else if (verificationType === "Company Registration Number") {
+      requirements.push({ key: "verificationCertificateDocumentId", label: "Upload registration certificate" });
+    }
   }
 
-  const isExporter = Array.isArray(values.sellerTypes)
-    ? (values.sellerTypes as string[]).includes("Exporter")
-    : String(values.sellerType || "") === "Exporter";
+  const sellerTypes = Array.isArray(values.sellerTypes) ? (values.sellerTypes as string[]) : [];
+  const isExporter =
+    sellerTypes.includes("Exporter") ||
+    sellerTypes.includes("Merchant Exporter") ||
+    String(values.sellerType || "") === "Exporter";
 
   if (isExporter) {
     requirements.push(

@@ -82,6 +82,7 @@ function fieldError(field: string, message: string): SellerValidationResult["fie
 function formatFieldLabel(field: string): string {
   const labels: Record<string, string> = {
     countryOrigin: "Country of Origin",
+    businessNature: "Business Nature",
     gstNumber: "GST Number",
     gstVerified: "GST Verification",
     legalBusinessName: "Legal Business Name",
@@ -99,6 +100,13 @@ function formatFieldLabel(field: string): string {
     businessEmail: "Business Email",
     emailVerified: "Email Verification",
     sellerTypes: "Seller Type",
+    sellerTypeOther: "Seller Type (Other)",
+    industriesServed: "Industries Served",
+    capabilities: "Capabilities",
+    buyerServices: "Buyer Services",
+    supplierInterests: "Supplier Interests",
+    yearsInBusiness: "Years in Business",
+    videoUrls: "Factory Video URLs",
     capabilityCategories: "Capability Categories",
     products: "Products",
     bankName: "Bank Name",
@@ -194,6 +202,16 @@ export function validateSellerOnboardingStep(
       const sellerTypes = form.sellerTypes;
       if (!Array.isArray(sellerTypes) || sellerTypes.length === 0) {
         addError("sellerTypes", "Select at least one seller type.");
+      }
+      // Validate sellerTypeOther if 'Other' is selected
+      if (Array.isArray(sellerTypes) && sellerTypes.includes("Other")) {
+        if (!isNonEmptyString(form.sellerTypeOther)) {
+          addError("sellerTypeOther", "Please specify your seller type.");
+        }
+      }
+      // businessNature is required for business_details
+      if (!isNonEmptyString(form.businessNature)) {
+        addError("businessNature", "Please select your business nature.");
       }
       break;
     }

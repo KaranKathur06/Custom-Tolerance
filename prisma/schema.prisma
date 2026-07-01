@@ -570,6 +570,28 @@ model Supplier {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // ── Business Intelligence Fields (Redesign 2026-07) ──────────────────────
+  // Core business identity — drives adaptive UI and trust scoring
+  businessNature       String?  @map("business_nature")
+  sellerTypeOther      String?  @map("seller_type_other")
+  yearsInBusiness      String?  @map("years_in_business")
+
+  // Search-optimised denormalized arrays (also stored in join tables)
+  industriesServed     String[] @default([]) @map("industries_served")
+  capabilities         String[] @default([]) @map("capabilities")
+  buyerServices        String[] @default([]) @map("buyer_services")
+  supplierInterests    String[] @default([]) @map("supplier_interests")
+
+  // Media — URL-only factory tour videos (no file upload overhead)
+  videoUrls            String[] @default([]) @map("video_urls")
+
+  // Production capacity unit for product catalog
+  productionCapacityUnit String? @map("production_capacity_unit")
+
+  // Factory license is optional — true for all new records
+  factoryLicenseOptional Boolean @default(true) @map("factory_license_optional")
+  // ─────────────────────────────────────────────────────────────────────────
+
   owner            User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   products         SupplierProduct[]
   capabilityLinks  SupplierCapability[]
@@ -578,9 +600,15 @@ model Supplier {
   @@index([isVerified])
   @@index([location])
   @@index([createdAt])
+  @@index([businessNature])
+  @@index([industriesServed], type: Gin)
+  @@index([capabilities], type: Gin)
+  @@index([buyerServices], type: Gin)
+  @@index([supplierInterests], type: Gin)
   @@map("suppliers")
   @@schema("public")
 }
+
 
 // ============================================
 // 17. SUPPLIER_PRODUCTS (Supplier Catalog)

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldCheck, Search } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldCheck, Search, ShieldPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Field, TextInput, NativeSelect } from "@/components/onboarding/OnboardingV3Wizard";
 import { DocumentUploadField } from "./DocumentUploadField";
 import { StructuredAddressFields, ALL_COUNTRIES } from "./StructuredAddressFields";
 import { SELLER_DOCUMENT_TYPE_KEYS } from "@/lib/marketplace/seller-onboarding-validation";
+import { BUSINESS_NATURE_OPTIONS } from "@/lib/marketplace/onboarding-v3";
 import type { StepProps, SellerUploadAsset } from "./types";
 
 type CompanyVerificationStepProps = StepProps & {
@@ -34,6 +35,8 @@ export function CompanyVerificationStep({
   const isIndia = countryOrigin.toLowerCase() === "india";
   const isGstVerified = Boolean(form.gstVerified);
   const verificationType = String(form.verificationType ?? "");
+  const businessNature = String(form.businessNature ?? "");
+  const sellerTypeOther = String(form.sellerTypeOther ?? "");
 
   const [countrySearch, setCountrySearch] = useState("");
   const [countryOpen, setCountryOpen] = useState(false);
@@ -57,6 +60,47 @@ export function CompanyVerificationStep({
         Verify your business identity. Country determines which verification requirements apply.
       </p>
 
+      {/* Business Nature — adaptive path selector */}
+      <div>
+        <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
+          Business Nature <span className="text-red-500">*</span>
+        </label>
+        {errors.businessNature ? (
+          <p className="mb-2 text-xs font-semibold text-red-600">{errors.businessNature}</p>
+        ) : null}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {BUSINESS_NATURE_OPTIONS.map((nature) => (
+            <label
+              key={nature}
+              className={cn(
+                "flex cursor-pointer items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm font-medium transition-colors",
+                businessNature === nature
+                  ? "border-blue-500 bg-blue-50 text-blue-800"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+              )}
+            >
+              <input
+                type="radio"
+                name="businessNature"
+                value={nature}
+                checked={businessNature === nature}
+                onChange={() => onFieldChange("businessNature", nature)}
+                className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-600"
+              />
+              {nature}
+            </label>
+          ))}
+        </div>
+        {businessNature === "Other" ? (
+          <div className="mt-3">
+            <TextInput
+              value={sellerTypeOther}
+              onChange={(e) => onFieldChange("sellerTypeOther", e.target.value)}
+              placeholder="Please describe your business nature..."
+            />
+          </div>
+        ) : null}
+      </div>
       {/* Country of Origin — searchable dropdown */}
       <div className="relative">
         <Field label="Country of Origin" required error={errors.countryOrigin}>
@@ -229,16 +273,21 @@ export function CompanyVerificationStep({
                   asset={documents[SELLER_DOCUMENT_TYPE_KEYS.iecCertificate]}
                   onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.iecCertificate, asset)}
                 />
-                <DocumentUploadField
-                  label="Factory License"
-                  required
-                  documentType={SELLER_DOCUMENT_TYPE_KEYS.factoryLicense}
-                  accept=".pdf"
-                  maxSizeMB={10}
-                  asset={documents[SELLER_DOCUMENT_TYPE_KEYS.factoryLicense]}
-                  error={errors.factoryLicenseDocumentId}
-                  onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.factoryLicense, asset)}
-                />
+                {/* Factory License — Optional for all business types */}
+                <div className="relative">
+                  <DocumentUploadField
+                    label="Factory License"
+                    documentType={SELLER_DOCUMENT_TYPE_KEYS.factoryLicense}
+                    accept=".pdf"
+                    maxSizeMB={10}
+                    asset={documents[SELLER_DOCUMENT_TYPE_KEYS.factoryLicense]}
+                    onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.factoryLicense, asset)}
+                  />
+                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
+                    <ShieldPlus className="h-3.5 w-3.5" />
+                    <span>Optional — uploading strengthens your trust score</span>
+                  </div>
+                </div>
               </div>
             </>
           ) : (
@@ -323,14 +372,16 @@ export function CompanyVerificationStep({
 
               <DocumentUploadField
                 label="Factory / Business License"
-                required
                 documentType={SELLER_DOCUMENT_TYPE_KEYS.factoryLicense}
                 accept=".pdf"
                 maxSizeMB={10}
                 asset={documents[SELLER_DOCUMENT_TYPE_KEYS.factoryLicense]}
-                error={errors.factoryLicenseDocumentId}
                 onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.factoryLicense, asset)}
               />
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
+                <ShieldPlus className="h-3.5 w-3.5" />
+                <span>Optional — uploading strengthens your trust score</span>
+              </div>
             </>
           )}
         </div>

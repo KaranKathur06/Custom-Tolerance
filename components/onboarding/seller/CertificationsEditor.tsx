@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/onboarding/OnboardingV3Wizard";
 import { DocumentUploadField, type DocumentUploadAsset } from "./DocumentUploadField";
-import { SingleImageUploadField } from "./SingleImageUploadField";
 import type { CertificationRow } from "./types";
 
 type CertificationsEditorProps = {
@@ -30,77 +29,59 @@ export function CertificationsEditor({ rows, errors, onChange }: CertificationsE
           onClick={() =>
             onChange([
               ...rows,
-              {
-                certificateName: "",
-                certificateNumber: "",
-                expiryDate: "",
-              },
+              { certificateName: "" },
             ])
           }
         >
-          Add Certification
+          Add More / Other Certificate
         </Button>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {rows.map((row, index) => (
-          <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-4 lg:grid-cols-3">
-            <TextInput
-              value={row.certificateName}
-              placeholder="Certificate name *"
-              onChange={(e) => updateRow(index, { certificateName: e.target.value })}
-              className={errors[`certifications[${index}].certificateName`] ? "border-red-300" : ""}
-            />
-            <TextInput
-              value={row.certificateNumber}
-              placeholder="Certificate number"
-              onChange={(e) => updateRow(index, { certificateNumber: e.target.value })}
-            />
-            <TextInput
-              type="date"
-              value={row.expiryDate}
-              placeholder="Expiry date"
-              onChange={(e) => updateRow(index, { expiryDate: e.target.value })}
-            />
-            <DocumentUploadField
-              label="Certificate PDF"
-              documentType="certificate_pdf"
-              accept=".pdf"
-              maxSizeMB={10}
-              asset={row.certificateFileId ? buildDocAsset(row.certificateFileId, row.certificateFileUrl, row.certificateStoragePath) : null}
-              error={errors[`certifications[${index}].certificateFileId`]}
-              onChange={(asset) =>
-                updateRow(index, {
-                  certificateFileId: asset?.id ?? undefined,
-                  certificateFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
-                  certificateStoragePath: asset?.storagePath ?? undefined,
-                })
-              }
-            />
-            <SingleImageUploadField
-              label="Certificate image"
-              category="certificate_images"
-              asset={
-                row.certificateImageFileId
-                  ? {
-                      id: row.certificateImageFileId,
-                      publicUrl: row.certificateImageFileUrl,
-                      storagePath: row.certificateImageStoragePath || "",
-                      bucketName: "seller-images",
-                      originalFilename: "",
-                      mimeType: "",
-                      fileSize: 0,
-                    }
-                  : null
-              }
-              onChange={(asset) =>
-                updateRow(index, {
-                  certificateImageFileId: asset?.id ?? undefined,
-                  certificateImageFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
-                  certificateImageStoragePath: asset?.storagePath ?? undefined,
-                })
-              }
-            />
-            <div className="flex items-end justify-end">
+          <div
+            key={index}
+            className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-start"
+          >
+            {/* Certificate Name */}
+            <div className="flex-1">
+              <TextInput
+                value={row.certificateName}
+                placeholder="Certificate name *"
+                onChange={(e) => updateRow(index, { certificateName: e.target.value })}
+                className={errors[`certifications[${index}].certificateName`] ? "border-red-300" : ""}
+              />
+              {errors[`certifications[${index}].certificateName`] ? (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors[`certifications[${index}].certificateName`]}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Certificate PDF Upload */}
+            <div className="sm:w-56">
+              <DocumentUploadField
+                label="Certificate PDF (optional)"
+                documentType="certificate_pdf"
+                accept=".pdf"
+                maxSizeMB={10}
+                asset={
+                  row.certificateFileId
+                    ? buildDocAsset(row.certificateFileId, row.certificateFileUrl, row.certificateStoragePath)
+                    : null
+                }
+                error={errors[`certifications[${index}].certificateFileId`]}
+                onChange={(asset) =>
+                  updateRow(index, {
+                    certificateFileId: asset?.id ?? undefined,
+                    certificateFileUrl: asset?.publicUrl || asset?.signedUrl || undefined,
+                    certificateStoragePath: asset?.storagePath ?? undefined,
+                  })
+                }
+              />
+            </div>
+
+            {/* Remove button */}
+            <div className="flex items-start">
               <Button
                 type="button"
                 variant="ghost"
@@ -118,7 +99,11 @@ export function CertificationsEditor({ rows, errors, onChange }: CertificationsE
   );
 }
 
-function buildDocAsset(id: string, url: string | undefined, storagePath: string | undefined): DocumentUploadAsset {
+function buildDocAsset(
+  id: string,
+  url: string | undefined,
+  storagePath: string | undefined,
+): DocumentUploadAsset {
   return {
     id,
     publicUrl: url,

@@ -1,5 +1,5 @@
 ---
-name: autonomous-deep-connected-system-thinking (ADCST)
+name: autonomous-deep-connected-system-thinking 
 description: Autonomously design, analyze, and implement features using full-system architectural intelligence. Use this skill when building, debugging, scaling, or modifying any product feature across frontend, backend, database, APIs, and infrastructure. Infers missing requirements, evaluates system-wide impact, and produces production-grade implementation blueprints without relying on user clarification.
 license: Complete terms in LICENSE.txt
 ---

@@ -36,14 +36,32 @@ export type MachineRow = {
 
 export type CertificationRow = {
   certificateName: string;
-  certificateNumber: string;
-  expiryDate: string;
   certificateFileId?: string;
   certificateFileUrl?: string;
   certificateStoragePath?: string;
+  // Kept optional for backward compat with existing saved data — not shown in new UI
+  certificateNumber?: string;
+  expiryDate?: string;
   certificateImageFileId?: string;
   certificateImageFileUrl?: string;
   certificateImageStoragePath?: string;
+};
+
+export type FeaturedProductRow = {
+  id?: string;
+  productName: string;
+  capability: string;
+  materials: string[];
+  toleranceCapability: string;
+  productionCapacity: string;
+  productionCapacityUnit: string;
+  moq: string;
+  leadTime: string;
+  isFeatured?: boolean;
+  isVisible?: boolean;
+  customTolerance?: string;
+  gallery?: Array<{ fileUrl?: string; id?: string; storagePath?: string }>;
+  certifications?: string[];
 };
 
 export type ExportRow = {

@@ -10,6 +10,62 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Normalise incoming payload for backward compatibility.
+   - companyType (legacy string) → companyTypes (string[])
+   - countriesImportedFrom (legacy comma-string) → string[]
+   ───────────────────────────────────────────────────────────────────────── */
+function normalizeBuyerPayload(
+  raw: Record<string, unknown>,
+): Record<string, unknown> {
+  const out = { ...raw };
+
+  // Migrate legacy single-string companyType → companyTypes array
+  if (
+    !Array.isArray(out.companyTypes) ||
+    (out.companyTypes as unknown[]).length === 0
+  ) {
+    const legacy = out.companyType;
+    if (typeof legacy === "string" && legacy.trim()) {
+      out.companyTypes = [legacy.trim()];
+    }
+  }
+  // Ensure it is always an array
+  if (!Array.isArray(out.companyTypes)) {
+    out.companyTypes = [];
+  }
+
+  // Migrate legacy comma-separated countriesImportedFrom
+  if (!Array.isArray(out.countriesImportedFrom)) {
+    const raw_ = out.countriesImportedFrom;
+    if (typeof raw_ === "string" && (raw_ as string).trim()) {
+      out.countriesImportedFrom = (raw_ as string)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else {
+      out.countriesImportedFrom = [];
+    }
+  }
+
+  // Stamp agreement metadata if agreement is accepted and viewedAt is missing
+  const now = new Date().toISOString();
+  if (out.buyerAgreement && !out.buyerAgreementViewedAt) {
+    out.buyerAgreementViewedAt = now;
+  }
+  if (out.termsAccepted && !out.termsViewedAt) {
+    out.termsViewedAt = now;
+  }
+  if (out.privacyAccepted && !out.privacyViewedAt) {
+    out.privacyViewedAt = now;
+  }
+
+  return out;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   GET — load active draft session
+   ───────────────────────────────────────────────────────────────────────── */
 export async function GET() {
   const user = await getServerUser();
   if (!user) {
@@ -18,7 +74,10 @@ export async function GET() {
 
   const supabase = createSupabaseServerClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+    return NextResponse.json(
+      { error: "Database unavailable" },
+      { status: 503 },
+    );
   }
 
   const { data, error } = await supabase
@@ -40,6 +99,9 @@ export async function GET() {
   return NextResponse.json({ session: data ?? null });
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   POST — save draft or commit buyer profile
+   ───────────────────────────────────────────────────────────────────────── */
 export async function POST(request: Request) {
   const user = await getServerUser();
   if (!user) {
@@ -48,23 +110,34 @@ export async function POST(request: Request) {
 
   const supabase = createSupabaseServerClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+    return NextResponse.json(
+      { error: "Database unavailable" },
+      { status: 503 },
+    );
   }
 
   let body: Record<string, unknown> = {};
   try {
-    body = await request.json();
+    body = (await request.json()) as Record<string, unknown>;
   } catch {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body" },
+      { status: 400 },
+    );
   }
 
   try {
     const action = (body.action as string | undefined) ?? "commit";
-    const values = ((body.values ?? body) as Record<string, unknown>) ?? {};
-    const payload = {
-      ...values,
-      emailVerified: Boolean(user.email_confirmed_at) || Boolean(values.emailVerified),
-    };
+    const rawValues = ((body.values ?? body) as Record<string, unknown>) ?? {};
+
+    // Normalise + enrich
+    const payload = normalizeBuyerPayload({
+      ...rawValues,
+      // Always trust server-side email verification status
+      emailVerified:
+        Boolean(user.email_confirmed_at) || Boolean(rawValues.emailVerified),
+    });
+
     const completion = calculateBuyerOnboardingV3Completion(payload);
 
     const sessionPatch = {
@@ -73,7 +146,8 @@ export async function POST(request: Request) {
       flow_key: BUYER_ONBOARDING_V3_FLOW_KEY,
       flow_version: ONBOARDING_V3_FLOW_VERSION,
       status: action === "commit" ? "completed" : "active",
-      current_step: (body.stepKey as string | undefined) ?? "buyer_registration",
+      current_step:
+        (body.stepKey as string | undefined) ?? "buyer_registration",
       draft_payload: payload,
       completion_percentage: completion.overallPercent,
       last_completed_step: (body.stepKey as string | undefined) ?? null,
@@ -84,6 +158,7 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
+    // Upsert onboarding session
     const { data: existing } = await supabase
       .from("onboarding_sessions")
       .select("id")
@@ -115,9 +190,14 @@ export async function POST(request: Request) {
     }
 
     if (action === "save") {
-      return NextResponse.json({ success: true, session: savedSession, completion });
+      return NextResponse.json({
+        success: true,
+        session: savedSession,
+        completion,
+      });
     }
 
+    // Commit — write to buyer profile tables
     const result = await commitBuyerOnboardingV3(supabase, user.id, payload);
     return NextResponse.json({ success: true, result, completion });
   } catch (err) {

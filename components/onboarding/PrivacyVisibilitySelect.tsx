@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Lock, Users } from "lucide-react";
+import { Globe, Lock, ShieldCheck, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProfileVisibilityLevel } from "@/lib/marketplace/profile-visibility";
 
@@ -11,6 +11,11 @@ const OPTIONS: Array<{
 }> = [
   { value: "PUBLIC", label: "Public", icon: Globe },
   { value: "MEMBERS_ONLY", label: "Members only", icon: Users },
+  {
+    value: "VERIFIED_SUPPLIERS",
+    label: "Verified suppliers",
+    icon: ShieldCheck,
+  },
   { value: "PRIVATE", label: "Private", icon: Lock },
 ];
 
@@ -32,7 +37,9 @@ export function PrivacyVisibilitySelect({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <span className="text-xs font-medium text-slate-500 shrink-0">Visibility</span>
+      <span className="text-xs font-medium text-slate-500 shrink-0">
+        Visibility
+      </span>
       <div className="relative min-w-[140px]">
         <Icon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         <select

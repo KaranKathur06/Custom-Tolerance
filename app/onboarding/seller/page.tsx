@@ -31,7 +31,7 @@ import { BasicInformationStep } from "@/components/onboarding/seller/BasicInform
 import { BusinessDetailsStep } from "@/components/onboarding/seller/BusinessDetailsStep";
 import { BankDetailsStep } from "@/components/onboarding/seller/BankDetailsStep";
 import { RegistrationCompleteStep } from "@/components/onboarding/seller/RegistrationCompleteStep";
-import type { MachineRow, CertificationRow, ExportRow, ProductRow } from "@/components/onboarding/seller/types";
+import type { MachineRow, CertificationRow, ExportRow } from "@/components/onboarding/seller/types";
 
 type MobileTrustStatus = "pending" | "otp_sent" | "verified" | "failed";
 type MobileStatusPayload = {
@@ -91,11 +91,25 @@ type SellerForm = Record<string, unknown> & {
   emailVerified: boolean;
   mobileVerified: boolean;
 
+  // Business identity
+  businessNature: string;
+  sellerTypeOther: string;
+
   // Seller types (multi-select)
   sellerTypes: string[];
 
-  // Products
-  products: ProductRow[];
+  // New intelligence fields
+  industriesServed: string[];
+  capabilities: string[];
+  buyerServices: string[];
+  supplierInterests: string[];
+  yearsInBusiness: string;
+
+  // Video URLs (replaces file upload)
+  videoUrls: string[];
+
+  // Legacy products (kept for backward compat — shown in Dashboard now)
+  products: unknown[];
 
   // R&D
   hasRdTeam: boolean;
@@ -150,10 +164,13 @@ type SellerForm = Record<string, unknown> & {
   factoryPhotos: Array<{ category: string; fileUrl?: string; id?: string; storagePath?: string }>;
   machines: MachineRow[];
   certifications: CertificationRow[];
-  exportExperience: ExportRow[];
+  exportExperience: ExportRow[]; // kept for backward compat, not shown in UI
   qualitySystems: string[];
   factoryTourUrl: string;
   factoryTourVideoId?: string;
+
+  // Production capacity
+  productionCapacityUnit: string;
 
   // Document IDs
   cancelledChequeDocumentId?: string;
@@ -211,10 +228,24 @@ const initialForm: SellerForm = {
   emailVerified: false,
   mobileVerified: false,
 
+  // Business identity
+  businessNature: "",
+  sellerTypeOther: "",
+
   // Seller types
   sellerTypes: [],
 
-  // Products
+  // New intelligence fields
+  industriesServed: [],
+  capabilities: [],
+  buyerServices: [],
+  supplierInterests: [],
+  yearsInBusiness: "",
+
+  // Video URLs
+  videoUrls: [],
+
+  // Legacy products (shown in Dashboard)
   products: [],
 
   // R&D
@@ -273,6 +304,9 @@ const initialForm: SellerForm = {
   exportExperience: [],
   qualitySystems: [],
   factoryTourUrl: "",
+
+  // Production capacity
+  productionCapacityUnit: "pcs",
 
   // Privacy visibility
   emailVisibility: "MEMBERS_ONLY",

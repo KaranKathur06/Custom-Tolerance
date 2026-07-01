@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { Field, TextInput } from "@/components/onboarding/OnboardingV3Wizard";
 import { cn } from "@/lib/utils";
 import {
@@ -9,6 +9,7 @@ import {
   getCities,
   getCountryNames,
 } from "@/lib/location/country-state-city-provider";
+import { SearchableDropdown } from "@/components/location/SearchableDropdown";
 
 /** Backwards-compatible ALL_COUNTRIES array */
 export const ALL_COUNTRIES = getCountryNames();
@@ -26,96 +27,6 @@ type StructuredAddressFieldsProps = {
 function fieldKey(prefix: string, name: string): string {
   if (!prefix) return name;
   return `${prefix}${name.charAt(0).toUpperCase()}${name.slice(1)}`;
-}
-
-/** Searchable dropdown component used for State and City */
-function SearchableDropdown({
-  value,
-  options,
-  onSelect,
-  placeholder,
-  disabled,
-  error,
-  emptyMessage,
-}: {
-  value: string;
-  options: string[];
-  onSelect: (val: string) => void;
-  placeholder: string;
-  disabled?: boolean;
-  error?: boolean;
-  emptyMessage?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return options;
-    return options.filter((o) => o.toLowerCase().includes(q));
-  }, [options, search]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch("");
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={containerRef} className="relative">
-      <input
-        type="text"
-        value={open ? search : value}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          if (!open) setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => { setOpen(false); setSearch(""); }, 200)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={cn(
-          "w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400",
-          error ? "border-red-300" : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20",
-          disabled && "pointer-events-none opacity-60"
-        )}
-      />
-      {open ? (
-        <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-          {filtered.length === 0 ? (
-            <div className="px-3 py-3 text-center text-xs text-slate-400">
-              {emptyMessage || "No options"}
-            </div>
-          ) : (
-            filtered.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className={cn(
-                  "w-full px-3 py-2 text-left text-sm transition-colors",
-                  option === value ? "bg-blue-50 font-semibold text-blue-800" : "text-slate-700 hover:bg-slate-50"
-                )}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onSelect(option);
-                  setOpen(false);
-                  setSearch("");
-                }}
-              >
-                {option}
-              </button>
-            ))
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 export function StructuredAddressFields({
@@ -140,7 +51,10 @@ export function StructuredAddressFields({
   const postalCode = String(form[postalCodeKey] ?? "");
 
   // Derive country ISO code for state/city lookups
-  const countryIso = useMemo(() => getCountryIsoCodeByName(country || ""), [country]);
+  const countryIso = useMemo(
+    () => getCountryIsoCodeByName(country || ""),
+    [country],
+  );
 
   // State options based on country
   const stateOptions = useMemo(() => {
@@ -168,14 +82,14 @@ export function StructuredAddressFields({
       // Clear city when state changes
       onFieldChange(cityKey, "");
     },
-    [stateKey, cityKey, onFieldChange]
+    [stateKey, cityKey, onFieldChange],
   );
 
   const handleCitySelect = useCallback(
     (newCity: string) => {
       onFieldChange(cityKey, newCity);
     },
-    [cityKey, onFieldChange]
+    [cityKey, onFieldChange],
   );
 
   const disabled = locked ? "pointer-events-none opacity-60" : undefined;

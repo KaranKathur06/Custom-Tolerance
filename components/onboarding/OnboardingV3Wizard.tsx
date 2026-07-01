@@ -15,13 +15,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { CompletionResult, OnboardingStepDefinition } from "@/lib/marketplace/onboarding-v3";
+import type {
+  CompletionResult,
+  OnboardingStepDefinition,
+} from "@/lib/marketplace/onboarding-v3";
 
 /* ────────────────────────────────────────────────────────────────────────
    WizardShell — Top stepper, wide form, sticky trust panel
    ──────────────────────────────────────────────────────────────────────── */
 
-export type OnboardingErrorType = "validation" | "gst_api" | "server" | "network" | "generic";
+export type OnboardingErrorType =
+  | "validation"
+  | "gst_api"
+  | "server"
+  | "network"
+  | "generic";
 
 export function WizardShell({
   title,
@@ -33,6 +41,7 @@ export function WizardShell({
   validatedSteps = [],
   globalError,
   globalErrorType = "generic",
+  roleLabel = "Seller Onboarding",
   onClearGlobalError,
   onRetry,
   onSaveDraft,
@@ -53,6 +62,8 @@ export function WizardShell({
   validatedSteps?: string[];
   globalError?: string | null;
   globalErrorType?: OnboardingErrorType;
+  /** Displayed in the top-left banner, e.g. "Buyer Onboarding" or "Seller Onboarding" */
+  roleLabel?: string;
   onClearGlobalError?: () => void;
   onRetry?: () => void;
   onSaveDraft?: () => void;
@@ -65,7 +76,9 @@ export function WizardShell({
       <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1480px] flex-col gap-3 px-10 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Seller Onboarding</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+              {roleLabel}
+            </p>
             <h1 className="mt-1 text-2xl font-bold text-slate-950">{title}</h1>
             <p className="mt-1 max-w-3xl text-sm text-slate-600">{subtitle}</p>
           </div>
@@ -161,9 +174,14 @@ function HorizontalStepper({
   onStepClick?: (stepKey: string) => void;
 }) {
   return (
-    <nav className="flex items-center overflow-x-auto py-0" aria-label="Onboarding steps">
+    <nav
+      className="flex items-center overflow-x-auto py-0"
+      aria-label="Onboarding steps"
+    >
       {steps.map((step, index) => {
-        const section = completion.sections.find((item) => item.key === step.key);
+        const section = completion.sections.find(
+          (item) => item.key === step.key,
+        );
         const isActive = activeStep === step.key;
         const isValidated = validatedSteps.includes(step.key);
         const percent = section?.percent ?? 0;
@@ -177,7 +195,11 @@ function HorizontalStepper({
               onClick={() => onStepClick?.(step.key)}
               className={cn(
                 "flex items-center gap-2 whitespace-nowrap px-3 py-4 text-sm font-medium transition-colors",
-                isActive ? "text-blue-700" : isComplete ? "text-emerald-700" : "text-slate-500",
+                isActive
+                  ? "text-blue-700"
+                  : isComplete
+                    ? "text-emerald-700"
+                    : "text-slate-500",
               )}
             >
               <span
@@ -190,12 +212,27 @@ function HorizontalStepper({
                       : "border-slate-300 bg-slate-50 text-slate-400",
                 )}
               >
-                {isComplete ? <Check className="h-3.5 w-3.5" /> : isActive ? <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" /> : index + 1}
+                {isComplete ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : isActive ? (
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                ) : (
+                  index + 1
+                )}
               </span>
-              <span className={cn(isActive && "font-semibold text-emerald-800")}>{step.title}</span>
+              <span
+                className={cn(isActive && "font-semibold text-emerald-800")}
+              >
+                {step.title}
+              </span>
             </button>
             {!isLast ? (
-              <div className={cn("h-px w-6", isComplete ? "bg-emerald-300" : "bg-slate-200")} />
+              <div
+                className={cn(
+                  "h-px w-6",
+                  isComplete ? "bg-emerald-300" : "bg-slate-200",
+                )}
+              />
             ) : null}
           </div>
         );
@@ -224,22 +261,28 @@ function GlobalErrorBanner({
   const isTechnicalError =
     errorType === "server" ||
     errorType === "network" ||
-    /json|parse|stack|trace|unexpected|syntaxerror|typeerror|referenceerror|500|502|503|econnrefused/i.test(error);
+    /json|parse|stack|trace|unexpected|syntaxerror|typeerror|referenceerror|500|502|503|econnrefused/i.test(
+      error,
+    );
 
   const titleByType: Record<OnboardingErrorType, string> = {
     validation: "Please check the following",
     gst_api: "GST API Error",
     server: "Server Error",
     network: "Network Error",
-    generic: isTechnicalError ? "Something went wrong" : "Please check the following",
+    generic: isTechnicalError
+      ? "Something went wrong"
+      : "Please check the following",
   };
 
   const messageByType: Record<OnboardingErrorType, string> = {
     validation: error,
     gst_api:
       "Unable to verify GST right now. Please try again in a few minutes. If the issue persists, contact support.",
-    server: "Something went wrong while saving your onboarding. Your information has not been lost. Please try again.",
-    network: "Unable to connect to server. Please check your internet connection.",
+    server:
+      "Something went wrong while saving your onboarding. Your information has not been lost. Please try again.",
+    network:
+      "Unable to connect to server. Please check your internet connection.",
     generic: isTechnicalError
       ? "Something went wrong while saving your onboarding. Your information has not been lost. Please try again."
       : error,
@@ -247,7 +290,11 @@ function GlobalErrorBanner({
 
   const title = titleByType[errorType] ?? titleByType.generic;
   const displayMessage = messageByType[errorType] ?? messageByType.generic;
-  const showRetry = errorType === "server" || errorType === "network" || errorType === "gst_api" || isTechnicalError;
+  const showRetry =
+    errorType === "server" ||
+    errorType === "network" ||
+    errorType === "gst_api" ||
+    isTechnicalError;
 
   return (
     <div
@@ -328,7 +375,9 @@ function StickyOnboardingSummary({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-blue-700" />
-          <h2 className="text-sm font-bold text-slate-950">Onboarding progress</h2>
+          <h2 className="text-sm font-bold text-slate-950">
+            Onboarding progress
+          </h2>
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -346,7 +395,8 @@ function StickyOnboardingSummary({
       <div className="w-full sm:w-auto">
         <div className="flex flex-wrap gap-2">
           {primaryTrust.map((item) => {
-            const status = item.status ?? (item.verified ? "verified" : "pending");
+            const status =
+              item.status ?? (item.verified ? "verified" : "pending");
             const statusLabel =
               item.statusLabel ??
               (status === "otp_sent"
@@ -388,7 +438,10 @@ function StickyOnboardingSummary({
         </div>
 
         {/* subtle hint: legacy sections remain in sidebar for migration safety */}
-        <p className="mt-2 text-xs text-slate-500">Trust & missing requirements are also shown on the right panel (migration-safe).</p>
+        <p className="mt-2 text-xs text-slate-500">
+          Trust & missing requirements are also shown on the right panel
+          (migration-safe).
+        </p>
       </div>
     </div>
   );
@@ -416,7 +469,8 @@ function TrustPanel({
       </div>
       <div className="mt-4 space-y-2">
         {trustItems.map((item) => {
-          const status = item.status ?? (item.verified ? "verified" : "pending");
+          const status =
+            item.status ?? (item.verified ? "verified" : "pending");
           const statusLabel =
             item.statusLabel ??
             (status === "otp_sent"
@@ -428,7 +482,10 @@ function TrustPanel({
                   : "Pending");
 
           return (
-            <div key={item.label} className="flex items-center justify-between gap-3">
+            <div
+              key={item.label}
+              className="flex items-center justify-between gap-3"
+            >
               <span className="text-sm text-slate-600">{item.label}</span>
               <Badge
                 variant={
@@ -469,14 +526,26 @@ function CompletionPanel({ completion }: { completion: CompletionResult }) {
         {completion.sections.map((section) => (
           <div key={section.key}>
             <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-slate-600">{section.label}</span>
-              <span className={cn("font-semibold", section.percent >= 100 ? "text-emerald-600" : "text-slate-900")}>
+              <span className="font-medium text-slate-600">
+                {section.label}
+              </span>
+              <span
+                className={cn(
+                  "font-semibold",
+                  section.percent >= 100
+                    ? "text-emerald-600"
+                    : "text-slate-900",
+                )}
+              >
                 {section.percent}%
               </span>
             </div>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
               <div
-                className={cn("h-full rounded-full", section.percent >= 100 ? "bg-emerald-600" : "bg-amber-500")}
+                className={cn(
+                  "h-full rounded-full",
+                  section.percent >= 100 ? "bg-emerald-600" : "bg-amber-500",
+                )}
                 style={{ width: `${section.percent}%` }}
               />
             </div>
@@ -501,7 +570,9 @@ function MissingItemsPanel({ completion }: { completion: CompletionResult }) {
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          <h2 className="text-sm font-bold text-slate-950">All required items complete</h2>
+          <h2 className="text-sm font-bold text-slate-950">
+            All required items complete
+          </h2>
         </div>
       </div>
     );
@@ -516,10 +587,15 @@ function MissingItemsPanel({ completion }: { completion: CompletionResult }) {
       <p className="mt-1 text-xs text-slate-500">Still required:</p>
       <ul className="mt-2 space-y-1.5">
         {missing.map((item, index) => (
-          <li key={`${item.section}-${item.field}-${index}`} className="flex items-start gap-2 text-xs text-slate-700">
+          <li
+            key={`${item.section}-${item.field}-${index}`}
+            className="flex items-start gap-2 text-xs text-slate-700"
+          >
             <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-red-500" />
             <span>
-              <span className="font-medium">{formatMissingFieldLabel(item.field)}</span>
+              <span className="font-medium">
+                {formatMissingFieldLabel(item.field)}
+              </span>
               <span className="text-slate-400"> · {item.section}</span>
             </span>
           </li>
@@ -559,7 +635,11 @@ export function Field({
         {required ? " *" : ""}
       </span>
       {children}
-      {error ? <span className="mt-1.5 block text-xs font-semibold text-red-600">{error}</span> : null}
+      {error ? (
+        <span className="mt-1.5 block text-xs font-semibold text-red-600">
+          {error}
+        </span>
+      ) : null}
     </label>
   );
 }
@@ -600,20 +680,33 @@ export function MultiSelectChips({
   options,
   value,
   onChange,
+  error,
 }: {
   options: readonly string[];
   value: string[];
   onChange: (value: string[]) => void;
+  error?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div
+      className={cn(
+        "flex flex-wrap gap-2",
+        error && "rounded-lg border border-red-200 p-2",
+      )}
+    >
       {options.map((option) => {
         const selected = value.includes(option);
         return (
           <button
             key={option}
             type="button"
-            onClick={() => onChange(selected ? value.filter((item) => item !== option) : [...value, option])}
+            onClick={() =>
+              onChange(
+                selected
+                  ? value.filter((item) => item !== option)
+                  : [...value, option],
+              )
+            }
             className={cn(
               "min-h-10 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
               selected
@@ -621,7 +714,11 @@ export function MultiSelectChips({
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
             )}
           >
-            {selected ? <Check className="mr-1 inline h-3.5 w-3.5" /> : <Circle className="mr-1 inline h-3 w-3" />}
+            {selected ? (
+              <Check className="mr-1 inline h-3.5 w-3.5" />
+            ) : (
+              <Circle className="mr-1 inline h-3 w-3" />
+            )}
             {option}
           </button>
         );
@@ -666,15 +763,30 @@ export function WizardActions({
   return (
     <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex gap-2">
-        <Button type="button" variant="outline" onClick={onBack} disabled={!canBack || saving}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          disabled={!canBack || saving}
+        >
           Back
         </Button>
-        <Button type="button" variant="outline" onClick={onSave} disabled={saving}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onSave}
+          disabled={saving}
+        >
           {saving ? "Saving..." : "Save draft"}
         </Button>
       </div>
-      <Button type="button" onClick={onNext} disabled={!canNext || saving} className="bg-slate-950 hover:bg-slate-800">
-        {saving ? "Saving..." : submitLabel ?? "Save and continue"}
+      <Button
+        type="button"
+        onClick={onNext}
+        disabled={!canNext || saving}
+        className="bg-slate-950 hover:bg-slate-800"
+      >
+        {saving ? "Saving..." : (submitLabel ?? "Save and continue")}
       </Button>
     </div>
   );
