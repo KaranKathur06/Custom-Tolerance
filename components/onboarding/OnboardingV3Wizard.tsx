@@ -676,13 +676,15 @@ export function NativeSelect({
   );
 }
 
+type MultiSelectChipOption = string | { id: string; label: string };
+
 export function MultiSelectChips({
   options,
   value,
   onChange,
   error,
 }: {
-  options: readonly string[];
+  options: readonly MultiSelectChipOption[];
   value: string[];
   onChange: (value: string[]) => void;
   error?: boolean;
@@ -695,16 +697,18 @@ export function MultiSelectChips({
       )}
     >
       {options.map((option) => {
-        const selected = value.includes(option);
+        const optionId = typeof option === "string" ? option : option.id;
+        const label = typeof option === "string" ? option : option.label;
+        const selected = value.includes(optionId);
         return (
           <button
-            key={option}
+            key={optionId}
             type="button"
             onClick={() =>
               onChange(
                 selected
-                  ? value.filter((item) => item !== option)
-                  : [...value, option],
+                  ? value.filter((item) => item !== optionId)
+                  : [...value, optionId],
               )
             }
             className={cn(
@@ -719,7 +723,7 @@ export function MultiSelectChips({
             ) : (
               <Circle className="mr-1 inline h-3 w-3" />
             )}
-            {option}
+            {label}
           </button>
         );
       })}

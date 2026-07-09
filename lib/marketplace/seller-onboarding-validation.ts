@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isApprovedBuyerService } from "@/lib/constants/buyer-services";
 import {
   SELLER_ONBOARDING_V3_STEPS,
   type SellerOnboardingV3StepKey,
@@ -212,6 +213,14 @@ export function validateSellerOnboardingStep(
       // businessNature is required for business_details
       if (!isNonEmptyString(form.businessNature)) {
         addError("businessNature", "Please select your business nature.");
+      }
+
+      const buyerServices = Array.isArray(form.buyerServices)
+        ? form.buyerServices.filter((value): value is string => typeof value === "string")
+        : [];
+      const hasInvalidBuyerServices = buyerServices.some((service) => !isApprovedBuyerService(service));
+      if (hasInvalidBuyerServices) {
+        addError("buyerServices", "Select only approved buyer service options.");
       }
       break;
     }

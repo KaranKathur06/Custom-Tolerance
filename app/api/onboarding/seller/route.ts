@@ -18,6 +18,7 @@ import {
   validateSellerOnboardingStep,
   type SellerUploadAsset,
 } from "@/lib/marketplace/seller-onboarding-validation";
+import { normalizeBuyerServices } from "@/lib/constants/buyer-services";
 
 export const dynamic = "force-dynamic";
 
@@ -138,6 +139,7 @@ export async function POST(request: NextRequest) {
 
     const payload: Record<string, unknown> = {
       ...form,
+      buyerServices: normalizeBuyerServices(form.buyerServices),
       emailVerified: Boolean(user.email_confirmed_at) || Boolean(form.emailVerified),
       mobileVerified,
       validatedSteps: nextValidatedSteps,

@@ -13,6 +13,7 @@ import {
   getSellerV3HardGateStatus,
 } from "./onboarding-v3";
 import { type SellerUploadAsset } from "./seller-onboarding-validation";
+import { normalizeBuyerServices } from "@/lib/constants/buyer-services";
 
 export type BuyerOnboardingV3CommitResult = {
   buyerProfileId: string;
@@ -47,6 +48,10 @@ function draftStringArray(
   return value
     .map((item) => (typeof item === "string" ? item.trim() : ""))
     .filter(Boolean);
+}
+
+function draftBuyerServices(payload: Record<string, unknown>): string[] {
+  return normalizeBuyerServices(payload.buyerServices);
 }
 
 function draftBool(payload: Record<string, unknown>, key: string): boolean {
@@ -412,7 +417,7 @@ export async function commitSellerOnboardingV3(
     seller_type_other: draftString(payload, "sellerTypeOther"),
     industries_served: draftStringArray(payload, "industriesServed"),
     capabilities: draftStringArray(payload, "capabilities"),
-    buyer_services: draftStringArray(payload, "buyerServices"),
+    buyer_services: draftBuyerServices(payload),
     supplier_interests: draftStringArray(payload, "supplierInterests"),
     years_in_business: draftString(payload, "yearsInBusiness"),
     video_urls: draftStringArray(payload, "videoUrls"),
@@ -799,7 +804,7 @@ async function persistSellerIndustriesAndServices(
 
   // seller_buyer_services — upsert to junction table if it exists
   // (graceful: if table doesn't exist yet, skip silently)
-  const buyerServices = draftStringArray(payload, "buyerServices");
+  const buyerServices = draftBuyerServices(payload);
   if (buyerServices.length > 0) {
     const { error } = await supabase
       .from("seller_buyer_services")

@@ -14,7 +14,6 @@ import {
   SELLER_TYPES,
   INDUSTRIES_SERVED_OPTIONS,
   CAPABILITIES_OPTIONS,
-  BUYER_SERVICES_OPTIONS,
   SUPPLIER_INTERESTS_OPTIONS,
   YEARS_IN_BUSINESS_OPTIONS,
   LANGUAGE_OPTIONS,
@@ -30,6 +29,7 @@ import {
   FACTORY_PHOTO_LIMITS,
   CERTIFICATION_PRESETS,
 } from "@/lib/marketplace/onboarding-v3";
+import { BUYER_SERVICES_OPTIONS } from "@/lib/constants/buyer-services";
 import { ImageUploadGrid } from "./ImageUploadGrid";
 import { CertificationsEditor } from "./CertificationsEditor";
 import { FactoryVideoUrlsField } from "./FactoryVideoUrlsField";

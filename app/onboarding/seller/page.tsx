@@ -26,6 +26,7 @@ import {
   type SellerUploadAsset,
 } from "@/lib/marketplace/seller-onboarding-validation";
 import { fetchSellerAssets } from "@/lib/marketplace/seller-upload-client";
+import { normalizeBuyerServices } from "@/lib/constants/buyer-services";
 import { CompanyVerificationStep } from "@/components/onboarding/seller/CompanyVerificationStep";
 import { BasicInformationStep } from "@/components/onboarding/seller/BasicInformationStep";
 import { BusinessDetailsStep } from "@/components/onboarding/seller/BusinessDetailsStep";
@@ -480,7 +481,8 @@ export default function SellerOnboardingPage() {
   };
 
   const updateField = (field: keyof SellerForm, value: unknown) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    const nextValue = field === "buyerServices" ? normalizeBuyerServices(value) : value;
+    setForm((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const updateDocument = (documentType: string, asset: SellerUploadAsset | null) => {

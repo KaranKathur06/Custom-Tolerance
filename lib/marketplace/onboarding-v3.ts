@@ -1,3 +1,8 @@
+import {
+  BUYER_SERVICES_OPTIONS as APPROVED_BUYER_SERVICES_OPTIONS,
+  normalizeBuyerServices,
+} from "@/lib/constants/buyer-services";
+
 export const BUYER_ONBOARDING_V3_FLOW_KEY = "buyer_onboarding_v3";
 export const SELLER_ONBOARDING_V3_FLOW_KEY = "seller_onboarding_v3";
 export const ONBOARDING_V3_FLOW_VERSION = 3;
@@ -359,21 +364,13 @@ export const CAPABILITIES_OPTIONS = [
   "Fasteners",
 ] as const;
 
-export const BUYER_SERVICES_OPTIONS = [
-  "Unbranded (No Brand)",
-  "Contract Manufacturing",
-  "Buyer's Brand / Private Label",
-  "OEM",
-  "Custom Product Development",
-  "Prototype / Sample Development",
-  "Job Work Services",
-  "Final Finished Products",
-  "White Label",
-  "Design Assistance",
-  "Reverse Engineering",
-  "Packaging Services",
-  "Assembly Services",
-] as const;
+export const BUYER_SERVICES_OPTIONS = APPROVED_BUYER_SERVICES_OPTIONS.map(
+  (option) => option.label,
+) as readonly string[];
+
+export function normalizeBuyerServiceSelection(value: unknown): string[] {
+  return normalizeBuyerServices(value);
+}
 
 export const SUPPLIER_INTERESTS_OPTIONS = [
   "Manufacturing under our own brand",
@@ -758,6 +755,8 @@ export function calculateSellerOnboardingV3Completion(
   const videoUrls = Array.isArray(values.videoUrls) ? (values.videoUrls as string[]) : [];
   const hasVideoUrl = videoUrls.some((url) => typeof url === "string" && url.trim().length > 0);
 
+  const normalizedBuyerServices = normalizeBuyerServiceSelection(values.buyerServices);
+
   const profileSections: CompletionSection[] = [
     {
       key: "factory_photos",
@@ -772,7 +771,7 @@ export function calculateSellerOnboardingV3Completion(
     // New profile intelligence sections
     scoreArraySection("industries_served", "Industries Served", values.industriesServed, 3),
     scoreArraySection("capabilities", "Capabilities", values.capabilities, 5),
-    scoreArraySection("buyer_services", "Buyer Services", values.buyerServices, 3),
+    scoreArraySection("buyer_services", "Buyer Services", normalizedBuyerServices, 3),
     scoreArraySection("supplier_interests", "Supplier Interests", values.supplierInterests, 3),
     {
       key: "factory_video",
