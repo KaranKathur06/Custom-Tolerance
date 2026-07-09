@@ -4,7 +4,11 @@
 
 import { NextResponse } from "next/server";
 import { protectApiRoute, logAdminAction } from "@/lib/auth/protect-route";
-import { createNotification } from "@/lib/marketplace/notifications";
+import { InMemoryEventBus } from "@/lib/domain/events";
+import { VerificationRepository } from "@/lib/domain/repositories/verification.repository";
+import { NotificationRepository } from "@/lib/domain/repositories/notification.repository";
+import { NotificationService } from "@/lib/domain/services/notification.service";
+import { VerificationService } from "@/lib/domain/services/verification.service";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -31,71 +35,49 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   const action = body.action === "reject" ? "reject" : "approve";
-  const newStatus = action === "approve" ? "approved" : "rejected";
 
-  const { data: document, error: fetchError } = await auth.supabase
-    .from("verification_documents")
-    .select("id, profile_id, company_id, document_type, status")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (fetchError || !document) {
-    return NextResponse.json(
-      { success: false, error: { code: "NOT_FOUND", message: "Document not found" } },
-      { status: 404 },
+  try {
+    const verificationRepository = new VerificationRepository(auth.supabase);
+    const notificationRepository = new NotificationRepository(auth.supabase);
+    const notificationService = new NotificationService(notificationRepository);
+    const eventBus = new InMemoryEventBus();
+    const verificationService = new VerificationService(
+      verificationRepository,
+      notificationService,
+      eventBus,
     );
-  }
 
-  const { error: updateError } = await auth.supabase
-    .from("verification_documents")
-    .update({
-      status: newStatus,
-      reviewer_id: auth.user.id,
-      reviewer_notes: body.notes ?? null,
-      reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+    const result = await verificationService.decideDocument({
+      documentId: id,
+      actorId: auth.user.id,
+      action,
+      notes: body.notes ?? null,
+    });
 
-  if (updateError) {
+    await logAdminAction(auth.supabase, {
+      userId: auth.user.id,
+      action: `verification_document_${action}d`,
+      resource: "verification_documents",
+      resourceId: id,
+      details: { action, notes: body.notes },
+      severity: action === "reject" ? "warning" : "info",
+      request,
+    });
+
+    return NextResponse.json({ success: true, data: result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Verification action failed";
+
+    if (message === "Document not found") {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message } },
+        { status: 404 },
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: updateError.message } },
+      { success: false, error: { code: "SERVER_ERROR", message } },
       { status: 500 },
     );
   }
-
-  if (action === "approve" && document.company_id) {
-    await auth.supabase
-      .from("companies")
-      .update({ verification_status: "approved", is_verified: true })
-      .eq("id", document.company_id);
-  }
-
-  if (document.profile_id) {
-    await auth.supabase.from("notifications").insert(
-      createNotification({
-        profileId: document.profile_id,
-        type: "verification",
-        title: action === "approve" ? "Document verified" : "Document needs revision",
-        body:
-          action === "approve"
-            ? `Your ${document.document_type} was approved.`
-            : `Your ${document.document_type} requires updates.${body.notes ? ` ${body.notes}` : ""}`,
-        href: "/onboarding/seller",
-        metadata: { document_id: id, action },
-      }),
-    );
-  }
-
-  await logAdminAction(auth.supabase, {
-    userId: auth.user.id,
-    action: `verification_document_${action}d`,
-    resource: "verification_documents",
-    resourceId: id,
-    details: { documentType: document.document_type, notes: body.notes },
-    severity: action === "reject" ? "warning" : "info",
-    request,
-  });
-
-  return NextResponse.json({ success: true, data: { id, status: newStatus } });
 }

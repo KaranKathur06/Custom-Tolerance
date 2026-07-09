@@ -6,6 +6,9 @@
 import { NextResponse } from "next/server";
 import { protectApiRoute, logAdminAction } from "@/lib/auth/protect-route";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { RfqRepository } from "@/lib/domain/repositories/rfq.repository";
+import { RfqService } from "@/lib/domain/services/rfq.service";
+import { InMemoryEventBus } from "@/lib/domain/events";
 
 export const dynamic = "force-dynamic";
 
@@ -23,34 +26,21 @@ export async function GET(request: Request) {
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limit = Math.min(50, parseInt(searchParams.get("limit") || "20", 10));
 
-  let query = auth.supabase
-    .from("rfqs")
-    .select(
-      `
-      id, title, slug, description, status, city, state, created_at, updated_at,
-      buyer_company_name, visibility_level, material_grade, manufacturing_process,
-      quotes(count)
-    `,
-      { count: "exact" },
-    )
-    .order("created_at", { ascending: false });
+  const service = new RfqService(new RfqRepository(auth.supabase), new InMemoryEventBus());
 
-  if (status) query = query.eq("status", status);
-
-  const { data, error, count } = await query.range((page - 1) * limit, page * limit - 1);
-
-  if (error) {
+  try {
+    const { data, count } = await service.listByStatus(status, page, limit);
+    return NextResponse.json({
+      success: true,
+      data: data ?? [],
+      meta: { page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit) },
+    });
+  } catch (error) {
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: error.message } },
+      { success: false, error: { code: "SERVER_ERROR", message: error instanceof Error ? error.message : "Unknown error" } },
       { status: 500 },
     );
   }
-
-  return NextResponse.json({
-    success: true,
-    data: data ?? [],
-    meta: { page, limit, total: count ?? 0 },
-  });
 }
 
 export async function PATCH(request: Request) {
@@ -82,7 +72,7 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const patch: Record<string, unknown> = {};
 
   if (action === "close") patch.status = "closed";
   else if (action === "cancel") patch.status = "cancelled";
@@ -102,38 +92,35 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const { data, error } = await auth.supabase
-    .from("rfqs")
-    .update(patch)
-    .eq("id", rfqId)
-    .select("id, title, slug, status")
-    .single();
+  const service = new RfqService(new RfqRepository(auth.supabase), new InMemoryEventBus());
 
-  if (error) {
+  try {
+    const data = await service.updateRfq(rfqId, patch);
+
+    await auth.supabase.from("platform_events").insert({
+      event_type: `rfq.admin_${action}`,
+      actor_id: auth.user.id,
+      actor_role: auth.role,
+      resource_type: "rfq",
+      resource_id: rfqId,
+      metadata: patch,
+    });
+
+    await logAdminAction(auth.supabase, {
+      userId: auth.user.id,
+      action: `rfq_${action}`,
+      resource: "rfqs",
+      resourceId: rfqId,
+      details: patch,
+      severity: "info",
+      request,
+    });
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: error.message } },
+      { success: false, error: { code: "SERVER_ERROR", message: error instanceof Error ? error.message : "Unknown error" } },
       { status: 500 },
     );
   }
-
-  await auth.supabase.from("platform_events").insert({
-    event_type: `rfq.admin_${action}`,
-    actor_id: auth.user.id,
-    actor_role: auth.role,
-    resource_type: "rfq",
-    resource_id: rfqId,
-    metadata: patch,
-  });
-
-  await logAdminAction(auth.supabase, {
-    userId: auth.user.id,
-    action: `rfq_${action}`,
-    resource: "rfqs",
-    resourceId: rfqId,
-    details: patch,
-    severity: "info",
-    request,
-  });
-
-  return NextResponse.json({ success: true, data });
 }

@@ -9,6 +9,8 @@ import {
   computeProfileCompleteness,
   loadSupplierPublicProfile,
 } from '@/lib/marketplace/public-entities';
+import { ListingRepository } from '@/lib/domain/repositories/listing.repository';
+import { ListingService } from '@/lib/domain/services/listing.service';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -58,18 +60,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
     );
   }
 
-  // Get supplier's active listings
-  const { data: listings } = await supabase
-    .from('listings')
-    .select('id, title, slug, metal_type, grade, price_min, price_max, currency, listing_media(url, is_primary)')
-    .eq('seller_profile_id', id)
-    .eq('is_active', true)
-    .eq('moderation_status', 'approved')
-    .order('created_at', { ascending: false })
-    .limit(20);
+  // Get supplier's active listings via service
+  const service = new ListingService(new ListingRepository(supabase));
+  const listings = await service.searchListingsBySupplier(id, 20);
 
   return NextResponse.json({
     success: true,
-    data: { ...seller, listings: listings || [] },
+    data: { ...seller, listings },
   });
 }

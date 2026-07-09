@@ -9,6 +9,8 @@ import { PERMISSIONS } from '@/lib/constants/permissions';
 import { evaluateSupplierMarketplaceGate } from '@/lib/marketplace/supplier-marketplace-gates';
 import { getServerDevelopmentTrustMode } from '@/lib/marketplace/trust-mode-server';
 import { getSellerV3ActivationContext } from '@/lib/marketplace/onboarding-v3-gates';
+import { ListingRepository } from '@/lib/domain/repositories/listing.repository';
+import { ListingService } from '@/lib/domain/services/listing.service';
 
 export async function POST(request: Request) {
   const auth = await protectApiRoute(request, {
@@ -67,50 +69,41 @@ export async function POST(request: Request) {
     );
   }
 
-  // Generate slug
-  const slug = (body.title || 'product')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    + '-' + Math.random().toString(36).slice(2, 6);
-
   const isVerified = gate.allowed && gate.missingRequirements.length === 0;
-  const initialStatus = isVerified ? 'approved' : 'pending';
+  const listingService = new ListingService(new ListingRepository(auth.supabase));
 
-  const { data, error } = await auth.supabase
-    .from('listings')
-    .insert({
+  try {
+    const result = await listingService.createListing({
+      actorId: auth.user.id,
       title: body.title || 'Untitled Product',
-      slug,
       description: body.description || null,
-      metal_type: body.metal_type || null,
+      metalType: body.metal_type || null,
       grade: body.grade || null,
-      price_min: body.price_min || null,
-      price_max: body.price_max || null,
-      price_unit: body.price_unit || 'per MT',
+      priceMin: body.price_min || null,
+      priceMax: body.price_max || null,
+      priceUnit: body.price_unit || 'per MT',
       currency: body.currency || 'INR',
-      is_negotiable: body.is_negotiable !== false,
-      quantity_available: body.quantity_available || null,
+      isNegotiable: body.is_negotiable !== false,
+      quantityAvailable: body.quantity_available || null,
       unit: body.unit || 'MT',
       moq: body.moq || null,
-      listing_type: body.listing_type || 'product',
-      listing_role: body.listing_role || 'supplier',
-      taxonomy_id: body.taxonomy_id || null,
-      seller_profile_id: sellerProfile.id,
-      company_id: sellerProfile.company_id,
-      is_active: true,
-      moderation_status: initialStatus,
-    })
-    .select()
-    .single();
+      listingType: body.listing_type || 'product',
+      listingRole: body.listing_role || 'supplier',
+      taxonomyId: body.taxonomy_id || null,
+      sellerProfileId: sellerProfile.id,
+      companyId: sellerProfile.company_id,
+      isDevelopmentTrustMode: developmentTrustMode,
+      isVerified,
+      specifications: Array.isArray(body.specifications) ? body.specifications : [],
+      pricingTiers: Array.isArray(body.pricing_tiers) ? body.pricing_tiers : [],
+    });
 
-  if (error) {
+    return NextResponse.json({ success: true, data: { id: result.id, slug: result.slug, title: result.title, moderation_status: result.moderationStatus } }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: { code: 'SERVER_ERROR', message: error.message } },
+      { success: false, error: { code: 'SERVER_ERROR', message } },
       { status: 500 },
     );
   }
-
-  return NextResponse.json({ success: true, data }, { status: 201 });
 }

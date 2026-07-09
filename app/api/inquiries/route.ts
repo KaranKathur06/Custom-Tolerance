@@ -8,8 +8,11 @@ import { NextResponse } from "next/server";
 import { protectApiRoute } from "@/lib/auth/protect-route";
 import { evaluateProcurementGate } from "@/lib/marketplace/procurement-gates";
 import { getServerDevelopmentTrustMode } from "@/lib/marketplace/trust-mode-server";
-import { createMarketplaceRfq } from "@/lib/marketplace/rfq-create";
 import { getBuyerV3GateContext } from "@/lib/marketplace/onboarding-v3-gates";
+import { InMemoryEventBus } from "@/lib/domain/events";
+import { RfqRepository } from "@/lib/domain/repositories/rfq.repository";
+import { RfqService } from "@/lib/domain/services/rfq.service";
+import { ensureUniqueSlug } from "@/lib/marketplace/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -24,49 +27,43 @@ export async function GET(request: Request) {
   const limit = Math.min(50, parseInt(searchParams.get("limit") || "20"));
   const isAdmin = ["admin", "super_admin", "superadmin", "moderator"].includes(auth.role);
 
-  let query = auth.supabase
-    .from("rfqs")
-    .select(
-      `
-      id, title, slug, description, quantity, budget_range,
-      delivery_timeline, status, visibility_level, city, state, country,
-      created_at, updated_at,
-      quotes(count)
-    `,
-      { count: "exact" },
-    )
-    ;
+  const service = new RfqService(new RfqRepository(auth.supabase), new InMemoryEventBus());
 
-  if (!isAdmin) {
-    const { data: buyerProfile } = await auth.supabase
-      .from("buyer_profiles")
-      .select("id")
-      .eq("profile_id", auth.user.id)
-      .maybeSingle();
-
-    if (buyerProfile) {
-      query = query.eq("buyer_profile_id", buyerProfile.id);
-    } else {
-      query = query.eq("buyer_user_id", auth.user.id);
+  if (isAdmin) {
+    try {
+      const { data, count } = await service.listByStatus(null, page, limit);
+      return NextResponse.json({
+        success: true,
+        data,
+        meta: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: { code: "SERVER_ERROR", message: error instanceof Error ? error.message : "Unknown error" } },
+        { status: 500 },
+      );
     }
   }
 
-  const { data, error, count } = await query
-    .order("created_at", { ascending: false })
-    .range((page - 1) * limit, page * limit - 1);
+  const { data: buyerProfile } = await auth.supabase
+    .from("buyer_profiles")
+    .select("id")
+    .eq("profile_id", auth.user.id)
+    .maybeSingle();
 
-  if (error) {
+  try {
+    const { data, count } = await service.listByBuyer(buyerProfile?.id || null, auth.user.id, page, limit);
+    return NextResponse.json({
+      success: true,
+      data,
+      meta: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
+    });
+  } catch (error) {
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: error.message } },
+      { success: false, error: { code: "SERVER_ERROR", message: error instanceof Error ? error.message : "Unknown error" } },
       { status: 500 },
     );
   }
-
-  return NextResponse.json({
-    success: true,
-    data: data || [],
-    meta: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
-  });
 }
 
 export async function POST(request: Request) {
@@ -153,7 +150,13 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   try {
-    const rfq = await createMarketplaceRfq(auth.supabase, {
+    const slug = await ensureUniqueSlug(title, async (candidate) => {
+      const { data } = await auth.supabase.from("rfqs").select("id").eq("slug", candidate).maybeSingle();
+      return Boolean(data);
+    });
+
+    const rfqService = new RfqService(new RfqRepository(auth.supabase), new InMemoryEventBus());
+    const rfq = await rfqService.create({
       buyerProfileId,
       buyerUserId: auth.user.id,
       title,
@@ -182,6 +185,7 @@ export async function POST(request: Request) {
       moqRequired: body.moq_required === true,
       guestToken: typeof body.guest_token === "string" ? body.guest_token : null,
       companyId: company?.id ?? null,
+      slug,
     });
 
     return NextResponse.json(

@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 import { searchMarketplaceSuppliers } from '@/lib/marketplace/supplier-query';
+import { ListingRepository } from '@/lib/domain/repositories/listing.repository';
+import { ListingService } from '@/lib/domain/services/listing.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +26,6 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
     const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '20')));
     const type = url.searchParams.get('type') || 'all'; // 'all', 'suppliers', 'products'
-    const offset = (page - 1) * limit;
 
     if (!q || q.length < 2) {
       return NextResponse.json({
@@ -73,27 +74,17 @@ export async function GET(request: NextRequest) {
 
     // ─── 2. SEARCH PRODUCTS ───
     let productResults: any[] = [];
+    let productTotal = 0;
     if (type === 'all' || type === 'products') {
-      const { data: products, error: prodError } = await supabase
-        .from('listings')
-        .select(`
-          id, title, description, metal_type, grade, price_min, price_max, moq,
-          company_id,
-          companies!inner(id, name, slug, verification_status)
-        `, { count: 'exact' })
-        .or(
-          `title.ilike.%${q}%,` +
-          `description.ilike.%${q}%,` +
-          `metal_type.ilike.%${q}%,` +
-          `grade.ilike.%${q}%`
-        )
-        .eq('is_active', true)
-        .eq('companies.verification_status', 'approved')
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+      const listingService = new ListingService(new ListingRepository(supabase));
+      try {
+        const { data: products, count } = await listingService.searchListings({
+          page,
+          limit,
+          search: q,
+        });
 
-      if (!prodError && products) {
+        productTotal = count || 0;
         productResults = products.map((p: any) => ({
           type: 'product',
           id: p.id,
@@ -104,13 +95,15 @@ export async function GET(request: NextRequest) {
           price_min: p.price_min,
           price_max: p.price_max,
           moq: p.moq,
-          supplier: {
+          supplier: p.companies ? {
             id: p.companies.id,
             name: p.companies.name,
             slug: p.companies.slug,
-            verified: p.companies.verification_status === 'approved',
-          },
+            verified: true,
+          } : null,
         }));
+      } catch (prodError) {
+        console.error('[marketplace/search] listing search failed', prodError);
       }
     }
 
@@ -127,8 +120,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: supplierTotal + productResults.length,
-        totalPages: Math.ceil((supplierTotal + productResults.length) / limit),
+        total: supplierTotal + productTotal,
+        totalPages: Math.ceil((supplierTotal + productTotal) / limit),
       },
       query: q,
       type,
