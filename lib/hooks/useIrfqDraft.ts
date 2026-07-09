@@ -57,7 +57,7 @@ export function useIrfqDraft(initialMethod: IrfqCreationMethod = "manual") {
           paymentTerms: rfq.payment_terms ?? prev.paymentTerms,
           paymentMode: rfq.payment_mode ?? prev.paymentMode,
           currencyCode: rfq.currency_code ?? prev.currencyCode,
-          privacyLevel: (rfq.privacy_level as string) ?? prev.privacyLevel,
+          privacyLevel: rfq.privacy_level ? (rfq.privacy_level as any) : prev.privacyLevel,
           supplierLocationPref: rfq.supplier_location_pref ?? prev.supplierLocationPref,
           supplierRequirements: rfq.supplier_requirements ?? prev.supplierRequirements,
           capabilityMatrixFilters: rfq.capability_matrix_filters ?? prev.capabilityMatrixFilters,
