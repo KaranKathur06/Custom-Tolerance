@@ -1,29 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Star,
-  Eye,
-  EyeOff,
-  Package,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  X,
-} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Pencil, Trash2, Star, Eye, EyeOff, Package, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  CAPABILITIES_OPTIONS,
-  MATERIAL_OPTIONS,
-  TOLERANCE_OPTIONS,
-  LEAD_TIME_OPTIONS,
-  PRODUCTION_CAPACITY_UNITS,
-} from "@/lib/marketplace/onboarding-v3";
 import type { FeaturedProductRow } from "@/components/onboarding/seller/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,282 +17,6 @@ type Product = FeaturedProductRow & {
 };
 
 type Toast = { id: string; message: string; type: "success" | "error" };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Empty form default
-// ─────────────────────────────────────────────────────────────────────────────
-
-const emptyForm = (): Omit<FeaturedProductRow, "id"> => ({
-  productName: "",
-  capability: "",
-  materials: [],
-  toleranceCapability: "",
-  productionCapacity: "",
-  productionCapacityUnit: "pcs",
-  moq: "",
-  leadTime: "",
-  isFeatured: false,
-  isVisible: true,
-  customTolerance: "",
-  certifications: [],
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Multi-chip selector (reused locally)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ChipSelect({
-  options,
-  value,
-  onChange,
-  max,
-}: {
-  options: readonly string[];
-  value: string[];
-  onChange: (v: string[]) => void;
-  max?: number;
-}) {
-  const toggle = (opt: string) => {
-    if (value.includes(opt)) {
-      onChange(value.filter((v) => v !== opt));
-    } else {
-      if (max && value.length >= max) return;
-      onChange([...value, opt]);
-    }
-  };
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((opt) => (
-        <button
-          key={opt}
-          type="button"
-          onClick={() => toggle(opt)}
-          className={cn(
-            "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-            value.includes(opt)
-              ? "border-blue-500 bg-blue-600 text-white"
-              : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-          )}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Product form modal
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ProductFormModal({
-  product,
-  onSave,
-  onClose,
-  saving,
-}: {
-  product: Partial<FeaturedProductRow> | null;
-  onSave: (data: Omit<FeaturedProductRow, "id">) => void;
-  onClose: () => void;
-  saving: boolean;
-}) {
-  const [form, setForm] = useState<Omit<FeaturedProductRow, "id">>(
-    product ? { ...emptyForm(), ...product } : emptyForm()
-  );
-
-  const update = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
-      <div className="relative my-8 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-lg font-bold text-slate-900">
-            {product?.productName ? "Edit Product" : "Add Product"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Form body */}
-        <div className="space-y-5 px-6 py-5">
-          {/* Product Name */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-              Product Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.productName}
-              onChange={(e) => update({ productName: e.target.value })}
-              placeholder="e.g. CNC Turned Stainless Steel Shaft"
-              className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-            />
-          </div>
-
-          {/* Capability */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-              Manufacturing Process
-            </label>
-            <select
-              value={form.capability}
-              onChange={(e) => update({ capability: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-            >
-              <option value="">Select process...</option>
-              {CAPABILITIES_OPTIONS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Materials */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-              Materials (select all that apply)
-            </label>
-            <ChipSelect
-              options={MATERIAL_OPTIONS}
-              value={form.materials}
-              onChange={(v) => update({ materials: v })}
-            />
-          </div>
-
-          {/* Tolerance + Capacity grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                Tolerance Capability
-              </label>
-              <select
-                value={form.toleranceCapability}
-                onChange={(e) => update({ toleranceCapability: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-              >
-                <option value="">Select tolerance...</option>
-                {TOLERANCE_OPTIONS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                Lead Time
-              </label>
-              <select
-                value={form.leadTime}
-                onChange={(e) => update({ leadTime: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-              >
-                <option value="">Select lead time...</option>
-                {LEAD_TIME_OPTIONS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* MOQ + Production Capacity */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                MOQ
-              </label>
-              <input
-                type="text"
-                value={form.moq}
-                onChange={(e) => update({ moq: e.target.value })}
-                placeholder="e.g. 100 pcs"
-                className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                Production Capacity / Month
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={form.productionCapacity}
-                  onChange={(e) => update({ productionCapacity: e.target.value })}
-                  placeholder="e.g. 5000"
-                  className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-                />
-                <select
-                  value={form.productionCapacityUnit}
-                  onChange={(e) => update({ productionCapacityUnit: e.target.value })}
-                  className="w-20 rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-                >
-                  {PRODUCTION_CAPACITY_UNITS.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Visibility toggles */}
-          <div className="flex items-center gap-4">
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-              <input
-                type="checkbox"
-                checked={form.isFeatured}
-                onChange={(e) => update({ isFeatured: e.target.checked })}
-                className="h-4 w-4 rounded border-slate-300 text-yellow-500 focus:ring-yellow-500"
-              />
-              <Star className="h-4 w-4 text-yellow-500" />
-              Featured
-            </label>
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-              <input
-                type="checkbox"
-                checked={form.isVisible}
-                onChange={(e) => update({ isVisible: e.target.checked })}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
-              />
-              {form.isVisible ? (
-                <Eye className="h-4 w-4 text-blue-600" />
-              ) : (
-                <EyeOff className="h-4 w-4 text-slate-400" />
-              )}
-              Visible to buyers
-            </label>
-          </div>
-        </div>
-
-        {/* Footer actions */}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => onSave(form)}
-            disabled={saving || !form.productName.trim()}
-            className="min-w-[100px]"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Product"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Product card
@@ -460,10 +165,7 @@ function ProductCard({
 export default function FeaturedProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [modalProduct, setModalProduct] = useState<Partial<FeaturedProductRow> | null | "new">(
-    null
-  );
+  const router = useRouter();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -511,32 +213,6 @@ export default function FeaturedProductsPage() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   };
 
-  // ── Save (create or update) ─────────────────────────────────────────────────
-  const handleSave = async (data: Omit<FeaturedProductRow, "id">) => {
-    setSaving(true);
-    try {
-      const isEdit = typeof modalProduct === "object" && modalProduct !== null && (modalProduct as Product).id;
-      const editId = isEdit ? (modalProduct as Product).id : null;
-
-      const res = await fetch(
-        `/api/dashboard/seller/products${editId ? `?id=${editId}` : ""}`,
-        {
-          method: editId ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to save");
-      setModalProduct(null);
-      await fetchProducts();
-      addToast(editId ? "Product updated" : "Product added", "success");
-    } catch {
-      addToast("Failed to save product", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   // ── Delete ─────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
@@ -583,7 +259,7 @@ export default function FeaturedProductsPage() {
           </p>
         </div>
         <Button
-          onClick={() => setModalProduct("new")}
+          onClick={() => router.push("/dashboard/seller/products/new")}
           className="flex items-center gap-2"
           size="sm"
         >
@@ -626,7 +302,7 @@ export default function FeaturedProductsPage() {
           <p className="mb-6 max-w-xs text-center text-sm text-slate-400">
             Add your first product to let buyers discover exactly what you make.
           </p>
-          <Button onClick={() => setModalProduct("new")} className="flex items-center gap-2">
+          <Button onClick={() => router.push("/dashboard/seller/products/new")} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add your first product
           </Button>
@@ -638,7 +314,7 @@ export default function FeaturedProductsPage() {
             <ProductCard
               key={product.id}
               product={product}
-              onEdit={() => setModalProduct(product)}
+              onEdit={() => router.push("/dashboard/seller/products/new")}
               onDelete={() => void handleDelete(product.id)}
               onToggleFeatured={() =>
                 void toggleField(product.id, "isFeatured", Boolean(product.isFeatured))
@@ -652,7 +328,7 @@ export default function FeaturedProductsPage() {
           {/* Add card */}
           <button
             type="button"
-            onClick={() => setModalProduct("new")}
+            onClick={() => router.push("/dashboard/seller/products/new")}
             className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-white py-10 text-sm text-slate-400 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
           >
             <Plus className="h-6 w-6" />
@@ -661,15 +337,6 @@ export default function FeaturedProductsPage() {
         </div>
       )}
 
-      {/* Modal */}
-      {modalProduct !== null ? (
-        <ProductFormModal
-          product={modalProduct === "new" ? {} : modalProduct}
-          onSave={(data) => void handleSave(data)}
-          onClose={() => setModalProduct(null)}
-          saving={saving}
-        />
-      ) : null}
 
       {/* Toast stack */}
       <div className="pointer-events-none fixed bottom-6 right-6 z-[100] flex flex-col gap-2">

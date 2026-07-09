@@ -1,41 +1,42 @@
-# Seller Onboarding Redesign (CustomTolerance) — Backend-first Execution Checklist
+# TODO — Product Creation Wizard (Seller)
 
-## Step 0 — Verification strategy abstraction (new)
-- [ ] Create `lib/marketplace/verification-strategies/` with:
-  - [ ] `india.ts` (GST-based phase1/phase2 requirements)
-  - [ ] `global-default.ts` (company registration / DUNS-based)
-  - [ ] `index.ts` exports resolver `getVerificationStrategy()`
-- [ ] Wire resolver into onboarding activation context.
+- [ ] Step 1: Remove modal-based “Add Product” UX
+  - [ ] Update `app/dashboard/seller/products/page.tsx` to remove `ProductFormModal` and all modal state.
+  - [ ] Make “Add Product” navigate to `/dashboard/seller/products/new`.
+  - [ ] Make “Edit” navigate to `/dashboard/seller/products/[productSlug]` (fallback if slug unavailable).
 
-## Step 1 — Refactor activation context
-- [ ] Update `lib/marketplace/onboarding-v3-gates.ts`:
-  - [ ] Extend return shape to include:
-    - [ ] `countryOrigin`
-    - [ ] `verificationType`
-    - [ ] `phase1Complete` / `registrationRequirementsMet`
-    - [ ] `phase2CompletionPercent` (profile strength proxy)
-    - [ ] `softMissingItems` vs `hardMissingItems`
-    - [ ] `trustScore` / `profileStrength` (use existing `trust_level` + completion percent)
-- [ ] Ensure existing callers compile.
+- [ ] Step 2: Create route entrypoints for the wizard workspace
+  - [ ] Add `app/dashboard/seller/products/new/page.tsx` (create initial draft + redirect to `[productSlug]`).
+  - [ ] Add `app/dashboard/seller/products/create/page.tsx` (redirect/re-export to `/new`).
+  - [ ] Add `app/dashboard/seller/products/[productSlug]/page.tsx` (wizard workspace shell: step indicator + sticky action bar + phase rendering).
 
-## Step 2 — Refactor marketplace gate (tiered access)
-- [ ] Update `lib/marketplace/supplier-marketplace-gates.ts`:
-  - [ ] Introduce tier model for actions:
-    - [ ] Tier 1: allow when `registrationRequirementsMet` and seller is `REGISTERED`
-    - [ ] Tier 2: allow/boost based on phase2 signals (soft requirements)
-    - [ ] Tier 3: strict gates for premium/verified actions (docs/bank approval/trust)
-  - [ ] Remove hard blocking on `profileCompletionPercent < 100` for Tier 1 actions
-  - [ ] Preserve hard block for suspended/rejected/under-review as per new requirements
-- [ ] Update user-facing missing requirements messaging.
+- [ ] Step 3: Implement the 4-phase wizard UI (no tabs; guided wizard)
+  - [ ] Phase 1 (Technical) UI with all blueprint fields and independent validation.
+  - [ ] Phase 2 (Commercial) UI with all blueprint fields and independent validation.
+  - [ ] Phase 3 (Packing Details) UI with all blueprint fields and independent validation.
+  - [ ] Phase 4 (Review) marketplace-quality summary + previews + edit phase links + submit actions.
 
-## Step 3 — Split documents conceptually
-- [ ] Update `getSellerV3ActivationContext` and downstream input to treat:
-  - [ ] registration docs (country-aware)
-  - [ ] trust docs (profile boost)
-- [ ] Ensure required docs for Tier 1 are minimal & country-aware.
+- [ ] Step 4: Autosave & draft persistence
+  - [ ] Implement autosave (every few seconds) using existing seller product APIs (`PATCH /api/dashboard/seller/products?id=...`).
+  - [ ] Show “Last saved: X minutes ago”.
+  - [ ] Ensure navigation between phases preserves data.
 
-## Step 4 — Compile + quick verification
-- [ ] Run TypeScript build/lint/tests
-- [ ] Smoke test a mocked activation context for:
-  - [ ] REGISTERED seller with low phase2 completion → can create listings/respond RFQs
-  - [ ] APPROVED/Trust docs missing → should still be allowed for Tier 1 (but not Tier 3)
+- [ ] Step 5: Backend alignment for blueprint fields (schema/API/RPC)
+  - [ ] Extend seller product persistence (seller_products + related tables) to store every blueprint field.
+  - [ ] Extend seller/products API POST/PATCH to accept all blueprint fields.
+  - [ ] Ensure publish/submit triggers full lifecycle and moderation synchronization.
+
+- [ ] Step 6: Marketplace & Admin moderation synchronization
+  - [ ] Add/update API endpoints so “Submit for Review” enqueues a moderation item containing:
+    product preview, submitted images, seller company, verification status, risk score,
+    industry, capability, materials, approval history, audit trail.
+  - [ ] Ensure admin approve/reject updates downstream systems (listing/search/industry/company/analytics/AI/notifications).
+
+- [ ] Step 7: Product URLs
+  - [ ] Ensure every product has permanent public URL `/products/[slug]`.
+  - [ ] Ensure seller editing URL `/dashboard/seller/products/[slug]`.
+  - [ ] Ensure admin review URL `/ops/admin/products/[id]`.
+
+- [ ] Step 8: Testing & QA
+  - [ ] Verify draft autosave, phase gating, review completeness, submit workflow, approve workflow.
+  - [ ] Validate keyboard navigation and responsive layout.

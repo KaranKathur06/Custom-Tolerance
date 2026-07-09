@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
     const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '20')));
     const type = url.searchParams.get('type') || 'all'; // 'all', 'suppliers', 'products'
+    const includeSeeded = url.searchParams.get('includeSeeded') === 'true';
 
     if (!q || q.length < 2) {
       return NextResponse.json({
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
           query: q,
           page,
           pageSize: limit,
-          includeSeeded: true,
+          includeSeeded,
         });
 
         supplierTotal = result.totalCount;
