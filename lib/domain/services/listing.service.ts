@@ -358,7 +358,9 @@ export class ListingService {
       slug = `${slug}-${metalType.toLowerCase().replace(/\s+/g, '-')}`;
     }
 
-    const suffix = Math.random().toString(36).slice(2, 6);
-    return `${slug}-${suffix}`;
+    // Deterministic slug generation (no randomness).
+    // If uniqueness is required, it should be enforced/handled at the DB level
+    // and referenced by canonical listing id across the system.
+    return slug;
   }
 }

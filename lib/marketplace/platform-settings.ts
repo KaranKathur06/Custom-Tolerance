@@ -54,7 +54,7 @@ export function resolveDevelopmentTrustMode(input?: {
     }
   }
 
-  return input?.defaultValue ?? true;
+  return input?.defaultValue ?? false;
 }
 
 export function getPublicDevelopmentTrustMode(databaseValue?: PlatformSettingValue) {

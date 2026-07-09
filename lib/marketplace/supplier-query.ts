@@ -68,7 +68,8 @@ export async function searchMarketplaceSuppliers(
         certification_slugs: filters.certifications ?? [],
         city_names: filters.cities ?? [],
         verification_filter: filters.verification ?? null,
-        include_seeded: filters.includeSeeded ?? true,
+        // Default to excluding seeded/demo entities unless explicitly requested.
+        include_seeded: filters.includeSeeded ?? false,
         page_number: page,
         page_size: pageSize,
     });
@@ -141,7 +142,7 @@ export async function getSupplierBySlug(
     const result = await searchMarketplaceSuppliers(supabase, {
         page: 1,
         pageSize: 1,
-        includeSeeded: true,
+        includeSeeded: false,
     });
 
     const supplier = result.suppliers.find((item) => item.slug === slug);

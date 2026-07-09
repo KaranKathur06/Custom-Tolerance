@@ -54,7 +54,8 @@ export async function loadRelatedSuppliers(
         pageSize: limit + 5,
         capabilities: capabilitySlug ? [capabilitySlug] : undefined,
         cities: supplier.city ? [supplier.city] : undefined,
-        includeSeeded: true,
+        // Related suppliers list should exclude seeded/demo entities by default.
+        includeSeeded: false,
     });
 
     return result.suppliers

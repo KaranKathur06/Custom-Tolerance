@@ -75,7 +75,9 @@ export function parseSupplierSearchParams(searchParams: URLSearchParams): Suppli
             verificationParam === "true"
                 ? "verified"
                 : (searchParams.get("verification") as VerificationStatus | null) ?? null,
-        includeSeeded: searchParams.get("includeSeeded") !== "false",
+        // Default to excluding seeded/demo entities in the live marketplace.
+        // Explicit includeSeeded=true is required to include seeded/demo entities.
+        includeSeeded: searchParams.get("includeSeeded") === "true",
         page: Number.isFinite(page) && page > 0 ? page : 1,
         pageSize: Number.isFinite(pageSize) ? Math.min(Math.max(pageSize, 6), 48) : 20,
     };
