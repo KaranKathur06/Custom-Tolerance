@@ -52,11 +52,11 @@ export async function publishProductToMarketplace(
       .single();
 
     if (fetchError || !product) {
-      return { success: false, error: "Product not found" };
+      return { success: false, message: "Product not found", error: "Product not found" };
     }
 
     if (product.is_published) {
-      return { success: false, error: "Product already published" };
+      return { success: false, message: "Product already published", error: "Product already published" };
     }
 
     // Update approval status to pending
@@ -68,7 +68,7 @@ export async function publishProductToMarketplace(
       .eq("id", productId);
 
     if (updateError) {
-      return { success: false, error: updateError.message };
+      return { success: false, message: updateError.message, error: updateError.message };
     }
 
     // Create approval record
@@ -83,7 +83,7 @@ export async function publishProductToMarketplace(
       .single();
 
     if (approvalError || !approval) {
-      return { success: false, error: "Failed to create approval record" };
+      return { success: false, message: "Failed to create approval record", error: "Failed to create approval record" };
     }
 
     return {
@@ -92,7 +92,8 @@ export async function publishProductToMarketplace(
       approval_id: approval.id,
     };
   } catch (err: any) {
-    return { success: false, error: err?.message || "Publishing failed" };
+    const errMsg = err?.message || "Publishing failed";
+    return { success: false, message: errMsg, error: errMsg };
   }
 }
 
