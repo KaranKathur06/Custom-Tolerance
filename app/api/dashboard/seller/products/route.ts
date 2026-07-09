@@ -1,9 +1,16 @@
+/**
+ * GET /api/dashboard/seller/products — List seller products with publishing status
+ * POST /api/dashboard/seller/products — Create a new product
+ * PATCH /api/dashboard/seller/products — Update a product
+ * DELETE /api/dashboard/seller/products — Delete a product
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/dashboard/seller/products
-// Returns all products for the authenticated seller
+// Returns all products for the authenticated seller with publishing status
 // ─────────────────────────────────────────────────────────────────────────────
 export async function GET() {
   const supabase = await createClient();
@@ -30,15 +37,30 @@ export async function GET() {
 
   const { data: products, error } = await supabase
     .from("seller_products")
-    .select("*")
+    .select(
+      `
+      id, product_name, capability, materials, tolerance_capability,
+      production_capacity_unit, moq, lead_time, custom_tolerance, certifications,
+      estimated_price_per_unit, quantity_available, is_visible, is_featured,
+      is_published, published_at, listing_id, approval_status, approval_notes,
+      approved_by, approved_at, created_at, updated_at,
+      product_approvals!inner(
+        id, status, created_at, rejection_reason, notes
+      )
+      `
+    )
     .eq("seller_profile_id", sellerProfile.id)
     .order("created_at", { ascending: false });
 
   if (error) {
+    console.error("[seller/products]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ products: products ?? [] });
+  return NextResponse.json({ 
+    products: products ?? [],
+    total: products?.length || 0,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,14 +106,20 @@ export async function POST(req: NextRequest) {
       moq: body.moq ?? null,
       lead_time: body.leadTime ?? null,
       custom_tolerance: body.customTolerance ?? null,
+      certifications: Array.isArray(body.certifications) ? body.certifications : [],
+      estimated_price_per_unit: body.estimatedPrice ?? null,
+      quantity_available: body.quantityAvailable ?? null,
       is_featured: Boolean(body.isFeatured ?? false),
-      is_visible: body.isVisible !== false, // default true
+      is_visible: body.isVisible !== false,
+      approval_status: "draft",
+      is_published: false,
       created_by: user.id,
     })
     .select()
     .single();
 
   if (error) {
+    console.error("[seller/products POST]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -132,6 +160,9 @@ export async function PATCH(req: NextRequest) {
   if (body.moq !== undefined) patch.moq = body.moq;
   if (body.leadTime !== undefined) patch.lead_time = body.leadTime;
   if (body.customTolerance !== undefined) patch.custom_tolerance = body.customTolerance;
+  if (body.certifications !== undefined) patch.certifications = body.certifications;
+  if (body.estimatedPrice !== undefined) patch.estimated_price_per_unit = body.estimatedPrice;
+  if (body.quantityAvailable !== undefined) patch.quantity_available = body.quantityAvailable;
   if (body.isFeatured !== undefined) patch.is_featured = Boolean(body.isFeatured);
   if (body.isVisible !== undefined) patch.is_visible = Boolean(body.isVisible);
   patch.updated_at = new Date().toISOString();
@@ -145,6 +176,7 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (error) {
+    console.error("[seller/products PATCH]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -154,6 +186,7 @@ export async function PATCH(req: NextRequest) {
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE /api/dashboard/seller/products
 // Deletes a product by id (passed as query param ?id=...)
+// Only allows deleting draft products, not published/approved ones
 // ─────────────────────────────────────────────────────────────────────────────
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient();
@@ -173,13 +206,36 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Product ID required" }, { status: 400 });
   }
 
+  // Check if product is published or approved
+  const { data: product } = await supabase
+    .from("seller_products")
+    .select("is_published, approval_status")
+    .eq("id", productId)
+    .eq("profile_id", user.id)
+    .single();
+
+  if (!product) {
+    return NextResponse.json(
+      { error: "Product not found or unauthorized" },
+      { status: 404 }
+    );
+  }
+
+  if (product.is_published || product.approval_status === "approved") {
+    return NextResponse.json(
+      { error: "Cannot delete published or approved products" },
+      { status: 400 }
+    );
+  }
+
   const { error } = await supabase
     .from("seller_products")
     .delete()
     .eq("id", productId)
-    .eq("profile_id", user.id); // ownership check
+    .eq("profile_id", user.id);
 
   if (error) {
+    console.error("[seller/products DELETE]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

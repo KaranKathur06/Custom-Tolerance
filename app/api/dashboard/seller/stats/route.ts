@@ -42,6 +42,7 @@ export async function GET(request: Request) {
         leadFeedCount: 0,
         profileHealth: 0,
         unreadNotifications: 0,
+        products: { total: 0, draft: 0, published: 0, pending_review: 0, rejected: 0 },
       },
     });
   }
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
     listingsRes,
     quotesRes,
     notificationsRes,
+    productsRes,
   ] = await Promise.all([
     auth.supabase
       .from("listings")
@@ -73,6 +75,10 @@ export async function GET(request: Request) {
       .eq("profile_id", auth.user.id)
       .is("read_at", null)
       .is("deleted_at", null),
+    auth.supabase
+      .from("seller_products")
+      .select("id, approval_status, is_published")
+      .eq("seller_profile_id", sellerProfile.id),
   ]);
 
   const listings = listingsRes.data ?? [];
@@ -86,6 +92,16 @@ export async function GET(request: Request) {
     totalViews += item.views_count ?? 0;
     listingInquiries += item.inquiry_count ?? 0;
   }
+
+  // Product stats
+  const products = productsRes.data ?? [];
+  const productCounts = {
+    total: products.length,
+    draft: products.filter((p) => p.approval_status === "draft").length,
+    published: products.filter((p) => p.is_published).length,
+    pending_review: products.filter((p) => p.approval_status === "pending_review").length,
+    rejected: products.filter((p) => p.approval_status === "rejected").length,
+  };
 
   let inquiryTotal = 0;
   let inquiryUnread = 0;
@@ -133,6 +149,7 @@ export async function GET(request: Request) {
       trustLevel: sellerProfile.trust_level ?? 0,
       verificationStatus: sellerProfile.verification_status,
       unreadNotifications: notificationsRes.count ?? 0,
+      products: productCounts,
     },
   });
 }

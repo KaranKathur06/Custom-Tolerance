@@ -26,6 +26,7 @@ import { RfqRiskIndicator } from "./RfqRiskIndicator";
 import { SubscriptionGateBanner } from "./SubscriptionGateBanner";
 import {
   IRFQ_COMPOSER_STEPS,
+  IRFQ_PRIVACY_LEVELS,
   type IrfqCreationMethod,
   type IrfqRiskAssessmentResult,
 } from "@/lib/marketplace/irfq/types";
@@ -653,16 +654,45 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
           {step === 7 ? (
             <div className="space-y-4">
               <h2 className="text-xl font-bold">Review & Publish</h2>
-              <RfqRiskIndicator assessment={riskAssessment} loading={riskLoading} />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-slate-900">RFQ Privacy</h3>
+                  <p className="mt-1 text-sm text-slate-600">Choose how your requirement is shared with suppliers.</p>
+                  <div className="mt-3 space-y-2">
+                    {IRFQ_PRIVACY_LEVELS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updatePayload({ privacyLevel: option.value })}
+                        className={cn(
+                          "w-full rounded-xl border px-4 py-3 text-left transition-colors",
+                          payload.privacyLevel === option.value
+                            ? "border-blue-600 bg-blue-50 text-blue-900"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium">{option.label}</span>
+                          {payload.privacyLevel === option.value ? <span className="text-xs font-semibold uppercase text-blue-700">Selected</span> : null}
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">{option.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <RfqRiskIndicator assessment={riskAssessment} loading={riskLoading} />
+                </div>
+              </div>
               <dl className="grid gap-2 text-sm sm:grid-cols-2">
                 <div><dt className="text-slate-500">Title</dt><dd className="font-medium">{payload.rfqTitle || payload.projectName || "—"}</dd></div>
                 <div><dt className="text-slate-500">Project type</dt><dd className="font-medium">{payload.projectType || "—"}</dd></div>
                 <div><dt className="text-slate-500">Delivery</dt><dd className="font-medium">{payload.deliveryCity}, {payload.deliveryState}</dd></div>
                 <div><dt className="text-slate-500">Files</dt><dd className="font-medium">{files.length} attached</dd></div>
+                <div><dt className="text-slate-500">Privacy</dt><dd className="font-medium">{IRFQ_PRIVACY_LEVELS.find((option) => option.value === payload.privacyLevel)?.label ?? "Public RFQ"}</dd></div>
               </dl>
               <p className="text-sm text-slate-600">
-                On publish, CT-IRFQ will match up to{" "}
-                {limits.maxSupplierMatches ?? "unlimited"} suppliers ({subscriptionPlan} plan) and notify qualified manufacturers.
+                On publish, CT-IRFQ will match up to {limits.maxSupplierMatches ?? "unlimited"} suppliers ({subscriptionPlan} plan) and notify qualified manufacturers.
               </p>
             </div>
           ) : null}

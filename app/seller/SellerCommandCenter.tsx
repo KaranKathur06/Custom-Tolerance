@@ -22,8 +22,19 @@ type SellerStats = {
     viewed: number;
     won: number;
     lost: number;
+    shortlisted: number;
   };
-  listings: { active: number; pending: number };
+  listings: { 
+    active: number; 
+    pending: number;
+    total: number;
+    totalViews: number;
+    listingInquiries: number;
+  };
+  profileHealth: number;
+  trustLevel: number;
+  verificationStatus?: string;
+  unreadNotifications: number;
 };
 
 export default function SellerCommandCenter() {
@@ -101,11 +112,10 @@ export default function SellerCommandCenter() {
       </section>
 
       <PerformanceMetrics
-        rfqsParticipated={
-          (stats?.quotes.submitted ?? 0) +
-          (stats?.quotes.viewed ?? 0) +
-          (stats?.quotes.won ?? 0)
-        }
+        profileViews={stats?.listings.totalViews ?? 0}
+        totalProducts={stats?.listings.active ?? 0}
+        activeOrders={stats?.quotes.won ?? 0}
+        pendingQuotes={stats?.quotes.submitted ?? 0}
         winRate={
           (stats?.quotes.won ?? 0) + (stats?.quotes.lost ?? 0) > 0
             ? Math.round(
@@ -113,8 +123,34 @@ export default function SellerCommandCenter() {
                   ((stats?.quotes.won ?? 0) + (stats?.quotes.lost ?? 0))) *
                   100,
               )
-            : 34
+            : 0
         }
+        conversionRate={
+          (stats?.quotes.submitted ?? 0) + (stats?.quotes.viewed ?? 0) > 0
+            ? Math.round(
+                ((stats?.quotes.won ?? 0) /
+                  ((stats?.quotes.submitted ?? 0) + (stats?.quotes.viewed ?? 0))) *
+                  100,
+              )
+            : 0
+        }
+        avgResponseTime="2-4h"
+        quoteSuccessRate={
+          (stats?.quotes.submitted ?? 0) + (stats?.quotes.viewed ?? 0) > 0
+            ? Math.round(
+                ((stats?.quotes.shortlisted ?? 0) /
+                  ((stats?.quotes.submitted ?? 0) + (stats?.quotes.viewed ?? 0))) *
+                  100,
+              )
+            : 0
+        }
+        repeatBuyers={stats?.inquiries.total ?? 0}
+        rfqsParticipated={
+          (stats?.quotes.submitted ?? 0) +
+          (stats?.quotes.viewed ?? 0) +
+          (stats?.quotes.won ?? 0)
+        }
+        averageOrderValue="₹150,000"
       />
 
       <SellerBusinessInsights />

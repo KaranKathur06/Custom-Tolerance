@@ -13,17 +13,17 @@ export async function GET() {
     return NextResponse.json({ verifiedSuppliers: 0, activeListings: 0, activeRfqs: 0, totalProducts: 0 });
   }
 
-  const [suppliers, listings, rfqs, products] = await Promise.all([
+  const [suppliers, listings, rfqs, publishedProducts] = await Promise.all([
     supabase.from('companies').select('id', { count: 'exact', head: true }).eq('verification_status', 'approved').is('deleted_at', null),
     supabase.from('listings').select('id', { count: 'exact', head: true }).eq('is_active', true).is('deleted_at', null),
     supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('status', 'open').is('deleted_at', null),
-    supabase.from('taxonomy').select('id', { count: 'exact', head: true }).eq('type', 'material').eq('is_active', true),
+    supabase.from('seller_products').select('id', { count: 'exact', head: true }).eq('is_published', true).eq('approval_status', 'approved'),
   ]);
 
   return NextResponse.json({
     verifiedSuppliers: suppliers.count || 0,
     activeListings: listings.count || 0,
     activeRfqs: rfqs.count || 0,
-    totalProducts: products.count || 0,
+    totalProducts: publishedProducts.count || 0,
   });
 }

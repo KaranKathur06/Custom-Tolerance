@@ -137,6 +137,18 @@ export const IRFQ_COMPOSER_STEPS = [
   "Review",
 ] as const;
 
+export const IRFQ_PRIVACY_LEVELS: Array<{
+  value: IrfqPrivacyLevel;
+  label: string;
+  description: string;
+}> = [
+  { value: "public", label: "Public RFQ", description: "Visible to qualified suppliers in the marketplace." },
+  { value: "private", label: "Private RFQ", description: "Only invited suppliers can view this RFQ." },
+  { value: "invite_only", label: "Invite-only RFQ", description: "Share with a selected supplier list." },
+  { value: "anonymous", label: "Anonymous RFQ", description: "Buyer identity hidden from suppliers." },
+  { value: "nda_protected", label: "NDA Protected RFQ", description: "Suppliers must accept NDA before access." },
+];
+
 export const IRFQ_CREATION_METHODS: Array<{
   id: IrfqCreationMethod;
   label: string;

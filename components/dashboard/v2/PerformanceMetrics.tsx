@@ -9,6 +9,7 @@ import {
   Repeat,
   ClipboardList,
   TrendingUp,
+  Package,
 } from "lucide-react";
 import { AnimatedCounter } from "./AnimatedCounter";
 
@@ -20,25 +21,36 @@ type PerformanceMetricsProps = {
   repeatBuyers?: number;
   rfqsParticipated?: number;
   conversionRate?: number;
+  totalProducts?: number;
+  activeOrders?: number;
+  pendingQuotes?: number;
+  averageOrderValue?: string;
 };
 
 export function PerformanceMetrics({
-  profileViews = 1240,
-  winRate = 34,
-  avgResponseTime = "4.2h",
-  quoteSuccessRate = 28,
-  repeatBuyers = 12,
-  rfqsParticipated = 47,
-  conversionRate = 18,
+  profileViews = 0,
+  winRate = 0,
+  avgResponseTime = "N/A",
+  quoteSuccessRate = 0,
+  repeatBuyers = 0,
+  rfqsParticipated = 0,
+  conversionRate = 0,
+  totalProducts = 0,
+  activeOrders = 0,
+  pendingQuotes = 0,
+  averageOrderValue = "N/A",
 }: PerformanceMetricsProps) {
   const metrics = [
     { label: "Profile Views", value: profileViews, icon: Eye, suffix: "" },
+    { label: "Total Products", value: totalProducts, icon: Package, suffix: "" },
+    { label: "Active Orders", value: activeOrders, icon: ClipboardList, suffix: "" },
+    { label: "Pending Quotes", value: pendingQuotes, icon: Target, suffix: "" },
     { label: "Win Rate", value: winRate, icon: Trophy, suffix: "%" },
+    { label: "Conversion Rate", value: conversionRate, icon: TrendingUp, suffix: "%" },
     { label: "Avg Response Time", value: avgResponseTime, icon: Clock, isText: true },
     { label: "Quote Success Rate", value: quoteSuccessRate, icon: Target, suffix: "%" },
     { label: "Repeat Buyers", value: repeatBuyers, icon: Repeat, suffix: "" },
-    { label: "RFQs Participated", value: rfqsParticipated, icon: ClipboardList, suffix: "" },
-    { label: "Conversion Rate", value: conversionRate, icon: TrendingUp, suffix: "%" },
+    { label: "Avg Order Value", value: averageOrderValue, icon: TrendingUp, suffix: "" },
   ];
 
   return (

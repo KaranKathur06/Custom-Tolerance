@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import FilterDropdown from './FilterDropdown';
 import ListingCard from './ListingCard';
+import ProductCard from './ProductCard';
 import { SupplierCard } from './SupplierCard';
 import { getSupabaseBrowserClient } from '../../lib/supabase/browser-client';
 import type { MarketplaceSupplier } from '@/lib/marketplace/supplier-query';
@@ -27,7 +28,8 @@ const MARKETPLACE_CITIES = [
 type CapabilityOption = { id: string; name: string; slug: string };
 
 type MarketplaceResponse = {
-  type: 'buyers' | 'suppliers';
+  type: 'products' | 'buyers' | 'suppliers';
+  products?: any[];
   inquiries?: any[];
   suppliers?: any[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
@@ -79,7 +81,7 @@ export default function MarketplaceTabs() {
   const [error, setError] = useState<string | null>(null);
   const [liveStats, setLiveStats] = useState({ verifiedSuppliers: 0, activeListings: 0, activeRfqs: 0, totalProducts: 0 });
 
-  const activeType = searchParams.get('type') === 'suppliers' ? 'suppliers' : 'buyers';
+  const activeType = (searchParams.get('type') || 'products') as 'products' | 'buyers' | 'suppliers';
   const page = Number(searchParams.get('page') || '1');
   const search = searchParams.get('search') || '';
   const locations = useMemo(() => parseCsv(searchParams.get('location')), [searchParams]);
@@ -97,7 +99,9 @@ export default function MarketplaceTabs() {
 
   const rows = useMemo(() => {
     if (!response) return [];
-    return activeType === 'buyers' ? response.inquiries || [] : response.suppliers || [];
+    if (activeType === 'products') return response.products || [];
+    if (activeType === 'buyers') return response.inquiries || [];
+    return response.suppliers || [];
   }, [response, activeType]);
 
   const activeChips = useMemo(() => {
@@ -258,10 +262,12 @@ export default function MarketplaceTabs() {
                 <Sparkles className="h-3 w-3" /> B2B Industrial Marketplace
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-                {activeType === 'buyers' ? 'Buyer Requirements' : 'Verified Suppliers'}
+                {activeType === 'products' ? 'Approved Products' : activeType === 'buyers' ? 'Buyer Requirements' : 'Verified Suppliers'}
               </h1>
               <p className="mt-2 max-w-xl text-sm text-slate-300">
-                {activeType === 'buyers'
+                {activeType === 'products'
+                  ? 'Browse approved seller products with verified pricing, specifications, and supplier details.'
+                  : activeType === 'buyers'
                   ? 'Explore active buyer requirements and submit competitive quotes to win orders.'
                   : 'Discover verified manufacturing suppliers with capability-based filtering and real product catalogs.'}
               </p>
@@ -271,7 +277,7 @@ export default function MarketplaceTabs() {
             <div className="flex items-center gap-6 text-sm text-slate-300">
               <div className="text-center">
                 <p className="text-2xl font-bold text-white">{totalResults}</p>
-                <p className="text-xs text-slate-400">{activeType === 'buyers' ? 'Active RFQs' : 'Suppliers'}</p>
+                <p className="text-xs text-slate-400">{activeType === 'products' ? 'Products' : activeType === 'buyers' ? 'Active RFQs' : 'Suppliers'}</p>
               </div>
               <div className="h-8 w-px bg-slate-700" />
               <div className="text-center">
@@ -288,6 +294,15 @@ export default function MarketplaceTabs() {
 
           {/* Tab switcher */}
           <div className="mt-6 inline-flex rounded-xl border border-white/10 bg-white/5 p-1 backdrop-blur">
+            <button
+              type="button"
+              onClick={() => updateParams({ type: 'products', moqRange: '' })}
+              className={`inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition ${
+                activeType === 'products' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <Package className="h-4 w-4" /> Approved Products
+            </button>
             <button
               type="button"
               onClick={() => updateParams({ type: 'buyers', moqRange: '' })}
@@ -319,7 +334,7 @@ export default function MarketplaceTabs() {
               <Input
                 value={search}
                 onChange={(e) => updateParams({ search: e.target.value })}
-                placeholder={activeType === 'buyers' ? 'Search product requirements...' : 'Search suppliers, materials, products...'}
+                placeholder={activeType === 'buyers' ? 'Search product requirements...' : 'Search products, suppliers, materials...'}
                 className="h-10 pl-9"
               />
             </div>
@@ -336,7 +351,7 @@ export default function MarketplaceTabs() {
               <FilterDropdown label="Industry" options={industryOptions} value={industries} onChange={(next) => updateParams({ industry: next.join(',') })} />
               <FilterDropdown label="Material" options={materialOptions} value={categories} onChange={(next) => updateParams({ category: next.join(',') })} />
               <FilterDropdown label="Verified" options={VERIFIED_OPTIONS} value={verified} multiple={false} onChange={(next) => updateParams({ verified: next.length > 0 ? 'true' : '' })} />
-              {activeType === 'suppliers' ? (
+              {(activeType === 'suppliers' || activeType === 'products') ? (
                 <FilterDropdown label="MOQ" options={MOQ_OPTIONS} value={moqRange} multiple={false} onChange={(next) => updateParams({ moqRange: next[0] || '' })} />
               ) : null}
               <FilterDropdown label="Date" options={DATE_OPTIONS} value={date} multiple={false} onChange={(next) => updateParams({ date: next[0] || '' })} />
@@ -398,8 +413,10 @@ export default function MarketplaceTabs() {
                 : rows.map((item) =>
                     activeType === 'suppliers' ? (
                       <SupplierCard key={item.id} supplier={item as MarketplaceSupplier} />
+                    ) : activeType === 'products' ? (
+                      <ProductCard key={item.id} item={item} />
                     ) : (
-                      <ListingCard key={item.id} tab={activeType} item={item} />
+                      <ListingCard key={item.id} tab="buyers" item={item} />
                     ),
                   )}
             </div>
@@ -411,7 +428,7 @@ export default function MarketplaceTabs() {
                 <Search className="h-6 w-6 text-slate-400" />
               </div>
               <p className="text-lg font-bold text-slate-900">No results found</p>
-              <p className="mt-2 text-sm text-slate-500">Try broadening your filters or switching to {activeType === 'buyers' ? 'Suppliers' : 'Buyers'} tab.</p>
+              <p className="mt-2 text-sm text-slate-500">Try broadening your filters or switching to another tab.</p>
               <Button variant="outline" className="mt-4" onClick={() => router.replace(`/marketplace?type=${activeType}`, { scroll: false })}>
                 Clear All Filters
               </Button>
