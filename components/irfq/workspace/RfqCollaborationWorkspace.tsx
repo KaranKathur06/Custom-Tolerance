@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +33,7 @@ export function RfqCollaborationWorkspace({ rfqId }: Props) {
   const [posting, setPosting] = useState(false);
   const [tab, setTab] = useState<"comments" | "activity">("comments");
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const [commentsRes, activityRes] = await Promise.all([
@@ -47,11 +47,11 @@ export function RfqCollaborationWorkspace({ rfqId }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [rfqId]);
 
   useEffect(() => {
     void refresh();
-  }, [rfqId]);
+  }, [refresh]);
 
   async function handlePost() {
     if (!body.trim()) return;

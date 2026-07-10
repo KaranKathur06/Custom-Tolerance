@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,7 +52,7 @@ export default function AdminProductApprovalQueue({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>(filter);
 
-  const fetchApprovals = async () => {
+  const fetchApprovals = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -68,11 +68,11 @@ export default function AdminProductApprovalQueue({
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeFilter]);
 
   useEffect(() => {
     fetchApprovals();
-  }, [activeFilter]);
+  }, [fetchApprovals]);
 
   const handleApprove = async (approvalId: string) => {
     setActionLoading(approvalId);

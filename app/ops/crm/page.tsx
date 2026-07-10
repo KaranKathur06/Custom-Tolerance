@@ -1,72 +1,69 @@
-'use client';
-
+import { CRMProjectionService } from '@/lib/ops/projections/crm.projection';
 import { KPICard } from '@/components/ops/shared/KPICard';
 import { StatusBadge } from '@/components/ops/shared/StatusBadge';
 import {
   Target, DollarSign, TrendingUp, UserCheck,
   ArrowRight, Phone, Mail, Calendar,
 } from 'lucide-react';
+import Link from 'next/link';
 
-const pipelineStages = [
-  { stage: 'New', count: 12, value: '₹8.4L', color: 'var(--ops-info)' },
-  { stage: 'Contacted', count: 8, value: '₹5.2L', color: '#8b5cf6' },
-  { stage: 'Qualified', count: 5, value: '₹12.1L', color: 'var(--ops-warning)' },
-  { stage: 'Negotiation', count: 3, value: '₹18.5L', color: '#f97316' },
-  { stage: 'Converted', count: 7, value: '₹22.3L', color: 'var(--ops-success)' },
-];
+export default async function CRMCommandCenter() {
+  // Fetch live projections
+  const kpis = await CRMProjectionService.getKPIs();
+  const pipeline = await CRMProjectionService.getPipeline();
+  
+  // For hot leads, we query tasks or leads. 
+  // Since we don't have a topLeads projection yet, we will fetch recent active customers
+  const recentLeads = await CRMProjectionService.getCustomers('BUYER', 1, 5);
+  
+  // For tasks, fetch live tasks
+  const tasksRes = await CRMProjectionService.getTasks(1, 5, { status: 'TODO' });
 
-const topLeads = [
-  { company: 'Tata Steel', contact: 'Rajesh Kumar', value: '₹12.5L', stage: 'Negotiation', nextAction: 'Follow-up call', dueIn: '2 hrs' },
-  { company: 'Hindalco', contact: 'Priya Sharma', value: '₹8.2L', stage: 'Qualified', nextAction: 'Send proposal', dueIn: '4 hrs' },
-  { company: 'JSW Group', contact: 'Amit Patel', value: '₹15.0L', stage: 'Contacted', nextAction: 'Schedule meeting', dueIn: 'Tomorrow' },
-  { company: 'Vedanta Metals', contact: 'Neha Gupta', value: '₹6.8L', stage: 'New', nextAction: 'Initial outreach', dueIn: 'Today' },
-];
-
-const upcomingTasks = [
-  { task: 'Call Tata Steel — contract renewal discussion', time: '2:00 PM', type: 'call' },
-  { task: 'Send pricing proposal to Hindalco', time: '3:30 PM', type: 'email' },
-  { task: 'Meeting with JSW Group — onboarding', time: '4:00 PM', type: 'meeting' },
-];
-
-export default function CRMCommandCenter() {
   return (
     <div>
+      <div className="ops-section-header">
+        <div>
+          <h1 className="ops-section-title">CRM Command Center</h1>
+          <p className="ops-section-subtitle">Live projection of marketplace sales and activity</p>
+        </div>
+      </div>
+
       {/* KPI Grid */}
       <div className="ops-kpi-grid">
-        <KPICard title="Pipeline Value" value="₹66.5L" change={18.3} changeLabel="vs last month" icon={Target} variant="info"
-          sparkline={[4, 6, 5, 8, 7, 9, 10, 8, 12, 14]} />
-        <KPICard title="MRR" value="₹3.2L" change={12.5} changeLabel="vs last month" icon={DollarSign} variant="success"
-          sparkline={[3, 4, 5, 4, 6, 7, 6, 8, 9, 10]} />
-        <KPICard title="Conversion Rate" value="28.5%" change={3.2} changeLabel="vs last month" icon={TrendingUp} variant="success" />
-        <KPICard title="Active Customers" value="342" change={8.7} changeLabel="vs last month" icon={UserCheck} variant="info"
-          sparkline={[5, 6, 7, 6, 8, 7, 9, 10, 11, 12]} />
+        <KPICard title="Total Buyers" value={String(kpis.buyers)} change={0} changeLabel="Live" icon={Target} variant="info" />
+        <KPICard title="Total Sellers" value={String(kpis.sellers)} change={0} changeLabel="Live" icon={DollarSign} variant="success" />
+        <KPICard title="Active Leads" value={String(kpis.activeLeads)} change={0} changeLabel="Live" icon={TrendingUp} variant="warning" />
+        <KPICard title="Pipeline Value" value="--" change={0} changeLabel="Calculating" icon={UserCheck} variant="info" />
       </div>
 
       {/* Pipeline Visual */}
       <div className="ops-panel" style={{ marginBottom: 16 }}>
         <div className="ops-panel-header">
           <div className="ops-panel-title">Sales Pipeline</div>
-          <a href="/ops/crm/pipeline" className="ops-text-btn" style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+          <Link href="/ops/crm/pipeline" className="ops-text-btn" style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
             Open Kanban <ArrowRight className="w-3.5 h-3.5" />
-          </a>
+          </Link>
         </div>
         <div className="ops-panel-body">
           <div style={{ display: 'flex', gap: 8 }}>
-            {pipelineStages.map((s) => (
-              <div key={s.stage} style={{
-                flex: 1,
-                padding: '14px 16px',
-                borderRadius: 'var(--ops-radius-sm)',
-                background: 'var(--ops-surface-2)',
-                border: '1px solid var(--ops-border)',
-                textAlign: 'center',
-              }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, margin: '0 auto 8px' }} />
-                <p style={{ fontSize: 12, color: 'var(--ops-text-secondary)', marginBottom: 4 }}>{s.stage}</p>
-                <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--ops-text)', lineHeight: 1.2 }}>{s.count}</p>
-                <p style={{ fontSize: 12, color: 'var(--ops-text-muted)', marginTop: 4 }}>{s.value}</p>
-              </div>
-            ))}
+            {pipeline.map((s, i) => {
+              const colors = ['var(--ops-info)', '#8b5cf6', 'var(--ops-warning)', '#f97316', 'var(--ops-success)'];
+              const color = colors[i % colors.length];
+              return (
+                <div key={s.id} style={{
+                  flex: 1,
+                  padding: '14px 16px',
+                  borderRadius: 'var(--ops-radius-sm)',
+                  background: 'var(--ops-surface-2)',
+                  border: '1px solid var(--ops-border)',
+                  textAlign: 'center',
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, margin: '0 auto 8px' }} />
+                  <p style={{ fontSize: 12, color: 'var(--ops-text-secondary)', marginBottom: 4 }}>{s.title}</p>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--ops-text)', lineHeight: 1.2 }}>{s.count}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -76,28 +73,27 @@ export default function CRMCommandCenter() {
         {/* Top Leads */}
         <div className="ops-panel">
           <div className="ops-panel-header">
-            <div className="ops-panel-title">Hot Leads</div>
-            <a href="/ops/crm/pipeline" className="ops-text-btn" style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
-              All Leads <ArrowRight className="w-3.5 h-3.5" />
-            </a>
+            <div className="ops-panel-title">Recent Active Buyers</div>
+            <Link href="/ops/crm/customers" className="ops-text-btn" style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+              All Customers <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
           <div className="ops-panel-body" style={{ padding: 0 }}>
-            {topLeads.map((lead, i) => (
-              <div key={i} style={{
+            {recentLeads.data.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--ops-text-muted)', fontSize: 13 }}>No recent buyers.</div>
+            ) : recentLeads.data.map((lead: any) => (
+              <div key={lead.id} style={{
                 padding: '14px 20px',
                 borderBottom: '1px solid var(--ops-border)',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ops-text)' }}>{lead.company}</span>
-                    <StatusBadge status={lead.stage} />
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ops-text)' }}>{lead.company?.name || 'Unknown Company'}</span>
+                    <StatusBadge status="ACTIVE" />
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--ops-text-secondary)', margin: 0 }}>
-                    {lead.contact} · {lead.value}
-                  </p>
-                  <p style={{ fontSize: 11, color: 'var(--ops-text-muted)', marginTop: 2 }}>
-                    Next: {lead.nextAction} · Due: {lead.dueIn}
+                    {lead.full_name || lead.email}
                   </p>
                 </div>
               </div>
@@ -108,17 +104,19 @@ export default function CRMCommandCenter() {
         {/* Today's Tasks */}
         <div className="ops-panel">
           <div className="ops-panel-header">
-            <div className="ops-panel-title">Today&apos;s Schedule</div>
-            <a href="/ops/crm/tasks" className="ops-text-btn" style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+            <div className="ops-panel-title">Upcoming Tasks</div>
+            <Link href="/ops/crm/tasks" className="ops-text-btn" style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
               All Tasks <ArrowRight className="w-3.5 h-3.5" />
-            </a>
+            </Link>
           </div>
           <div className="ops-panel-body">
             <div className="ops-activity-list">
-              {upcomingTasks.map((task, i) => {
-                const Icon = task.type === 'call' ? Phone : task.type === 'email' ? Mail : Calendar;
+              {tasksRes.data.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--ops-text-muted)', fontSize: 13 }}>No upcoming tasks.</div>
+              ) : tasksRes.data.map((task: any) => {
+                const Icon = task.task_type === 'CALL' ? Phone : task.task_type === 'EMAIL' ? Mail : Calendar;
                 return (
-                  <div key={i} className="ops-activity-item">
+                  <div key={task.id} className="ops-activity-item">
                     <div className="ops-activity-icon" style={{
                       background: 'rgba(16,185,129,0.12)',
                       color: 'var(--ops-accent-crm)',
@@ -126,8 +124,10 @@ export default function CRMCommandCenter() {
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="ops-activity-content">
-                      <p className="ops-activity-text">{task.task}</p>
-                      <p className="ops-activity-time">{task.time}</p>
+                      <p className="ops-activity-text">{task.title}</p>
+                      <p className="ops-activity-time">
+                        {task.due_date ? new Date(task.due_date).toLocaleString() : 'No due date'}
+                      </p>
                     </div>
                   </div>
                 );

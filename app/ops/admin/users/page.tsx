@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Ban,
   Bell,
@@ -77,25 +77,90 @@ const statusOptions = [
   { label: 'Banned', value: 'Banned' },
 ];
 
-const initialUsers: UserRow[] = [
-  { id: 'U-001', name: 'Rajesh Kumar', email: 'rajesh@tatasteel.com', role: 'Seller', status: 'Active', kyc: 'Verified', company: 'Tata Steel Traders', joined: '2025-12-10', lastLogin: '2 hrs ago', risk: 12 },
-  { id: 'U-002', name: 'Priya Sharma', email: 'priya@hindalco.com', role: 'Buyer', status: 'Active', kyc: 'Verified', company: 'Hindalco Exports', joined: '2026-01-05', lastLogin: '30 min ago', risk: 8 },
-  { id: 'U-003', name: 'Amit Patel', email: 'amit@jswsteel.in', role: 'Seller', status: 'Suspended', kyc: 'Pending', company: 'JSW Steel Group', joined: '2026-02-15', lastLogin: '3 days ago', risk: 74 },
-  { id: 'U-004', name: 'Neha Gupta', email: 'neha@vedanta.com', role: 'Buyer', status: 'Active', kyc: 'Rejected', company: 'Vedanta Metals', joined: '2026-03-01', lastLogin: '1 day ago', risk: 39 },
-  { id: 'U-005', name: 'Vikram Singh', email: 'vikram@sailsteel.com', role: 'Seller', status: 'Active', kyc: 'Verified', company: 'SAIL Distributors', joined: '2026-03-20', lastLogin: '5 hrs ago', risk: 18 },
-  { id: 'U-006', name: 'Anita Desai', email: 'anita@birlacopper.com', role: 'Buyer', status: 'Banned', kyc: 'Verified', company: 'Birla Copper', joined: '2025-11-08', lastLogin: '2 weeks ago', risk: 92 },
-  { id: 'U-007', name: 'Suresh Menon', email: 'suresh@nalco.in', role: 'Verification Officer', status: 'Active', kyc: 'Pending', company: 'NALCO Trading', joined: '2026-04-10', lastLogin: '1 hr ago', risk: 24 },
-  { id: 'U-008', name: 'Kavita Reddy', email: 'kavita@essar.com', role: 'Finance Manager', status: 'Active', kyc: 'Verified', company: 'Essar Steel', joined: '2026-04-22', lastLogin: '45 min ago', risk: 11 },
-];
-
 export default function UsersPage() {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [roleModalUser, setRoleModalUser] = useState<UserRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('limit', String(limit));
+      if (roleFilter !== 'all') params.set('role', roleFilter);
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (search.trim()) params.set('search', search.trim());
+
+      const res = await fetch(`/api/admin/users?${params.toString()}`, { credentials: 'include' });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.success) {
+        throw new Error(payload?.error?.message || 'Failed to load users');
+      }
+
+      const rows = (payload.data ?? []) as Array<{
+        id: string;
+        full_name: string;
+        email: string;
+        role: string;
+        verification_status: string;
+        seller_profiles?: Array<{ company_name: string | null }> | { company_name: string | null } | null;
+        buyer_profiles?: Array<{ company_name: string | null }> | { company_name: string | null } | null;
+        created_at: string;
+        last_login?: string | null;
+      }>;
+
+      setUsers(
+        rows.map((u) => {
+          const companyFromSeller = Array.isArray(u.seller_profiles)
+            ? u.seller_profiles[0]?.company_name
+            : (u.seller_profiles as any)?.company_name;
+          const companyFromBuyer = Array.isArray(u.buyer_profiles)
+            ? u.buyer_profiles[0]?.company_name
+            : (u.buyer_profiles as any)?.company_name;
+
+          const company = (companyFromSeller ?? companyFromBuyer ?? '').toString();
+
+          return {
+            id: u.id,
+            name: u.full_name,
+            email: u.email,
+            role: u.role,
+            status: u.verification_status === 'verified' ? 'Active' : (u.verification_status as any),
+            kyc: u.verification_status === 'verified' ? 'Verified' : (u.verification_status as any),
+            company,
+            joined: u.created_at,
+            lastLogin: (u as any).last_login ?? '',
+            risk: 0,
+          } satisfies UserRow;
+        }),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsersStable = useCallback(fetchUsers, [page, limit, roleFilter, statusFilter, search]);
+
+  useEffect(() => {
+    void fetchUsersStable();
+  }, [fetchUsersStable]);
+
+  // NOTE: we intentionally keep mutations out until backend ops routes are implemented.
+
 
   const filtered = useMemo(() => users.filter((user) => {
     const needle = `${user.name} ${user.email} ${user.company}`.toLowerCase();
