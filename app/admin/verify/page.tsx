@@ -24,7 +24,7 @@ export default function AdminVerifyPage() {
   );
 }
 
-type VerifyStep = 'request' | 'verify' | 'verified';
+type VerifyStep = 'loading_status' | 'request' | 'verify' | 'verified';
 
 function AdminVerifyForm() {
   const router = useRouter();
@@ -39,7 +39,7 @@ function AdminVerifyForm() {
     sessionStatus,
   } = useAuth();
 
-  const [step, setStep] = useState<VerifyStep>('request');
+  const [step, setStep] = useState<VerifyStep>('loading_status');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +80,43 @@ function AdminVerifyForm() {
   }, [authLoading, isAuthenticated, isSigningOut, sessionStatus]);
 
   const isAdmin = canRequestAdminOtp(role ?? '');
+
+  // ── Fetch OTP Status on Mount ──
+  useEffect(() => {
+    if (isSigningOut || authLoading || sessionStatus === "unknown" || !isAuthenticated) return;
+    if (!isAdmin) {
+      setStep('request');
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/admin/otp/status', { credentials: 'include' });
+        if (cancelled) return;
+        const data = await res.json();
+        
+        if (data.status === 'OTP_SENT') {
+          setMaskedEmail(data.email || '');
+          setExpiresIn(data.expiresIn || 0);
+          setCooldown(data.cooldown || 0);
+          if (data.remainingAttempts !== undefined) {
+            setRemainingAttempts(data.remainingAttempts);
+          }
+          setStep('verify');
+        } else if (data.status === 'SESSION_ACTIVE') {
+          router.replace(redirectPath);
+          router.refresh();
+        } else {
+          setStep('request');
+        }
+      } catch (err) {
+        if (!cancelled) setStep('request');
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [authLoading, isAdmin, isAuthenticated, isSigningOut, redirectPath, router, sessionStatus]);
 
   // ── Super Admin OTP bypass (config flag + allowed email only) ──
   useEffect(() => {
@@ -216,7 +253,7 @@ function AdminVerifyForm() {
   );
 
   // ── Loading state ──
-  if (authLoading || isSigningOut || sessionStatus === "unknown") {
+  if (authLoading || isSigningOut || sessionStatus === "unknown" || step === 'loading_status') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50">
         <Loader2 className="h-8 w-8 animate-spin text-slate-400" />

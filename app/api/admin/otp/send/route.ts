@@ -135,31 +135,6 @@ export async function POST(req: NextRequest) {
     const db = createSupabaseServiceRoleClient() ?? supabase;
     const emailConfig = getEmailConfigSnapshot();
 
-    const adminOtpLimit = RATE_LIMITS.ADMIN_OTP_SEND;
-    const rateLimitResult = await checkRateLimit(
-      db,
-      `admin_otp_send:${user.id}`,
-      adminOtpLimit.action,
-      adminOtpLimit.maxAttempts,
-      adminOtpLimit.windowMinutes,
-      adminOtpLimit.blockMinutes,
-    );
-
-    if (!rateLimitResult.allowed) {
-      const retrySeconds = Math.min(
-        rateLimitResult.retryAfterSeconds ?? MAX_RATE_LIMIT_SECONDS,
-        MAX_RATE_LIMIT_SECONDS,
-      );
-      return NextResponse.json(
-        {
-          error: `Too many requests. Try again in ${retrySeconds} seconds.`,
-          code: "RATE_LIMITED",
-          retryAfterSeconds: retrySeconds,
-        },
-        { status: 429 },
-      );
-    }
-
     const { data: recentOtp } = await db
       .from("otp_verifications")
       .select("created_at")
@@ -186,6 +161,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const adminOtpLimit = RATE_LIMITS.ADMIN_OTP_SEND;
+    const rateLimitResult = await checkRateLimit(
+      db,
+      `admin_otp_send:${user.id}`,
+      adminOtpLimit.action,
+      adminOtpLimit.maxAttempts,
+      adminOtpLimit.windowMinutes,
+      adminOtpLimit.blockMinutes,
+    );
+
+    if (!rateLimitResult.allowed) {
+      const retrySeconds = Math.min(
+        rateLimitResult.retryAfterSeconds ?? MAX_RATE_LIMIT_SECONDS,
+        MAX_RATE_LIMIT_SECONDS,
+      );
+      return NextResponse.json(
+        {
+          error: `Too many requests. Try again in ${retrySeconds} seconds.`,
+          code: "RATE_LIMITED",
+          retryAfterSeconds: retrySeconds,
+        },
+        { status: 429 },
+      );
+    }
+
+    // Invalidate any previous unused OTPs
     await db
       .from("otp_verifications")
       .update({ is_used: true, used_at: new Date().toISOString() })

@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json(
-        { error: "No active verification code found. Please request a new one." },
+        { error: "No active verification code found. It may have expired.", code: "OTP_EXPIRED" },
         { status: 400 },
       );
     }
@@ -126,8 +126,17 @@ export async function POST(req: NextRequest) {
         .update({ is_used: true, used_at: new Date().toISOString() })
         .eq("id", otpRecord.id);
 
+      await logAuditEvent(db, {
+        userId: user.id,
+        action: "ADMIN_OTP_VERIFY_MAX_ATTEMPTS",
+        details: { email: user.email },
+        ip: getClientIp(req),
+        userAgent: req.headers.get("user-agent") || undefined,
+        severity: "warning",
+      });
+
       return NextResponse.json(
-        { error: "Maximum attempts exceeded. Please request a new code." },
+        { error: "Maximum attempts exceeded. Please request a new code.", code: "MAX_ATTEMPTS_REACHED" },
         { status: 429 },
       );
     }
@@ -144,8 +153,18 @@ export async function POST(req: NextRequest) {
 
     if (!isValid) {
       const remainingAttempts = MAX_OTP_ATTEMPTS - otpRecord.attempts - 1;
+      
+      await logAuditEvent(db, {
+        userId: user.id,
+        action: "ADMIN_OTP_VERIFY_INVALID",
+        details: { email: user.email, attempts: otpRecord.attempts + 1 },
+        ip: getClientIp(req),
+        userAgent: req.headers.get("user-agent") || undefined,
+        severity: "warning",
+      });
+
       return NextResponse.json(
-        { error: "Invalid verification code", remainingAttempts },
+        { error: "Invalid verification code", code: "OTP_INVALID", remainingAttempts },
         { status: 401 },
       );
     }
