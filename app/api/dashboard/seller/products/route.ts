@@ -79,14 +79,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: sellerProfile } = await supabase
+  let { data: sellerProfile } = await supabase
     .from("seller_profiles")
     .select("id, company_id")
     .eq("profile_id", user.id)
     .single();
 
   if (!sellerProfile) {
-    return NextResponse.json({ error: "Seller profile not found" }, { status: 404 });
+    // Auto-provision basic seller profile to allow draft creation
+    const { data: newProfile, error: profileError } = await supabase
+      .from("seller_profiles")
+      .insert({ profile_id: user.id })
+      .select("id, company_id")
+      .single();
+
+    if (profileError || !newProfile) {
+      console.error("[seller/products POST] Failed to auto-create profile:", profileError);
+      return NextResponse.json({ error: "Failed to initialize seller profile" }, { status: 500 });
+    }
+    sellerProfile = newProfile;
   }
 
   const body = (await req.json()) as Record<string, unknown>;

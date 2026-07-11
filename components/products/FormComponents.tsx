@@ -176,11 +176,16 @@ export function RadioGroup({
   value,
   onChange,
   options,
+  name,
 }: {
   value: string;
   onChange: (val: string) => void;
   options: { id: string; name: string; description?: string }[];
+  name?: string;
 }) {
+  const generatedId = React.useId();
+  const groupName = name || `radio-group-${generatedId}`;
+
   return (
     <div className="flex flex-col gap-3">
       {options.map((opt) => (
@@ -196,7 +201,7 @@ export function RadioGroup({
           <div className="flex h-5 items-center">
             <input
               type="radio"
-              name="radio-group"
+              name={groupName}
               value={opt.id}
               checked={value === opt.id}
               onChange={(e) => onChange(e.target.value)}

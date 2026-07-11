@@ -6,7 +6,7 @@ import { Phase1Technical, Phase1Data } from "./Phase1Technical";
 import { Phase2Commercial, Phase2Data } from "./Phase2Commercial";
 import { Phase3Packaging, Phase3Data } from "./Phase3Packaging";
 import { Phase4Review } from "./Phase4Review";
-import { CheckCircle2, Loader2, Save } from "lucide-react";
+import { CheckCircle2, Loader2, Save, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type ProductData = Partial<Phase1Data> & Partial<Phase2Data> & Partial<Phase3Data>;
@@ -22,8 +22,8 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   // A ref to store the latest data so the background autosave can access it
   const dataRef = useRef<ProductData>({});
   
-  // Force re-render when dataRef updates for the review tab
-  const [, setForceRender] = useState({});
+  // Track active phase to trigger render for Review tab only
+  const [reviewTrigger, setReviewTrigger] = useState(0);
 
   // Background draft creation
   useEffect(() => {
@@ -53,6 +53,11 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
           setDraftId(data.product.id);
           // Don't redirect immediately to avoid flickering, but update the URL silently if possible
           window.history.replaceState(null, "", `/dashboard/seller/products/${data.product.id}`);
+          
+          // Trigger a save of any data that was entered while draft was initializing
+          if (Object.keys(dataRef.current).length > 0) {
+            setTimeout(() => triggerAutosave(dataRef.current, data.product!.id), 100);
+          }
         }
       } catch (err) {
         console.error("Draft creation failed", err);
@@ -65,11 +70,12 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     return () => { isMounted = false; };
   }, [draftId, existingDraftId]);
 
-  const triggerAutosave = useCallback(async (dataToSave: ProductData) => {
-    // If draft is not ready yet, we just return. The latest data is in dataRef.
-    if (!draftId) return;
+  const triggerAutosave = useCallback(async (dataToSave: ProductData, targetDraftId?: string) => {
+    const idToUse = targetDraftId || draftId;
+    if (!idToUse) return;
 
     setIsSaving(true);
+    setDraftError(false);
     try {
       // Map frontend data structure to backend schema
       const payload: any = {};
@@ -94,11 +100,13 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       if (dataToSave.quantityAvailable !== undefined) payload.quantityAvailable = Number(dataToSave.quantityAvailable) || null;
       // Note: packagingOptions is not currently mapped to the backend schema in route.ts.
 
-      await fetch(`/api/dashboard/seller/products?id=${draftId}`, {
+      const res = await fetch(`/api/dashboard/seller/products?id=${idToUse}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      if (!res.ok) throw new Error("Autosave failed");
 
       setLastSaved(new Date());
     } catch (err) {
@@ -110,9 +118,12 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
 
   const handleDataChange = useCallback((newData: ProductData) => {
     dataRef.current = { ...dataRef.current, ...newData };
-    setForceRender({}); // trigger render for Review phase to get updated data
+    // Only trigger re-render if we are actively viewing the Review phase
+    if (activePhase === 4) {
+      setReviewTrigger(prev => prev + 1);
+    }
     triggerAutosave(dataRef.current);
-  }, [triggerAutosave]);
+  }, [triggerAutosave, activePhase]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -134,13 +145,15 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-slate-500">
             {isSaving ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+              <><Loader2 className="h-4 w-4 animate-spin text-blue-500" /> <span className="text-blue-600">Saving...</span></>
+            ) : draftError ? (
+              <><AlertCircle className="h-4 w-4 text-amber-500" /> <span className="text-amber-600">Offline / Retrying...</span></>
             ) : lastSaved ? (
               <><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Saved {lastSaved.toLocaleTimeString()}</>
             ) : draftId ? (
               <><Save className="h-4 w-4" /> Ready</>
             ) : (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Initializing...</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Initializing draft...</>
             )}
           </div>
           
@@ -193,7 +206,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
         <Phase3Packaging initialData={dataRef.current} onChange={handleDataChange} />
       )}
       {activePhase === 4 && (
-        <Phase4Review data={dataRef.current} draftId={draftId} />
+        <Phase4Review key={`review-${reviewTrigger}`} data={dataRef.current} draftId={draftId} />
       )}
     </div>
   );
