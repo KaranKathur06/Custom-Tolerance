@@ -1,14 +1,28 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, ReactNode } from "react";
 import {
   COUNTRIES,
+  CURRENCIES,
+  PRICE_UNITS,
   UNITS,
-  TOLERANCES,
+  WEIGHT_UNITS,
+  DIMENSION_UNITS,
   LEAD_TIMES,
-  PACKAGING_OPTIONS,
+  TOLERANCES,
   QUALITY_CERTIFICATES,
+  BRAND_MARKING_OPTIONS,
   DIES_AND_TOOLS_COST,
+  INCOTERMS,
+  PAYMENT_TERMS,
+  SHIPPING_TYPES,
+  PRIMARY_PACKAGING,
+  SECONDARY_PACKAGING,
+  PACKAGING_OPTIONS,
+  CAPABILITY_GROUPS,
+  INDUSTRY_GROUPS,
+  CapabilityGroup,
+  IndustryGroup,
 } from "@/lib/constants/product-options";
 
 export type TaxonomyItem = {
@@ -22,75 +36,64 @@ type MasterDataContextType = {
   capabilities: TaxonomyItem[];
   industries: TaxonomyItem[];
   countries: typeof COUNTRIES;
+  currencies: typeof CURRENCIES;
+  priceUnits: typeof PRICE_UNITS;
   units: typeof UNITS;
-  tolerances: typeof TOLERANCES;
+  weightUnits: typeof WEIGHT_UNITS;
+  dimensionUnits: typeof DIMENSION_UNITS;
   leadTimes: typeof LEAD_TIMES;
-  packagingOptions: typeof PACKAGING_OPTIONS;
+  tolerances: typeof TOLERANCES;
   qualityCertificates: typeof QUALITY_CERTIFICATES;
+  brandMarkingOptions: typeof BRAND_MARKING_OPTIONS;
   diesAndToolsCost: typeof DIES_AND_TOOLS_COST;
+  incoterms: typeof INCOTERMS;
+  paymentTerms: typeof PAYMENT_TERMS;
+  shippingTypes: typeof SHIPPING_TYPES;
+  primaryPackaging: typeof PRIMARY_PACKAGING;
+  secondaryPackaging: typeof SECONDARY_PACKAGING;
+  packagingOptions: typeof PACKAGING_OPTIONS;
+  capabilityGroups: CapabilityGroup[];
+  industryGroups: IndustryGroup[];
   loading: boolean;
 };
 
 const MasterDataContext = createContext<MasterDataContextType | undefined>(undefined);
 
-// Simple in-memory cache to prevent refetching during navigation
-let cachedCapabilities: TaxonomyItem[] | null = null;
-let cachedIndustries: TaxonomyItem[] | null = null;
-
 export function MasterDataProvider({ children }: { children: ReactNode }) {
-  const [capabilities, setCapabilities] = useState<TaxonomyItem[]>(cachedCapabilities || []);
-  const [industries, setIndustries] = useState<TaxonomyItem[]>(cachedIndustries || []);
-  const [loading, setLoading] = useState(!cachedCapabilities || !cachedIndustries);
+  // Since we are using static constants instead of fetching from the DB for 
+  // Phase 1 capabilities/industries (to group them nicely per requirement),
+  // we can skip the fetch and just use the static groups.
+  // We'll provide empty arrays for the legacy `capabilities` and `industries` 
+  // arrays if they are not used, or we could map them.
 
-  useEffect(() => {
-    if (cachedCapabilities && cachedIndustries) {
-      return;
-    }
-
-    let isMounted = true;
-
-    async function loadMasterData() {
-      try {
-        const [capabilitiesRes, industriesRes] = await Promise.all([
-          fetch("/api/capabilities?type=capability").then(res => res.json()),
-          fetch("/api/capabilities?type=industry").then(res => res.json())
-        ]);
-
-        if (isMounted) {
-          setCapabilities(capabilitiesRes);
-          setIndustries(industriesRes);
-          cachedCapabilities = capabilitiesRes;
-          cachedIndustries = industriesRes;
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Failed to load master data", error);
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadMasterData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const flatCapabilities = CAPABILITY_GROUPS.flatMap(g => g.items).map(i => ({ ...i, slug: i.id, type: "capability" }));
+  const flatIndustries = INDUSTRY_GROUPS.flatMap(g => g.items).map(i => ({ ...i, slug: i.id, type: "industry" }));
 
   return (
     <MasterDataContext.Provider
       value={{
-        capabilities,
-        industries,
+        capabilities: flatCapabilities,
+        industries: flatIndustries,
         countries: COUNTRIES,
+        currencies: CURRENCIES,
+        priceUnits: PRICE_UNITS,
         units: UNITS,
-        tolerances: TOLERANCES,
+        weightUnits: WEIGHT_UNITS,
+        dimensionUnits: DIMENSION_UNITS,
         leadTimes: LEAD_TIMES,
-        packagingOptions: PACKAGING_OPTIONS,
+        tolerances: TOLERANCES,
         qualityCertificates: QUALITY_CERTIFICATES,
+        brandMarkingOptions: BRAND_MARKING_OPTIONS,
         diesAndToolsCost: DIES_AND_TOOLS_COST,
-        loading,
+        incoterms: INCOTERMS,
+        paymentTerms: PAYMENT_TERMS,
+        shippingTypes: SHIPPING_TYPES,
+        primaryPackaging: PRIMARY_PACKAGING,
+        secondaryPackaging: SECONDARY_PACKAGING,
+        packagingOptions: PACKAGING_OPTIONS,
+        capabilityGroups: CAPABILITY_GROUPS,
+        industryGroups: INDUSTRY_GROUPS,
+        loading: false,
       }}
     >
       {children}

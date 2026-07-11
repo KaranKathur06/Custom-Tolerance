@@ -9,13 +9,14 @@ SELECT
     p.phone,
     p.role,
     p.avatar_url,
-    p.kyc_status as verification_status,
+    p.verification_status as verification_status,
     au.created_at,
     au.last_sign_in_at as last_login,
-    COALESCE(s.company_name, p.company_name) as company_name
+    COALESCE(s.company_name, c.name) as company_name
 FROM auth.users au
 LEFT JOIN public.profiles p ON p.id = au.id
-LEFT JOIN public.suppliers s ON s.user_id = au.id;
+LEFT JOIN public.suppliers s ON s.owner_user_id = au.id
+LEFT JOIN public.companies c ON c.owner_id = au.id;
 
 -- Grant access to authenticated users (RLS applies via API route protection anyway)
 GRANT SELECT ON public.admin_user_directory TO authenticated;

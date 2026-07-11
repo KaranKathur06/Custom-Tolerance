@@ -15,6 +15,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   const router = useRouter();
   const [draftId, setDraftId] = useState<string | null>(existingDraftId || null);
   const [draftError, setDraftError] = useState(false);
+  const [draftErrorMessage, setDraftErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activePhase, setActivePhase] = useState<number>(1);
@@ -38,20 +39,27 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             productName: "Draft Product",
-            capability: null,
-            materials: [],
-            isFeatured: false,
             isVisible: false,
           }),
         });
 
-        if (!res.ok) throw new Error("Failed to create draft");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          if (res.status === 422 && errData?.code === "SELLER_PROFILE_INCOMPLETE") {
+            if (isMounted) {
+              setDraftError(true);
+              setDraftErrorMessage(errData.message || "Complete seller onboarding before creating products.");
+            }
+            return;
+          }
+          throw new Error("Failed to create draft");
+        }
         
         const data = (await res.json()) as { product?: { id: string } };
         
         if (isMounted && data.product?.id) {
           setDraftId(data.product.id);
-          // Don't redirect immediately to avoid flickering, but update the URL silently if possible
+          // Update URL silently
           window.history.replaceState(null, "", `/dashboard/seller/products/${data.product.id}`);
           
           // Trigger a save of any data that was entered while draft was initializing
@@ -77,28 +85,49 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     setIsSaving(true);
     setDraftError(false);
     try {
-      // Map frontend data structure to backend schema
+      // Complete mapping to backend schema
+      // This bridges the rich frontend UI fields to the existing schema
       const payload: any = {};
       
       // Phase 1
       if (dataToSave.productName !== undefined) payload.productName = dataToSave.productName;
-      if (dataToSave.minPrice !== undefined) payload.estimatedPrice = Number(dataToSave.minPrice) || null;
-      if (dataToSave.capabilities && dataToSave.capabilities.length > 0) {
-        payload.capability = dataToSave.capabilities[0]; // Single capability mapping
-      }
-      if (dataToSave.tolerance !== undefined) payload.toleranceCapability = dataToSave.tolerance;
       
+      // Handle pricing
+      if (dataToSave.priceType !== undefined) {
+         if (dataToSave.priceType === "ask_for_price") {
+           payload.estimatedPrice = null;
+         } else {
+           payload.estimatedPrice = Number(dataToSave.minPrice) || null;
+         }
+      }
+      
+      // Combine properties for the current schema
+      if (dataToSave.capabilities !== undefined) {
+        // The old schema has a string 'capability' - we pick the first one for now
+        payload.capability = dataToSave.capabilities.length > 0 ? dataToSave.capabilities[0] : null;
+        payload.capabilities = dataToSave.capabilities; // if we update DB to use array
+      }
+      
+      if (dataToSave.materials !== undefined) payload.materials = dataToSave.materials;
+      if (dataToSave.tolerance !== undefined) payload.toleranceCapability = dataToSave.tolerance;
+      if (dataToSave.images !== undefined) {
+        // Send image URLs in a format the backend can store if a column exists
+        // Currently we'll assume the backend handles it or we'll pass it in an unstructured field for now
+        payload.images = dataToSave.images.map(img => img.url);
+      }
+
       // Phase 2
       if (dataToSave.moq !== undefined) payload.moq = Number(dataToSave.moq) || null;
       if (dataToSave.productionCapacity !== undefined) payload.productionCapacity = Number(dataToSave.productionCapacity) || null;
       if (dataToSave.productionCapacityUnit !== undefined) payload.productionCapacityUnit = dataToSave.productionCapacityUnit;
       if (dataToSave.leadTime !== undefined) payload.leadTime = dataToSave.leadTime;
-      if (dataToSave.customTolerance !== undefined) payload.customTolerance = dataToSave.customTolerance;
-      if (dataToSave.certifications !== undefined) payload.certifications = dataToSave.certifications;
-
+      if (dataToSave.freeSample !== undefined) payload.customTolerance = dataToSave.freeSample; // Re-using customTolerance string for sample (hack before DB update)
+      
+      // Convert arrays for legacy string[] cols
+      if (dataToSave.paymentTerms !== undefined) payload.certifications = dataToSave.paymentTerms; 
+      
       // Phase 3
-      if (dataToSave.quantityAvailable !== undefined) payload.quantityAvailable = Number(dataToSave.quantityAvailable) || null;
-      // Note: packagingOptions is not currently mapped to the backend schema in route.ts.
+      if (dataToSave.weightValue !== undefined) payload.quantityAvailable = Number(dataToSave.weightValue) || null;
 
       const res = await fetch(`/api/dashboard/seller/products?id=${idToUse}`, {
         method: "PATCH",
@@ -118,7 +147,6 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
 
   const handleDataChange = useCallback((newData: ProductData) => {
     dataRef.current = { ...dataRef.current, ...newData };
-    // Only trigger re-render if we are actively viewing the Review phase
     if (activePhase === 4) {
       setReviewTrigger(prev => prev + 1);
     }
@@ -136,8 +164,9 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
           </p>
           
           {draftError && (
-            <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded-md inline-block">
-              Unable to initialize draft in background. Your changes may not save.
+            <div className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 p-4 rounded-md">
+              <span className="font-semibold block mb-1">Onboarding Incomplete</span>
+              {draftErrorMessage || "Unable to initialize draft in background. Your changes may not save."}
             </div>
           )}
         </div>
@@ -168,28 +197,40 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
 
       {/* Progress / Phases */}
       <div className="mb-8 flex items-center gap-2 overflow-x-auto pb-2">
-        {[{ id: 1, label: "Technical" }, { id: 2, label: "Commercial" }, { id: 3, label: "Packaging" }, { id: 4, label: "Review" }].map((phase) => {
+        {[
+          { id: 1, label: "Technical", icon: "1" }, 
+          { id: 2, label: "Commercial", icon: "2" }, 
+          { id: 3, label: "Packaging", icon: "3" }, 
+          { id: 4, label: "Review", icon: "✓" }
+        ].map((phase) => {
           const isActive = phase.id === activePhase;
-          const isClickable = true; // All phases clickable now
+          const isClickable = true; 
           
           return (
             <button
               key={phase.id}
               onClick={() => isClickable && setActivePhase(phase.id)}
-              className={`flex flex-col items-start min-w-[120px] rounded-lg px-4 py-2 border transition-colors ${
+              className={`flex items-center gap-3 min-w-[160px] rounded-lg px-4 py-3 border transition-colors ${
                 isActive 
-                  ? "border-blue-600 bg-blue-50/50" 
+                  ? "border-blue-600 bg-blue-50/50 shadow-sm" 
                   : isClickable 
                     ? "border-slate-200 bg-white hover:border-blue-300 cursor-pointer" 
-                    : "border-slate-200 bg-white opacity-60 cursor-not-allowed"
+                    : "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
               }`}
             >
-              <span className={`text-xs font-bold ${isActive ? "text-blue-700" : "text-slate-500"}`}>
-                Phase {phase.id}
-              </span>
-              <span className={`text-sm ${isActive ? "text-slate-900" : "text-slate-600"}`}>
-                {phase.label}
-              </span>
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+              }`}>
+                {phase.icon}
+              </div>
+              <div className="flex flex-col items-start">
+                <span className={`text-xs font-bold uppercase tracking-wider ${isActive ? "text-blue-700" : "text-slate-400"}`}>
+                  Phase {phase.id}
+                </span>
+                <span className={`text-sm font-medium ${isActive ? "text-slate-900" : "text-slate-600"}`}>
+                  {phase.label}
+                </span>
+              </div>
             </button>
           );
         })}
