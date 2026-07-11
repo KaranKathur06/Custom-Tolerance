@@ -31,12 +31,10 @@ export async function GET(request: Request) {
   const order = searchParams.get('order') || 'desc';
 
   let query = auth.supabase
-    .from('profiles')
+    .from('admin_user_directory')
     .select(`
       id, full_name, email, phone, role, avatar_url,
-      verification_status, profile_status, created_at, updated_at,
-      seller_profiles(id, company_name, verification_status),
-      buyer_profiles(id, company_name)
+      verification_status, created_at, last_login, company_name
     `, { count: 'exact' });
 
   if (role) query = query.eq('role', role);

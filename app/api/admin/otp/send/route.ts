@@ -146,8 +146,11 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (recentOtp) {
+      const safeCreatedDate = recentOtp.created_at.endsWith('Z')
+        ? recentOtp.created_at
+        : recentOtp.created_at + 'Z';
       const cooldownEnd =
-        new Date(recentOtp.created_at).getTime() + RESEND_COOLDOWN_SECONDS * 1000;
+        new Date(safeCreatedDate).getTime() + RESEND_COOLDOWN_SECONDS * 1000;
       if (Date.now() < cooldownEnd) {
         const remainingSeconds = Math.ceil((cooldownEnd - Date.now()) / 1000);
         return NextResponse.json(

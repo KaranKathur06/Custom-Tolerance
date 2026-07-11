@@ -32,12 +32,11 @@ export class CRMProjectionService {
     if (!supabase) throw new Error("Supabase client not initialized");
     
     let query = supabase
-      .from('crm_tasks')
+      .from('lead_activities')
       .select(`
         *,
-        assigned:assigned_to(full_name),
-        customer:customer_id(full_name, email),
-        company:company_id(name)
+        assigned:user_id(full_name),
+        lead:lead_id(company_name, contact_name)
       `, { count: 'exact' });
 
     if (filters?.status) {
@@ -67,13 +66,13 @@ export class CRMProjectionService {
     if (!supabase) return [];
     
     // Fetch leads and group them by status
-    const { data: leads } = await supabase
+    const { data: leads, error } = await supabase
       .from('leads')
-      .select(`
-        *,
-        company:company_id(name),
-        contact:contact_id(full_name, email)
-      `);
+      .select('*');
+
+    if (error) {
+      console.error("[CRM Projection] Failed to fetch Kanban leads:", error);
+    }
 
     const stages = [
       { key: 'NEW', label: 'New', color: 'var(--ops-info)', leads: [] as any[] },
@@ -87,9 +86,9 @@ export class CRMProjectionService {
       for (const lead of leads) {
         const mappedLead = {
           id: lead.id,
-          company: lead.company?.name || 'Unknown',
-          contact: lead.contact?.full_name || lead.contact?.email || 'Unknown',
-          value: lead.estimated_value ? `₹${(lead.estimated_value / 100000).toFixed(1)}L` : 'TBD',
+          company: lead.company_name || 'Unknown',
+          contact: lead.contact_name || lead.contact_email || 'Unknown',
+          value: lead.deal_value ? `₹${(lead.deal_value / 100000).toFixed(1)}L` : 'TBD',
           probability: lead.probability || 10,
           source: lead.source || 'Direct',
           nextAction: 'Follow up',

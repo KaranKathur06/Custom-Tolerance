@@ -114,22 +114,14 @@ export default function UsersPage() {
         email: string;
         role: string;
         verification_status: string;
-        seller_profiles?: Array<{ company_name: string | null }> | { company_name: string | null } | null;
-        buyer_profiles?: Array<{ company_name: string | null }> | { company_name: string | null } | null;
+        company_name?: string | null;
         created_at: string;
         last_login?: string | null;
       }>;
 
       setUsers(
         rows.map((u) => {
-          const companyFromSeller = Array.isArray(u.seller_profiles)
-            ? u.seller_profiles[0]?.company_name
-            : (u.seller_profiles as any)?.company_name;
-          const companyFromBuyer = Array.isArray(u.buyer_profiles)
-            ? u.buyer_profiles[0]?.company_name
-            : (u.buyer_profiles as any)?.company_name;
-
-          const company = (companyFromSeller ?? companyFromBuyer ?? '').toString();
+          const company = (u.company_name || '').toString();
 
           return {
             id: u.id,
