@@ -296,6 +296,12 @@ export default function UsersPage() {
       </div>
 
       <div className="ops-panel ops-users-table-panel">
+        {error ? (
+          <div className="ops-panel-body" style={{ padding: 16, color: '#f04545', background: 'rgba(248,113,113,0.1)', borderRadius: 12, marginBottom: 16 }}>
+            <strong>Unable to load users:</strong> {error}
+          </div>
+        ) : null}
+
         <div className="ops-table-scroll">
           <table className="ops-users-table">
             <thead>
@@ -306,7 +312,19 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((user) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--ops-text-muted)' }}>
+                    Loading users…
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--ops-text-muted)' }}>
+                    {error ? 'Unable to load users.' : 'No users found in the governance directory.'}
+                  </td>
+                </tr>
+              ) : filtered.map((user) => (
                 <tr key={user.id}>
                   <td className="ops-user-cell">
                     <div className="ops-user-avatar">{user.name[0]}</div>

@@ -171,7 +171,14 @@ function AdminVerifyForm() {
         credentials: 'include',
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (parseError) {
+        const text = await res.text();
+        setError(`Server returned unexpected response: ${text.slice(0, 300)}`);
+        return;
+      }
 
       if (!res.ok) {
         if (data.cooldownRemaining) {
@@ -227,13 +234,17 @@ function AdminVerifyForm() {
           credentials: 'include',
         });
 
-        const data = await res.json();
+        let data: any = null;
+        try {
+          data = await res.json();
+        } catch (parseError) {
+          const text = await res.text();
+          setError(`Server returned unexpected response: ${text.slice(0, 300)}`);
+          return;
+        }
 
-        if (!res.ok) {
-          if (data.remainingAttempts !== undefined) {
-            setRemainingAttempts(data.remainingAttempts);
-          }
-          setError(data.error || 'Verification failed');
+        if (!res.ok || !data?.success) {
+          setError(data?.error?.message || data?.error || 'OTP verification failed');
           return;
         }
 

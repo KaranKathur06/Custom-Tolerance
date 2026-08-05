@@ -3,7 +3,9 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-cli
 export class SupportProjectionService {
   static async getTickets(page = 1, limit = 50, filters?: { status?: string, category?: string }) {
     const supabase = createSupabaseServiceRoleClient();
-    if (!supabase) throw new Error("Supabase client not initialized");
+    if (!supabase) {
+      return { data: [], count: 0 };
+    }
     
     let query = supabase
       .from('support_tickets')

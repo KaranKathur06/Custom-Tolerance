@@ -56,14 +56,46 @@ export async function GET(request: Request) {
     );
   }
 
+  let rows = data || [];
+  let totalCount = count || 0;
+
+  // Fallback when the admin_user_directory view does not contain rows for some
+  // profiles (legacy identity import or missing auth.users entries).
+  if (rows.length === 0) {
+    const fallbackQuery = auth.supabase
+      .from('profiles')
+      .select('id, full_name, email, phone, role, avatar_url, verification_status, created_at', {
+        count: 'exact',
+      });
+
+    if (role) fallbackQuery.eq('role', role);
+    if (status) fallbackQuery.eq('verification_status', status);
+    if (search) {
+      fallbackQuery.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+    }
+
+    const { data: fallbackData, error: fallbackError, count: fallbackCount } = await fallbackQuery
+      .order(sort, { ascending: order === 'asc' })
+      .range((page - 1) * limit, page * limit - 1);
+
+    if (!fallbackError && fallbackData && fallbackData.length > 0) {
+      rows = fallbackData.map((row) => ({
+        ...row,
+        last_login: null,
+        company_name: null,
+      }));
+      totalCount = fallbackCount || fallbackData.length;
+    }
+  }
+
   return NextResponse.json({
     success: true,
-    data: data || [],
+    data: rows,
     meta: {
       page,
       limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
+      total: totalCount,
+      totalPages: Math.ceil(totalCount / limit),
     },
   });
 }

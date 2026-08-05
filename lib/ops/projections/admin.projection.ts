@@ -6,7 +6,14 @@ export class AdminProjectionService {
    */
   static async getPlatformSettings() {
     const supabase = createSupabaseServiceRoleClient();
-    if (!supabase) throw new Error("Supabase client not initialized");
+    if (!supabase) {
+      return {
+        marketplace_status: 'ACTIVE',
+        maintenance_mode: false,
+        registration_controls: { require_approval: true },
+        verification_policies: { auto_approve: false },
+      };
+    }
     
     // Attempt to load settings or return defaults if table is empty
     const { data, error } = await supabase
@@ -31,7 +38,13 @@ export class AdminProjectionService {
    */
   static async getOverviewStats() {
     const supabase = createSupabaseServiceRoleClient();
-    if (!supabase) throw new Error("Supabase client not initialized");
+    if (!supabase) {
+      return {
+        totalUsers: 0,
+        totalProducts: 0,
+        totalRfqs: 0,
+      };
+    }
 
     const [users, products, rfqs] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }),

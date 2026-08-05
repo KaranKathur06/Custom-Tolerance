@@ -54,6 +54,15 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
     return { success: true, messageId: `dev-${Date.now()}` };
   }
 
+  if (config.fromDomain === "resend.dev") {
+    return {
+      success: false,
+      code: "EMAIL_FROM_INVALID",
+      error: "Resend sender address is not authorized for this deployment.",
+      hint: `Set EMAIL_FROM_ADDRESS to an email on your verified domain (for example noreply@${process.env.NEXT_PUBLIC_SITE_URL?.replace(/^https?:\/\//, "") || "customtolerance.com"}) and verify that domain in Resend.`,
+    };
+  }
+
   return sendViaResend(payload);
 }
 
