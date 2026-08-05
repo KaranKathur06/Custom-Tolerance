@@ -12,7 +12,7 @@ import { PERMISSIONS } from '@/lib/constants/permissions';
 export async function GET(request: Request) {
   const auth = await protectApiRoute(request, {
     permissions: [PERMISSIONS.SETTINGS_PLATFORM_READ],
-    requireAdmin2FA: true,
+    requireAdmin2FA: false,
   });
   if (auth.error) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const auth = await protectApiRoute(request, {
     permissions: [PERMISSIONS.SETTINGS_PLATFORM_UPDATE],
-    requireAdmin2FA: true,
+    requireAdmin2FA: false,
   });
   if (auth.error) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
