@@ -90,8 +90,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: Record<st
       <div className="ops-section-header">
         <div>
           <h1 className="ops-section-title">Platform Settings</h1>
-          <p className="ops-section-subtitle">Live, audit-logged key/value configuration (no placeholder values).</p>
-          <div className="text-xs text-ops-text-muted mt-1">Live Projection View</div>
+          <p className="ops-section-subtitle">Audit-backed key/value configuration (no placeholder values).</p>
         </div>
         <button
           className="ops-primary-action"

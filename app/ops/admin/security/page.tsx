@@ -185,7 +185,7 @@ export default function SecurityPage() {
       <div className="ops-section-header">
         <div>
           <h1 className="ops-section-title">Security Center</h1>
-          <p className="ops-section-subtitle">Live audit signals, rate-limit activity, and access-control events</p>
+          <p className="ops-section-subtitle">Audit signals, rate-limit activity, and access-control events</p>
         </div>
         <button className="ops-primary-action" onClick={() => void load()} type="button" disabled={loading}>
           Refresh
@@ -214,7 +214,7 @@ export default function SecurityPage() {
             <div className="ops-panel-header">
               <div className="ops-panel-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AlertTriangle className="w-4 h-4" style={{ color: 'var(--ops-danger)' }} />
-                Active Fraud Alerts (derived from live audit logs)
+                Active Fraud Alerts (derived from audit logs)
               </div>
             </div>
 
@@ -295,7 +295,7 @@ export default function SecurityPage() {
 
           <div className="ops-panel">
             <div className="ops-panel-header">
-              <div className="ops-panel-title">Recent Login Activity (from live audit logs)</div>
+              <div className="ops-panel-title">Recent Login Activity (from audit logs)</div>
             </div>
 
             {derived.recentLogins.length === 0 ? (

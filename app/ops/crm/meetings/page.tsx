@@ -1,11 +1,11 @@
 'use client';
-import { Calendar, Video, Phone, MapPin, Clock, Plus } from 'lucide-react';
+import { Calendar, Video, Phone, MapPin, Clock } from 'lucide-react';
 
 const meetings = [
-  { id: 'M-01', title: 'JSW Group — Onboarding Kickoff', type: 'video', time: 'Today, 4:00 PM', duration: '45 min', attendees: ['Amit Patel', 'You'], status: 'upcoming' },
-  { id: 'M-02', title: 'Tata Steel — Contract Renewal', type: 'call', time: 'Tomorrow, 11:00 AM', duration: '30 min', attendees: ['Rajesh Kumar', 'You'], status: 'upcoming' },
-  { id: 'M-03', title: 'SAIL — Quarterly Review', type: 'in-person', time: 'May 12, 2:00 PM', duration: '1 hr', attendees: ['Vikram Singh', 'Finance Team', 'You'], status: 'scheduled' },
-  { id: 'M-04', title: 'Hindalco — Proposal Discussion', type: 'video', time: 'Yesterday, 3:00 PM', duration: '30 min', attendees: ['Priya Sharma', 'You'], status: 'completed' },
+  { id: 'M-01', title: 'Prototype Precision — Onboarding Kickoff', type: 'video', time: 'Today, 4:00 PM', duration: '45 min', attendees: ['Amit Patel', 'You'], status: 'upcoming' },
+  { id: 'M-02', title: 'Alpha Casting Co. — Contract Renewal', type: 'call', time: 'Tomorrow, 11:00 AM', duration: '30 min', attendees: ['Rajesh Kumar', 'You'], status: 'upcoming' },
+  { id: 'M-03', title: 'Sample Steel Corp — Quarterly Review', type: 'in-person', time: 'May 12, 2:00 PM', duration: '1 hr', attendees: ['Vikram Singh', 'Finance Team', 'You'], status: 'scheduled' },
+  { id: 'M-04', title: 'Beta Forge Works — Proposal Discussion', type: 'video', time: 'Yesterday, 3:00 PM', duration: '30 min', attendees: ['Priya Sharma', 'You'], status: 'completed' },
 ];
 
 const typeIcons: Record<string, any> = { video: Video, call: Phone, 'in-person': MapPin };
@@ -19,11 +19,10 @@ export default function MeetingsPage() {
           <h1 className="ops-section-title">Meetings</h1>
           <p className="ops-section-subtitle">Schedule and track sales meetings</p>
         </div>
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-          borderRadius: 8, border: 'none', background: 'var(--ops-accent-crm)',
-          color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-        }}><Plus className="w-4 h-4" /> Schedule Meeting</button>
+        <div style={{
+          padding: '8px 14px', borderRadius: 8, border: '1px solid var(--ops-border)',
+          background: 'var(--ops-surface)', fontSize: 13, fontWeight: 600, color: 'var(--ops-text-secondary)',
+        }}>Scheduling will be enabled with the full CRM rollout.</div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

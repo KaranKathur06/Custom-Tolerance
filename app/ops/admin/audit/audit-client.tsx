@@ -30,9 +30,9 @@ export function AuditClient({ initialData, totalCount, currentPage, currentSearc
         <div>
           <h1 className="ops-section-title">Audit Logs</h1>
           <p className="ops-section-subtitle">Complete trail of administrative actions across the platform</p>
-          <div className="text-xs text-ops-text-muted mt-1">Live Projection View</div>
+          <div className="text-xs text-ops-text-muted mt-1">Audit logs are read-only in this preview mode</div>
         </div>
-        <button className="ops-icon-btn" title="Export Logs"><Download className="w-4 h-4" /></button>
+        <button className="ops-icon-btn" title="Export Logs" disabled><Download className="w-4 h-4" /></button>
       </div>
 
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: 10, marginBottom: 16 }}>

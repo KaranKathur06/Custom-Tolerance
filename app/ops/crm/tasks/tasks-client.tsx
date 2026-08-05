@@ -15,17 +15,10 @@ export function TasksClient({ initialTasks, totalCount }: { initialTasks: any[],
   const [tasks, setTasks] = useState(initialTasks);
   
   const toggle = (id: string) => {
-    // Optimistic UI update
-    setTasks(prev => prev.map(t => {
-      if (t.id === id) {
-        return { ...t, status: t.status === 'DONE' ? 'TODO' : 'DONE' };
-      }
-      return t;
-    }));
-    // In a real app we'd dispatch an API call to update task status here.
+    // Disabled in preview mode: task status updates are not connected yet.
   };
 
-  const pending = tasks.filter(t => t.status !== 'DONE');
+  const pending = tasks.filter((t) => t.status !== 'DONE');
   const completed = tasks.filter(t => t.status === 'DONE');
 
   return (
@@ -34,13 +27,19 @@ export function TasksClient({ initialTasks, totalCount }: { initialTasks: any[],
         <div>
           <h1 className="ops-section-title">Tasks & Activities</h1>
           <p className="ops-section-subtitle">{pending.length} pending · {completed.length} completed</p>
-          <div className="text-xs text-ops-text-muted mt-1">Live Projection View</div>
+          <div className="text-xs text-ops-text-muted mt-1">Read-only preview mode</div>
         </div>
         <button style={{
           display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-          borderRadius: 8, border: 'none', background: 'var(--ops-accent-crm)',
-          color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-        }}><Plus className="w-4 h-4" /> Add Task</button>
+          borderRadius: 8, border: 'none', background: 'var(--ops-border)',
+          color: 'var(--ops-text-muted)', fontSize: 13, fontWeight: 600, cursor: 'not-allowed',
+        }} disabled><Plus className="w-4 h-4" /> Add Task</button>
+      </div>
+      <div className="ops-panel" style={{ marginBottom: 16 }}>
+        <div className="ops-panel-header"><div className="ops-panel-title">Task creation is read-only</div></div>
+        <div className="ops-panel-body" style={{ padding: 20, color: 'var(--ops-text-muted)', fontSize: 13 }}>
+          This CRM view shows projected activity. Task creation and assignment will be connected during the next ops rollout.
+        </div>
       </div>
 
       <div className="ops-panel" style={{ marginBottom: 16 }}>
@@ -53,7 +52,7 @@ export function TasksClient({ initialTasks, totalCount }: { initialTasks: any[],
               padding: '12px 20px', borderBottom: '1px solid var(--ops-border)',
               display: 'flex', alignItems: 'center', gap: 12,
             }}>
-              <button onClick={() => toggle(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <button disabled title="Task updates are disabled in preview mode" style={{ background: 'none', border: 'none', cursor: 'not-allowed', padding: 0 }}>
                 <Circle className="w-5 h-5" style={{ color: 'var(--ops-border-light)' }} />
               </button>
               <div style={{ flex: 1 }}>
@@ -86,7 +85,7 @@ export function TasksClient({ initialTasks, totalCount }: { initialTasks: any[],
                 padding: '12px 20px', borderBottom: '1px solid var(--ops-border)',
                 display: 'flex', alignItems: 'center', gap: 12, opacity: 0.5,
               }}>
-                <button onClick={() => toggle(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <button disabled title="Task updates are disabled in preview mode" style={{ background: 'none', border: 'none', cursor: 'not-allowed', padding: 0 }}>
                   <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--ops-success)' }} />
                 </button>
                 <div style={{ flex: 1 }}>

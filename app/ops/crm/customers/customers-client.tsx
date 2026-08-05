@@ -47,7 +47,7 @@ export function CustomersClient({ initialCustomers, totalCount, currentPage, cur
         <div>
           <h1 className="ops-section-title">Customer Intelligence</h1>
           <p className="ops-section-subtitle">{totalCount} customers · Track engagement, LTV, and churn risk</p>
-          <div className="text-xs text-ops-text-muted mt-1">Live Projection View</div>
+          <div className="text-xs text-ops-text-muted mt-1">Read-only preview mode</div>
         </div>
       </div>
 

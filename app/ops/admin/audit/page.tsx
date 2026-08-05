@@ -5,7 +5,7 @@ export default async function AuditPage({ searchParams }: { searchParams: { page
   const page = Number(searchParams.page) || 1;
   const search = searchParams.search || '';
 
-  // Fetch live projection data
+  // Fetch projection data
   const { data, count } = await AuditProjectionService.getLogs(page, 50, search);
 
   return (

@@ -214,8 +214,8 @@ export default function SettingsPage() {
             {isSellerRole(role) && (
               <>
                 <div className="my-3 border-t border-slate-200" />
-                <Link href="/seller/settings/store" className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900">
-                  <Building2 className="h-4 w-4" /> Store Settings
+                <Link href="/dashboard/seller/products" className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900">
+                  <Building2 className="h-4 w-4" /> Seller Workspace
                 </Link>
               </>
             )}
@@ -277,14 +277,13 @@ export default function SettingsPage() {
 
                 {/* 2FA Status (admin only) */}
                 {requires2FA(role) && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-center gap-2">
-                      <ShieldAlert className="h-4 w-4 text-amber-600" />
-                      <div className="text-sm font-semibold text-amber-900">Admin 2FA Required</div>
+                      <ShieldAlert className="h-4 w-4 text-slate-600" />
+                      <div className="text-sm font-semibold text-slate-900">Admin access controls</div>
                     </div>
-                    <p className="mt-1 text-xs text-amber-700">
-                      As a {role}, you must verify your identity via email OTP before accessing admin panels.
-                      This happens automatically when you navigate to /admin.
+                    <p className="mt-1 text-xs text-slate-600">
+                      Admin features are available to your workspace role and can be reviewed from the admin console.
                     </p>
                   </div>
                 )}

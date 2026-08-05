@@ -1,6 +1,6 @@
 'use client';
 
-import { DollarSign, Plus } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
 
 export function PipelineClient({ initialStages }: { initialStages: any[] }) {
   const totalValue = initialStages.reduce((sum, s) => {
@@ -18,15 +18,14 @@ export function PipelineClient({ initialStages }: { initialStages: any[] }) {
           <p className="ops-section-subtitle">
             {initialStages.reduce((sum, s) => sum + s.leads.length, 0)} leads · Total value ₹{(totalValue / 100000).toFixed(1)}L
           </p>
-          <div className="text-xs text-ops-text-muted mt-1">Live Projection View</div>
+          <div className="text-xs text-ops-text-muted mt-1">Read-only preview mode</div>
         </div>
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-          borderRadius: 8, border: 'none', background: 'var(--ops-accent-crm)',
-          color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+        <div style={{
+          padding: '8px 14px', borderRadius: 8, border: '1px solid var(--ops-border)',
+          background: 'var(--ops-surface)', fontSize: 13, fontWeight: 600, color: 'var(--ops-text-secondary)',
         }}>
-          <Plus className="w-4 h-4" /> Add Lead
-        </button>
+          Lead capture is pending rollout.
+        </div>
       </div>
 
       {/* Kanban Board */}

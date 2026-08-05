@@ -90,6 +90,7 @@ export default function UsersPage() {
 
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -107,6 +108,8 @@ export default function UsersPage() {
       if (!res.ok || !payload?.success) {
         throw new Error(payload?.error?.message || 'Failed to load users');
       }
+
+      setTotalPages(Math.max(1, payload.meta?.totalPages ?? 1));
 
       const rows = (payload.data ?? []) as Array<{
         id: string;
@@ -151,16 +154,52 @@ export default function UsersPage() {
     void fetchUsersStable();
   }, [fetchUsersStable]);
 
-  // NOTE: we intentionally keep mutations out until backend ops routes are implemented.
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  // NOTE: mutations remain disabled until backend enforcement and audit APIs are connected.
 
 
-  const filtered = useMemo(() => users.filter((user) => {
-    const needle = `${user.name} ${user.email} ${user.company}`.toLowerCase();
-    if (search && !needle.includes(search.toLowerCase())) return false;
-    if (roleFilter !== 'all' && user.role !== roleFilter) return false;
-    if (statusFilter !== 'all' && user.status !== statusFilter) return false;
-    return true;
-  }), [roleFilter, search, statusFilter, users]);
+  const filtered = useMemo(
+    () =>
+      users.filter((user) => {
+        const needle = `${user.name} ${user.email} ${user.company}`.toLowerCase();
+        if (search && !needle.includes(search.toLowerCase())) return false;
+        if (roleFilter !== 'all' && user.role !== roleFilter) return false;
+        if (statusFilter !== 'all' && user.status !== statusFilter) return false;
+        return true;
+      }),
+    [roleFilter, search, statusFilter, users],
+  );
+
+  const pageButtons = useMemo(() => {
+    const pages: Array<number | 'ellipsis'> = [];
+    if (totalPages <= 5) {
+      for (let index = 1; index <= totalPages; index += 1) {
+        pages.push(index);
+      }
+    } else {
+      pages.push(1);
+      if (page > 3) {
+        pages.push('ellipsis');
+      }
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+      for (let index = start; index <= end; index += 1) {
+        if (index > 1 && index < totalPages) {
+          pages.push(index);
+        }
+      }
+      if (page < totalPages - 2) {
+        pages.push('ellipsis');
+      }
+      pages.push(totalPages);
+    }
+    return pages;
+  }, [page, totalPages]);
 
   function notify(message: string) {
     setToast(message);
@@ -246,8 +285,13 @@ export default function UsersPage() {
         <EnterpriseSelect value={roleFilter} onValueChange={setRoleFilter} options={roleOptions} searchable ariaLabel="Filter by role" />
         <EnterpriseSelect value={statusFilter} onValueChange={setStatusFilter} options={statusOptions} ariaLabel="Filter by status" />
         <div className="ops-filter-actions">
-          <button className="ops-icon-btn ops-action-square" title="Export users"><Download className="w-4 h-4" /></button>
-          <button className="ops-primary-action"><UserPlus className="w-4 h-4" /> Invite User</button>
+          <button className="ops-icon-btn ops-action-square" title="Export users" disabled><Download className="w-4 h-4" /></button>
+          <button className="ops-primary-action" disabled><UserPlus className="w-4 h-4" /> Invite User</button>
+        </div>
+      </div>
+      <div className="ops-panel ops-readonly-banner" style={{ marginBottom: 16 }}>
+        <div className="ops-panel-body">
+          <p className="text-sm text-slate-500">User governance controls are preview-only and all management actions are disabled until the enforcement APIs are connected.</p>
         </div>
       </div>
 
@@ -279,11 +323,8 @@ export default function UsersPage() {
                   <td className="ops-muted-cell">{user.lastLogin}</td>
                   <td>
                     <div className="ops-row-actions">
-                      <button className="ops-icon-btn ops-action-square" title="View Profile" onClick={() => notify(`Opening profile for ${user.name}`)}><Eye className="w-4 h-4" /></button>
-                      <button className="ops-icon-btn ops-action-square" title="Send Notification" onClick={() => {
-                        publishOpsEvent('user.notification_sent', { entityId: user.id, entityLabel: user.name, message: `Notification queued for ${user.name}` });
-                        notify(`Notification queued for ${user.name}`);
-                      }}><Mail className="w-4 h-4" /></button>
+                      <button className="ops-icon-btn ops-action-square" title="Preview only" disabled><Eye className="w-4 h-4" /></button>
+                      <button className="ops-icon-btn ops-action-square" title="Preview only" disabled><Mail className="w-4 h-4" /></button>
                       <div className="ops-action-menu-wrap">
                         <button className="ops-icon-btn ops-action-square" title="More actions" onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}>
                           <MoreVertical className="w-4 h-4" />
@@ -296,7 +337,7 @@ export default function UsersPage() {
                                 {group.actions.map((action) => {
                                   const Icon = action.icon;
                                   return (
-                                    <button key={action.label} className={action.danger ? 'danger' : ''} onClick={() => action.run(user)}>
+                                    <button key={action.label} className={action.danger ? 'danger' : ''} disabled title="Preview only">
                                       <Icon className="w-4 h-4" /> {action.label}
                                     </button>
                                   );
@@ -314,13 +355,36 @@ export default function UsersPage() {
           </table>
         </div>
         <div className="ops-table-footer">
-          <span>Showing {filtered.length} of {users.length} users</span>
+          <span>Page {page} of {totalPages} — showing {filtered.length} of {users.length} users</span>
           <div>
-            <button className="ops-icon-btn"><ChevronLeft className="w-4 h-4" /></button>
-            <button className="ops-icon-btn active-page">1</button>
-            <button className="ops-icon-btn">2</button>
-            <button className="ops-icon-btn">3</button>
-            <button className="ops-icon-btn"><ChevronRight className="w-4 h-4" /></button>
+            <button
+              className="ops-icon-btn"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {pageButtons.map((pageButton, index) =>
+              pageButton === 'ellipsis' ? (
+                <span key={`ellipsis-${index}`} className="ops-pagination-ellipsis">…</span>
+              ) : (
+                <button
+                  key={pageButton}
+                  className={`ops-icon-btn ${page === pageButton ? 'active-page' : ''}`}
+                  onClick={() => setPage(pageButton)}
+                  disabled={page === pageButton}
+                >
+                  {pageButton}
+                </button>
+              ),
+            )}
+            <button
+              className="ops-icon-btn"
+              disabled={page >= totalPages}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

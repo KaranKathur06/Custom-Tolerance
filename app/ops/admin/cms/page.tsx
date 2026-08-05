@@ -5,10 +5,10 @@ export default async function CMSPage({ searchParams }: { searchParams: { sectio
   const section = (searchParams.section as any) || 'all';
   const page = Number(searchParams.page) || 1;
 
-  // Fetch live stats for the cards
+  // Fetch projection stats for the cards
   const stats = await CMSProjectionService.getStats();
 
-  // Fetch live content for the table based on selected section
+  // Fetch projected content for the table based on selected section
   let content = [];
   let count = 0;
   

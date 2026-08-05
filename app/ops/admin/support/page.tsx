@@ -6,10 +6,10 @@ export default async function SupportPage({ searchParams }: { searchParams: { st
   const status = searchParams.status || '';
   const category = searchParams.category || '';
 
-  // Fetch live ticket statistics
+  // Fetch projected ticket statistics
   const stats = await SupportProjectionService.getTicketStats();
 
-  // Fetch live ticket queue
+  // Fetch projected ticket queue
   const { data, count } = await SupportProjectionService.getTickets(page, 50, { 
     status: status || undefined, 
     category: category || undefined 

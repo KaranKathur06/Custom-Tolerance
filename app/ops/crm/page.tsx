@@ -8,15 +8,11 @@ import {
 import Link from 'next/link';
 
 export default async function CRMCommandCenter() {
-  // Fetch live projections
+  // Fetch projection data for the CRM preview dashboard
   const kpis = await CRMProjectionService.getKPIs();
   const pipeline = await CRMProjectionService.getPipeline();
-  
-  // For hot leads, we query tasks or leads. 
-  // Since we don't have a topLeads projection yet, we will fetch recent active customers
+
   const recentLeads = await CRMProjectionService.getCustomers('BUYER', 1, 5);
-  
-  // For tasks, fetch live tasks
   const tasksRes = await CRMProjectionService.getTasks(1, 5, { status: 'TODO' });
 
   return (
@@ -24,15 +20,15 @@ export default async function CRMCommandCenter() {
       <div className="ops-section-header">
         <div>
           <h1 className="ops-section-title">CRM Command Center</h1>
-          <p className="ops-section-subtitle">Live projection of marketplace sales and activity</p>
+          <p className="ops-section-subtitle">Preview of marketplace sales and activity projections</p>
         </div>
       </div>
 
       {/* KPI Grid */}
       <div className="ops-kpi-grid">
-        <KPICard title="Total Buyers" value={String(kpis.buyers)} change={0} changeLabel="Live" icon={Target} variant="info" />
-        <KPICard title="Total Sellers" value={String(kpis.sellers)} change={0} changeLabel="Live" icon={DollarSign} variant="success" />
-        <KPICard title="Active Leads" value={String(kpis.activeLeads)} change={0} changeLabel="Live" icon={TrendingUp} variant="warning" />
+        <KPICard title="Total Buyers" value={String(kpis.buyers)} change={0} changeLabel="Projected" icon={Target} variant="info" />
+        <KPICard title="Total Sellers" value={String(kpis.sellers)} change={0} changeLabel="Projected" icon={DollarSign} variant="success" />
+        <KPICard title="Active Leads" value={String(kpis.activeLeads)} change={0} changeLabel="Projected" icon={TrendingUp} variant="warning" />
         <KPICard title="Pipeline Value" value="--" change={0} changeLabel="Calculating" icon={UserCheck} variant="info" />
       </div>
 

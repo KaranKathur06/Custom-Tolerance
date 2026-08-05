@@ -57,7 +57,7 @@ export function SubscriptionCenter({ trustLevel = 0 }: SubscriptionCenterProps) 
           </Link>
         ) : (
           <p className="self-center text-xs text-muted-foreground">
-            Online billing activates when Razorpay is configured
+            Billing upgrades will be available once payments are enabled for your workspace.
           </p>
         )}
       </div>

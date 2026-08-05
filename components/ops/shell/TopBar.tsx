@@ -144,7 +144,7 @@ export function TopBar() {
                   <div className="ops-notif-dot-inline normal" />
                   <div>
                     <p className="ops-notif-title">Supplier verification ready</p>
-                    <p className="ops-notif-desc">Tata Steel Industries requires GST approval</p>
+                    <p className="ops-notif-desc">Prototype Precision requires GST approval</p>
                     <p className="ops-notif-time">1 hour ago</p>
                   </div>
                   <CheckCircle2 className="w-4 h-4" />

@@ -110,7 +110,7 @@ export function WizardShell({
         </div>
       </div>
 
-      {/* ── Sticky top summary system (migration-safe) ── */}
+      {/* ── Sticky top summary system ── */}
       <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-[1480px] px-10">
           <div className="py-3">
@@ -348,7 +348,7 @@ function GlobalErrorBanner({
 }
 
 /* ────────────────────────────────────────────────────────────────────────
-   Sticky Onboarding Summary (migration-safe wrapper)
+   Sticky Onboarding Summary
    - Renders existing info in a compact top bar.
    - Keeps legacy sidebar intact to avoid regressions.
    ──────────────────────────────────────────────────────────────────────── */
@@ -440,7 +440,7 @@ function StickyOnboardingSummary({
         {/* subtle hint: legacy sections remain in sidebar for migration safety */}
         <p className="mt-2 text-xs text-slate-500">
           Trust & missing requirements are also shown on the right panel
-          (migration-safe).
+          .
         </p>
       </div>
     </div>

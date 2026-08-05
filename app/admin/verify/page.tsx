@@ -298,7 +298,7 @@ function AdminVerifyForm() {
             Admin Verification
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Enhanced security verification required
+            Verify your administrator identity before accessing protected admin pages.
           </p>
         </div>
 
@@ -493,7 +493,7 @@ function AdminVerifyForm() {
         {/* Security notice */}
         <div className="mt-4 text-center text-[11px] text-slate-400">
           <Lock className="mr-1 inline h-3 w-3" />
-          Protected by CustomTolerance Security · Session expires in 4 hours
+          Admin session is protected and expires after 4 hours or on sign-out.
         </div>
       </div>
     </div>

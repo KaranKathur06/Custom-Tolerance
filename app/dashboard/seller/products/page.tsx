@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Plus, Pencil, Trash2, Star, Eye, EyeOff, Package, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -163,6 +164,9 @@ function ProductCard({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function FeaturedProductsPage() {
+  if (typeof window === "undefined") {
+    redirect("/dashboard/seller/products");
+  }
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();

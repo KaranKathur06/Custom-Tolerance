@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Package, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type Order = {
@@ -17,7 +16,7 @@ type Order = {
 const DEMO_ORDERS: Order[] = [
   {
     id: "1",
-    buyer: "AutoParts India Ltd",
+    buyer: "Prototype Precision Ltd",
     value: "₹4.2L",
     stage: "Production",
     progress: 65,
@@ -25,7 +24,7 @@ const DEMO_ORDERS: Order[] = [
   },
   {
     id: "2",
-    buyer: "Precision Engineering Co",
+    buyer: "Alpha Casting Co.",
     value: "₹1.8L",
     stage: "Quality Check",
     progress: 85,
@@ -33,7 +32,7 @@ const DEMO_ORDERS: Order[] = [
   },
   {
     id: "3",
-    buyer: "MetalWorks Gujarat",
+    buyer: "Sample Steel Corp",
     value: "₹6.5L",
     stage: "Material Sourcing",
     progress: 30,
@@ -85,12 +84,9 @@ export function ActiveOrders({ orders = DEMO_ORDERS }: ActiveOrdersProps) {
                 </div>
               </div>
             </div>
-            <Link href="/seller/orders">
-              <Button size="sm" variant="outline" className="gap-1.5">
-                View Order
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </Link>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              Order details will appear after fulfillment is live.
+            </div>
           </div>
         ))}
       </div>

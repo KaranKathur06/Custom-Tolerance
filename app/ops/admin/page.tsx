@@ -80,7 +80,7 @@ export default function AdminCommandCenter() {
         setError(null);
       } catch (e) {
         if (!active) return;
-        setError(e instanceof Error ? e.message : 'Failed to load live metrics');
+        setError(e instanceof Error ? e.message : 'Failed to load operational metrics');
       } finally {
         if (!active) return;
         setLoading(false);
@@ -173,7 +173,7 @@ export default function AdminCommandCenter() {
       { title: 'Revenue Center', href: '/ops/admin/finance', icon: CircleDollarSign, meta: 'MRR, ARR, commissions, failed payments' },
       { title: 'Content Center', href: '/ops/admin/cms', icon: BarChart3, meta: 'Listings, capabilities, homepage operations' },
       { title: 'Platform Settings', href: '/ops/admin/settings', icon: Gauge, meta: 'RBAC, feature flags, marketplace controls' },
-      { title: 'System Health', href: '/ops/admin/security', icon: HeartPulse, meta: 'API health, uptime, live alerts, audit trails' },
+      { title: 'System Health', href: '/ops/admin/security', icon: HeartPulse, meta: 'API health, uptime, alerts, audit trails' },
     ],
     [],
   );
@@ -206,14 +206,14 @@ export default function AdminCommandCenter() {
           {status === 'healthy' ? 'Healthy' : status === 'warning' ? 'Warning' : 'Critical'}
         </div>
 
-        <button className="mos-command-input" type="button">
+        <button className="mos-command-input" type="button" disabled>
           <Search className="w-4 h-4" />
           Search suppliers, RFQs, buyers, payments, GSTIN...
         </button>
 
-        <button className="mos-quick-action-button" type="button">
+        <button className="mos-quick-action-button" type="button" disabled>
           <Zap className="w-4 h-4" />
-          Quick Actions
+          Quick actions will be enabled after operational workflows are connected
         </button>
 
         <div className="mos-system-alert">
@@ -242,7 +242,7 @@ export default function AdminCommandCenter() {
           <div className="mos-panel-header">
             <div>
               <h2>Marketplace Map</h2>
-              <p>City intel is displayed in the dedicated analytics view.</p>
+              <p>City workspace preview panels are available in analytics and command modules.</p>
             </div>
             <Link href="/ops/crm/analytics">
               City intelligence <ArrowRight className="w-4 h-4" />
@@ -251,7 +251,7 @@ export default function AdminCommandCenter() {
 
           <div className="mos-map-body">
             <div className="mos-city-card">
-              <span>Live City Workspace</span>
+              <span>Marketplace Workspace Preview</span>
               <h3>—</h3>
               <div className="mos-city-metrics">
                 <div>
@@ -272,8 +272,8 @@ export default function AdminCommandCenter() {
                 </div>
               </div>
 
-              <button type="button" disabled={loading}>
-                Open city intelligence
+              <button type="button" disabled>
+                View city intelligence in analytics
               </button>
             </div>
           </div>
@@ -283,25 +283,25 @@ export default function AdminCommandCenter() {
           <div className="mos-panel-header">
             <div>
               <h2>Priority Action Queue</h2>
-              <p>No hardcoded demo queue items. Use dedicated modules for operational details.</p>
+              <p>Preview of operational follow-ups from moderation and verification workflows.</p>
             </div>
           </div>
 
           <div className="mos-action-list">
             {error ? (
               <div className="mos-empty-state">
-                <strong>Live data unavailable</strong>
+                <strong>Operational data unavailable</strong>
                 <p>{error}</p>
               </div>
             ) : loading ? (
               <div className="mos-empty-state">
-                <strong>Loading live queue…</strong>
+                <strong>Loading queue…</strong>
                 <p>Fetching operational metrics.</p>
               </div>
             ) : (
               <div className="mos-empty-state">
-                <strong>No live queue dataset provided to this widget yet.</strong>
-                <p>Open a dedicated admin module for operational queues.</p>
+                <strong>No active operational work items are available yet.</strong>
+                <p>Open the verification or moderation queue once the workflow is connected.</p>
               </div>
             )}
           </div>
@@ -336,14 +336,14 @@ export default function AdminCommandCenter() {
           <div className="mos-panel-header">
             <div>
               <h2>Real-Time Event Stream</h2>
-              <p>Event stream is rendered from live audit/log modules.</p>
+              <p>Event stream is rendered from audit/log modules.</p>
             </div>
           </div>
 
           <div className="mos-event-stream">
             <div className="mos-empty-state">
-              <strong>{loading ? 'Fetching events…' : 'No live event stream dataset provided to this widget yet.'}</strong>
-              <p>Use audit/log views for live marketplace activity.</p>
+              <strong>{loading ? 'Fetching events…' : 'Event streaming is not configured yet.'}</strong>
+              <p>Audit and activity events will appear here once ingestion is enabled.</p>
             </div>
           </div>
         </div>
@@ -376,15 +376,15 @@ export default function AdminCommandCenter() {
           <div className="mos-panel-header">
             <div>
               <h2>Supplier Intelligence Snapshot</h2>
-              <p>Open supplier modules for live ranking, verification, and risk posture.</p>
+              <p>Open supplier modules for ranking, verification, and risk posture.</p>
             </div>
           </div>
 
           <div className="mos-supplier-table">
             <div className="mos-empty-state">
-              <strong>{loading ? 'Loading live snapshot…' : 'No supplier snapshot dataset provided to this widget yet.'}</strong>
+              <strong>{loading ? 'Loading snapshot…' : 'Supplier intelligence data is not available yet.'}</strong>
               <p>
-                Open <Link href="/ops/admin/users" className="underline">Supplier Intelligence</Link>.
+                Open <Link href="/ops/admin/users" className="underline">Supplier Intelligence</Link> once data ingestion is available.
               </p>
             </div>
           </div>
@@ -394,15 +394,15 @@ export default function AdminCommandCenter() {
           <div className="mos-panel-header">
             <div>
               <h2>Fraud Detection Center</h2>
-              <p>Open the dedicated security module for live abuse signals.</p>
+              <p>Open the dedicated security module for abuse signals.</p>
             </div>
           </div>
 
           <div className="mos-fraud-grid">
             <div className="mos-empty-state">
-              <strong>{loading ? 'Loading live signals…' : 'No fraud signal dataset provided to this widget yet.'}</strong>
+              <strong>{loading ? 'Loading signals…' : 'Fraud signals are not available yet.'}</strong>
               <p>
-                Open <Link href="/ops/admin/security" className="underline">Security Center</Link>.
+                Open <Link href="/ops/admin/security" className="underline">Security Center</Link> when fraud monitoring is active.
               </p>
             </div>
           </div>
@@ -414,11 +414,13 @@ export default function AdminCommandCenter() {
         <div>
           <strong>Operations Center</strong>
           <p>
-            Route live work into verification, RFQ intervention, failed payments, supplier risk review,
+            Route operational work into verification, RFQ intervention, failed payments, supplier risk review,
             listing moderation, and platform governance queues.
           </p>
         </div>
-        <button type="button">Open quick actions</button>
+        <button type="button" disabled>
+          Quick actions are not available yet
+        </button>
       </section>
     </div>
   );

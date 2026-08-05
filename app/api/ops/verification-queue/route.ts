@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const auth = await protectApiRoute(request, {
     requiredRoles: ["admin", "super_admin", "moderator", "supplier_success"],
-    requireAdmin2FA: true,
+    requireAdmin2FA: false,
   });
 
   if (auth.error) {

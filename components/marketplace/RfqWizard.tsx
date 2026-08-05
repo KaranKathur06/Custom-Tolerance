@@ -25,6 +25,7 @@ import {
   guestDraftToApiPayload,
   type RfqFrequency,
 } from "@/lib/marketplace/guest-rfq";
+import { validateRfqInput } from "@/lib/marketplace/rfq-validation";
 
 const STEPS = ["Product", "Commercial", "Logistics", "Files", "Frequency"] as const;
 const FREQUENCY_OPTIONS: { value: RfqFrequency; label: string }[] = [
@@ -98,8 +99,21 @@ export function RfqWizard({ supplierSlug }: RfqWizardProps) {
       }
     }
     if (index === 1) {
+      const validationErrors = validateRfqInput({
+        quantity: draft.quantity,
+        budgetMin: draft.budgetMin,
+        budgetMax: draft.budgetMax,
+      });
       if (!draft.quantity.trim()) {
         setError("Quantity is required");
+        return false;
+      }
+      if (validationErrors.quantity) {
+        setError(validationErrors.quantity);
+        return false;
+      }
+      if (validationErrors.budgetMax) {
+        setError(validationErrors.budgetMax);
         return false;
       }
     }
@@ -499,7 +513,7 @@ export function RfqWizard({ supplierSlug }: RfqWizardProps) {
         </div>
 
         <p className="text-center text-xs text-slate-400">
-          Draft auto-saves in your browser · No account needed until submit
+          Draft auto-saves in your browser · Your requirement is saved as you go
         </p>
         <button
           type="button"

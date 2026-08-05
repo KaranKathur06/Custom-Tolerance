@@ -15,7 +15,13 @@ export default function AnalyticsPage() {
       <div className="ops-section-header">
         <div>
           <h1 className="ops-section-title">Sales Analytics</h1>
-          <p className="ops-section-subtitle">Performance tracking, conversion funnels, and forecasting</p>
+          <p className="ops-section-subtitle">Performance tracking, conversion funnels, and forecasting (preview data)</p>
+          <div className="text-xs text-ops-text-muted mt-1">Read-only preview mode</div>
+        </div>
+      </div>
+      <div className="ops-panel ops-readonly-banner">
+        <div className="ops-panel-body text-sm text-slate-500">
+          This analytics dashboard is preview-only until the reporting pipeline is connected.
         </div>
       </div>
       <div className="ops-kpi-grid">

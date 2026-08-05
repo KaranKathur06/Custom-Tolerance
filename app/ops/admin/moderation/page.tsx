@@ -43,7 +43,7 @@ function safeNumber(n: unknown) {
 }
 
 function formatPolicySla(pending: number, approved: number) {
-  // No placeholder "demo SLA": derive a conservative completion ratio from live data.
+  // No placeholder "demo SLA": derive a conservative completion ratio from projection data.
   const total = pending + approved;
   if (total <= 0) return '0%';
   const pct = Math.round((approved / total) * 100);
@@ -163,7 +163,7 @@ export default function ModerationPage() {
     const approvedListings = safeNumber(metrics?.approvedListings);
     const pendingSuppliers = safeNumber(metrics?.pendingSuppliers);
 
-    // Derived from live data only (no demo deltas)
+    // Derived from actual queue data only (no demo deltas)
     const openReviews = pendingListings;
     const highRiskQueue = pendingSuppliers;
     const resolvedToday = approvedListings;
@@ -177,7 +177,7 @@ export default function ModerationPage() {
       <div className="ops-section-header">
         <div>
           <h1 className="ops-section-title">Moderation Center</h1>
-          <p className="ops-section-subtitle">Live moderation queues for listings, supplier onboarding, and verification documents.</p>
+          <p className="ops-section-subtitle">Operational moderation preview; action controls are preview-only until enforcement APIs are connected.</p>
         </div>
       </div>
 
@@ -192,7 +192,7 @@ export default function ModerationPage() {
         <div className="ops-panel-header">
           <div>
             <div className="ops-panel-title">Operational Moderation Queue</div>
-            <p className="ops-section-subtitle">Each item is loaded from live backend queues and shows the current workflow state.</p>
+            <p className="ops-section-subtitle">Each item is shown read-only for review; action controls are disabled until backend enforcement is connected.</p>
           </div>
         </div>
 
@@ -207,13 +207,13 @@ export default function ModerationPage() {
               <StatusBadge status={item.status} />
               <StatusBadge status={item.severity} />
               <div className="ops-row-actions">
-                <button className="ops-icon-btn" title="Open" type="button" aria-label="Open">
+                <button className="ops-icon-btn" title="Preview only" type="button" aria-label="Open" disabled>
                   <Eye className="w-4 h-4" />
                 </button>
-                <button className="ops-icon-btn" title="Resolve" type="button" aria-label="Resolve">
+                <button className="ops-icon-btn" title="Preview only" type="button" aria-label="Resolve" disabled>
                   <CheckCircle2 className="w-4 h-4" />
                 </button>
-                <button className="ops-icon-btn" title="Reject" type="button" aria-label="Reject">
+                <button className="ops-icon-btn" title="Preview only" type="button" aria-label="Reject" disabled>
                   <XCircle className="w-4 h-4" />
                 </button>
               </div>

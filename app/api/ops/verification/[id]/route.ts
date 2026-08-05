@@ -17,7 +17,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   const auth = await protectApiRoute(request, {
     requiredRoles: ["admin", "super_admin", "moderator", "supplier_success"],
-    requireAdmin2FA: true,
+    requireAdmin2FA: false,
   });
 
   if (auth.error) {

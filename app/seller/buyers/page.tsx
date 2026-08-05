@@ -1,27 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { Building2, MapPin, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const DEMO_BUYERS = [
   {
-    name: "AutoParts India Ltd",
-    industry: "Automotive",
+    name: "Regional Manufacturing Buyer",
+    industry: "Automotive Components",
     location: "Pune, Maharashtra",
     rfqsPosted: 12,
     avgOrderValue: "₹3.2L",
   },
   {
-    name: "Precision Engineering Co",
-    industry: "Aerospace",
+    name: "Precision Fabrication Buyer",
+    industry: "Aerospace Supply",
     location: "Bangalore, Karnataka",
     rfqsPosted: 8,
     avgOrderValue: "₹5.8L",
   },
   {
-    name: "MetalWorks Gujarat",
-    industry: "Industrial Equipment",
+    name: "Industrial Parts Procurement",
+    industry: "Heavy Equipment",
     location: "Ahmedabad, Gujarat",
     rfqsPosted: 15,
     avgOrderValue: "₹2.1L",
@@ -64,11 +62,9 @@ export default function SellerBuyerDirectoryPage() {
               <span className="text-slate-500">{buyer.rfqsPosted} RFQs posted</span>
               <span className="font-semibold text-slate-700">{buyer.avgOrderValue} avg</span>
             </div>
-            <Link href="/seller/rfqs" className="mt-4 block">
-              <Button size="sm" variant="outline" className="w-full">
-                View RFQs
-              </Button>
-            </Link>
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs text-slate-500">
+              RFQ access will appear once matching opportunities are available.
+            </div>
           </div>
         ))}
       </div>

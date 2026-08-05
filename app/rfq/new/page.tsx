@@ -1,5 +1,8 @@
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { createSupabaseServerClient as createServerSupabaseClient } from "@/lib/supabase/server-client";
+import { getServerUser } from "@/lib/supabase/server-client";
+import { buildBuyerVerificationState, type BuyerVerificationState } from "@/lib/marketplace/irfq/buyer-verification-state";
 import { RfqWizard } from "@/components/marketplace/RfqWizard";
 import { IrfqComposerShell } from "@/components/irfq/composer/IrfqComposerShell";
 
@@ -18,6 +21,33 @@ export default async function NewRfqPage({ searchParams }: Props) {
 
   const Composer = IRFQ_V2_ENABLED ? IrfqComposerShell : RfqWizard;
 
+  const authUser = await getServerUser();
+  let initialVerificationState: BuyerVerificationState = { status: "verified" } as BuyerVerificationState;
+
+  if (authUser?.id) {
+    const supabase = createServerSupabaseClient();
+
+    if (supabase == null) {
+      initialVerificationState = { status: "verified" } as BuyerVerificationState;
+    } else {
+      const { data: buyerPreferences } = await supabase
+        .from("buyer_preferences")
+        .select("email_verified, mobile_verified, completion_percent")
+        .maybeSingle();
+      const { data: buyerProfile } = await supabase
+        .from("buyer_profiles")
+        .select("profile_completion_percent")
+        .eq("profile_id", authUser.id)
+        .maybeSingle();
+
+      initialVerificationState = buildBuyerVerificationState({
+        emailVerified: Boolean(buyerPreferences?.email_verified ?? authUser.email_confirmed_at),
+        mobileVerified: Boolean(buyerPreferences?.mobile_verified),
+        profileCompletionPercent: buyerPreferences?.completion_percent ?? buyerProfile?.profile_completion_percent ?? 0,
+      });
+    }
+  }
+
   return (
     <Suspense
       fallback={
@@ -26,7 +56,7 @@ export default async function NewRfqPage({ searchParams }: Props) {
         </div>
       }
     >
-      <Composer supplierSlug={supplier} />
+      <Composer supplierSlug={supplier} initialVerificationState={initialVerificationState} />
     </Suspense>
   );
 }

@@ -68,7 +68,7 @@ export default function FinancePage() {
       },
       {
         title: 'Operational Health',
-        value: metrics?.timestamp ? 'Live' : '—',
+        value: metrics?.timestamp ? 'Current' : '—',
         icon: DollarSign,
         variant: 'success' as const,
       },
@@ -76,9 +76,7 @@ export default function FinancePage() {
   }, [metrics]);
 
   const exportLedger = async () => {
-    // No mock “queued” export event. This button is UI-only until a real export endpoint exists.
-    // eslint-disable-next-line no-alert
-    window.alert('Ledger export is not wired to a backend endpoint yet.');
+    setError('Ledger export is not available yet.');
   };
 
   return (
@@ -86,7 +84,7 @@ export default function FinancePage() {
       <div className="ops-section-header">
         <div>
           <h1 className="ops-section-title">Revenue Operations</h1>
-          <p className="ops-section-subtitle">Live operational metrics (no demo transactions)</p>
+          <p className="ops-section-subtitle">Operational metrics dashboard (read-only until export and ledger workflows are enabled)</p>
         </div>
       </div>
 
@@ -99,7 +97,7 @@ export default function FinancePage() {
       <div className="ops-panel">
         <div className="ops-panel-header">
           <div className="ops-panel-title">Transaction History</div>
-          <button className="ops-primary-action" onClick={exportLedger} type="button">
+          <button className="ops-primary-action" type="button" disabled>
             <Download className="w-4 h-4" /> Export Ledger
           </button>
         </div>
@@ -111,7 +109,7 @@ export default function FinancePage() {
         ) : (
           <div className="ops-panel-body py-12">
             <div className="ops-muted-cell" style={{ padding: 16 }}>
-              Transaction ledger rows are not wired to this admin screen yet. KPIs are live; the detailed ledger requires a dedicated backend endpoint.
+              Ledger details will appear here once the finance data pipeline is connected.
             </div>
           </div>
         )}
@@ -122,7 +120,7 @@ export default function FinancePage() {
           <div className="ops-panel-body">
             <p className="ops-mini-label">Supplier Payouts</p>
             <div className="ops-muted-cell" style={{ marginTop: 8 }}>
-              No live payout items are currently wired to this screen.
+              No payout activity is available yet.
             </div>
           </div>
         </div>
@@ -131,7 +129,7 @@ export default function FinancePage() {
           <div className="ops-panel-body">
             <p className="ops-mini-label">Reconciliation Actions</p>
             <div className="ops-muted-cell" style={{ marginTop: 8 }}>
-              Reconciliation controls are disabled until payout/ledger endpoints are connected.
+              Reconciliation controls will be enabled once the ledger workflow is available.
             </div>
           </div>
         </div>
@@ -140,7 +138,7 @@ export default function FinancePage() {
           <div className="ops-panel-body">
             <p className="ops-mini-label">Ops Events</p>
             <div className="ops-muted-cell" style={{ marginTop: 8 }}>
-              Backend-backed finance events will be emitted once ledger endpoints are integrated.
+              Finance events will appear here as the ledger pipeline becomes available.
             </div>
           </div>
         </div>

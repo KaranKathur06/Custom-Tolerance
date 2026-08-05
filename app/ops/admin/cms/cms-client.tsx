@@ -31,9 +31,14 @@ export function CMSClient({ stats, initialContent, totalCount, currentSection, c
         <div>
           <h1 className="ops-section-title">CMS & Content</h1>
           <p className="ops-section-subtitle">Manage banners, pages, SEO, and platform content</p>
-          <div className="text-xs text-ops-text-muted mt-1">Live Projection View</div>
+          <div className="text-xs text-ops-text-muted mt-1">Read-only preview mode</div>
         </div>
-        <button className="ops-primary-action"><Send className="w-4 h-4" /> Publish Selected</button>
+        <button className="ops-primary-action" disabled><Send className="w-4 h-4" /> Publish Selected</button>
+      </div>
+      <div className="ops-panel ops-readonly-banner">
+        <div className="ops-panel-body">
+          <p className="text-sm text-slate-500">Content actions are disabled until the publishing workflow is fully connected.</p>
+        </div>
       </div>
       
       <div className="ops-workspace-grid">
@@ -81,7 +86,7 @@ export function CMSClient({ stats, initialContent, totalCount, currentSection, c
                     </span>
                   </td>
                   <td>{formatDistanceToNow(new Date(item.updated_at || item.created_at), { addSuffix: true })}</td>
-                  <td><button className="ops-text-btn">Edit content</button></td>
+                  <td><button className="ops-text-btn" disabled>Edit content</button></td>
                 </tr>
               ))}
             </tbody>

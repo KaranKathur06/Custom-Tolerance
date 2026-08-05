@@ -147,7 +147,7 @@ export default function VerificationQueuePage() {
         <div>
           <h1 className="ops-section-title">Supplier verification queue</h1>
           <p className="ops-section-subtitle">
-            Review business documents submitted by suppliers (supplier_success workflow)
+            Review business documents submitted by suppliers and their onboarding progress.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>

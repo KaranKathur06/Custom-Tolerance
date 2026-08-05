@@ -18,6 +18,7 @@ type EnterpriseSelectProps = {
   searchable?: boolean;
   className?: string;
   ariaLabel?: string;
+  disabled?: boolean;
 };
 
 export function EnterpriseSelect({
@@ -28,6 +29,7 @@ export function EnterpriseSelect({
   searchable = false,
   className,
   ariaLabel,
+  disabled = false,
 }: EnterpriseSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -47,6 +49,12 @@ export function EnterpriseSelect({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
+  React.useEffect(() => {
+    if (disabled) {
+      setOpen(false);
+    }
+  }, [disabled]);
+
   return (
     <div ref={rootRef} className={cn('enterprise-select', className)}>
       <button
@@ -55,7 +63,8 @@ export function EnterpriseSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel ?? placeholder}
-        onClick={() => setOpen((next) => !next)}
+        onClick={() => setOpen((next) => (disabled ? false : !next))}
+        disabled={disabled}
         onKeyDown={(event) => {
           if (event.key === 'Escape') setOpen(false);
           if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {

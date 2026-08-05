@@ -32,7 +32,7 @@ export function AdminOtpBypassBanner() {
     >
       <span className="inline-flex items-center gap-1.5">
         <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
-        OTP bypass active for Super Admin
+        Super Admin OTP bypass is active. Access is temporary, restricted, and audited.
       </span>
     </div>
   );

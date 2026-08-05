@@ -2,7 +2,7 @@ import { AdminProjectionService } from '@/lib/ops/projections/admin.projection';
 import { SettingsClient } from './settings-client';
 
 export default async function PlatformSettingsPage() {
-  // Fetch live settings directly via the Projection Service
+  // Fetch projection settings directly via the Projection Service
   const settings = await AdminProjectionService.getPlatformSettings();
 
   // Normalize data for the client component

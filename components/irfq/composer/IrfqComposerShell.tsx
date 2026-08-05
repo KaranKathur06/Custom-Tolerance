@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import type { BuyerVerificationState } from "@/lib/marketplace/irfq/buyer-verification-state";
 import {
   AlertCircle,
   ArrowLeft,
@@ -35,9 +36,10 @@ import { canUseAdvancedFilters, canUseCapabilityMatrixFilters } from "@/lib/mark
 
 type IrfqComposerShellProps = {
   supplierSlug?: string | null;
+  initialVerificationState?: BuyerVerificationState;
 };
 
-export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
+export function IrfqComposerShell({ supplierSlug, initialVerificationState }: IrfqComposerShellProps) {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: taxonomy } = useTaxonomyRegistry();
   const [creationMethod, setCreationMethod] = useState<IrfqCreationMethod>("manual");
@@ -56,6 +58,9 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
   });
   const [riskAssessment, setRiskAssessment] = useState<IrfqRiskAssessmentResult | null>(null);
   const [riskLoading, setRiskLoading] = useState(false);
+  const [verificationState, setVerificationState] = useState<BuyerVerificationState>(
+    (initialVerificationState ?? { status: "verified" }) as BuyerVerificationState,
+  );
 
   const {
     draftId,
@@ -75,6 +80,7 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
   const { plan: subscriptionPlan, limits, usage, loading: subscriptionLoading } =
     useIrfqSubscription(isAuthenticated);
   const progress = step < 0 ? 0 : ((step + 1) / IRFQ_COMPOSER_STEPS.length) * 100;
+  const needsVerification = verificationState.status !== "verified";
 
   useEffect(() => {
     if (step !== 7 || !draftId) return;
@@ -94,6 +100,12 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
   useEffect(() => {
     updatePayload({ creationMethod });
   }, [creationMethod, updatePayload]);
+
+  useEffect(() => {
+    if (initialVerificationState) {
+      setVerificationState(initialVerificationState);
+    }
+  }, [initialVerificationState]);
 
   async function refreshFiles(id: string) {
     const res = await fetch(`/api/v2/rfqs/${id}/files`);
@@ -191,6 +203,13 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
 
     const id = draftId ?? (await ensureDraft());
     if (!id) return;
+
+    if (needsVerification) {
+      await saveDraft();
+      const returnTo = encodeURIComponent("/buyer/rfqs?tab=draft");
+      window.location.assign(`/onboarding/buyer?returnTo=${returnTo}`);
+      return;
+    }
 
     setPublishing(true);
     setError(null);
@@ -309,6 +328,22 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
           <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
+          </div>
+        ) : null}
+
+        {needsVerification ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="font-semibold">You’re building a draft. To publish and receive quotes, complete verification in a few minutes.</p>
+                <p className="mt-1 text-amber-800">
+                  Missing: {verificationState.missing.map((item) => item.replace(/_/g, " ")).join(", ")}
+                </p>
+              </div>
+              <Link href={`/onboarding/buyer?returnTo=${encodeURIComponent("/rfq/new")}`}>
+                <Button>Complete verification</Button>
+              </Link>
+            </div>
           </div>
         ) : null}
 
@@ -712,6 +747,8 @@ export function IrfqComposerShell({ supplierSlug }: IrfqComposerShellProps) {
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing…
                   </>
+                ) : needsVerification ? (
+                  "Save & continue verification"
                 ) : (
                   "Publish RFQ"
                 )}

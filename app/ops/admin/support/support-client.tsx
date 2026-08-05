@@ -49,10 +49,10 @@ export function SupportClient({ stats, initialTickets, totalCount, currentPage, 
       <div className="ops-section-header">
         <div>
           <h1 className="ops-section-title">Support Center</h1>
-          <p className="ops-section-subtitle">Tickets, escalations, and SLA tracking (live metrics)</p>
-          <div className="text-xs text-ops-text-muted mt-1">Live Projection View</div>
+          <p className="ops-section-subtitle">Tickets, escalations, and SLA tracking in preview mode</p>
+          <div className="text-xs text-ops-text-muted mt-1">Read-only preview mode</div>
         </div>
-        <button className="ops-primary-action" type="button">
+        <button className="ops-primary-action" type="button" disabled>
           <UserCheck className="w-4 h-4" /> Assign Triage
         </button>
       </div>

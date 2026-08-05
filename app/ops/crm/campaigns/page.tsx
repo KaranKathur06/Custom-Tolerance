@@ -1,6 +1,6 @@
 'use client';
 
-import { Mail, Play, Plus, Zap } from 'lucide-react';
+import { Mail, Zap } from 'lucide-react';
 import { useState } from 'react';
 
 const baseCampaigns = [
@@ -10,18 +10,7 @@ const baseCampaigns = [
 ];
 
 export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState(baseCampaigns);
-
-  const createCampaign = () => {
-    setCampaigns((current) => [
-      { name: `Operational Campaign ${current.length + 1}`, channel: 'Email', audience: 'Manual segment', status: 'Draft', conversion: '0%', owner: 'CRM Ops' },
-      ...current,
-    ]);
-  };
-
-  const activateCampaign = (name: string) => {
-    setCampaigns((current) => current.map((campaign) => campaign.name === name ? { ...campaign, status: 'Running' } : campaign));
-  };
+  const [campaigns] = useState(baseCampaigns);
 
   return (
     <div>
@@ -30,7 +19,9 @@ export default function CampaignsPage() {
           <h1 className="ops-section-title">Campaign Management</h1>
           <p className="ops-section-subtitle">Email, WhatsApp, and automated campaign workflows</p>
         </div>
-        <button className="ops-primary-action" onClick={createCampaign}><Plus className="w-4 h-4" /> New Campaign</button>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          Campaign management is currently read-only until the outreach workflow is connected.
+        </div>
       </div>
       <div className="ops-kpi-grid">
         <div className="ops-panel"><div className="ops-panel-body"><p className="ops-mini-label">Active Campaigns</p><h3 className="ops-card-metric">8</h3></div></div>
@@ -65,7 +56,7 @@ export default function CampaignsPage() {
                   <td><span className={`ops-status-badge ${campaign.status === 'Running' ? 'success' : campaign.status === 'Scheduled' ? 'info' : 'warning'}`}>{campaign.status}</span></td>
                   <td>{campaign.conversion}</td>
                   <td>{campaign.owner}</td>
-                  <td><button className="ops-text-btn" onClick={() => activateCampaign(campaign.name)}><Play className="w-4 h-4" /> Activate</button></td>
+                  <td><span className="text-sm text-slate-500">Read-only</span></td>
                 </tr>
               ))}
             </tbody>

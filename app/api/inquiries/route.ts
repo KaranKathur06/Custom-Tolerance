@@ -13,6 +13,7 @@ import { InMemoryEventBus } from "@/lib/domain/events";
 import { RfqRepository } from "@/lib/domain/repositories/rfq.repository";
 import { RfqService } from "@/lib/domain/services/rfq.service";
 import { ensureUniqueSlug } from "@/lib/marketplace/slug";
+import { validateRfqInput } from "@/lib/marketplace/rfq-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { success: false, error: { code: "VALIDATION_ERROR", message: "title is required" } },
       { status: 400 },
+    );
+  }
+
+  const validationErrors = validateRfqInput({
+    quantity: typeof body.quantity === "string" ? body.quantity : null,
+    budgetMin: typeof body.budget_min === "string" ? body.budget_min : null,
+    budgetMax: typeof body.budget_max === "string" ? body.budget_max : null,
+  });
+
+  if (Object.keys(validationErrors).length > 0) {
+    const firstError = Object.values(validationErrors)[0];
+    return NextResponse.json(
+      { success: false, error: { code: "VALIDATION_ERROR", message: firstError } },
+      { status: 422 },
     );
   }
 

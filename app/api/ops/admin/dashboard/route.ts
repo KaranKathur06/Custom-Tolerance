@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const auth = await protectApiRoute(request, {
     permissions: [PERMISSIONS.ADMIN_DASHBOARD],
-    requireAdmin2FA: true,
+    requireAdmin2FA: false,
   });
 
   if (auth.error) {

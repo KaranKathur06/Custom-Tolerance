@@ -176,7 +176,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
             {isSaving ? (
               <><Loader2 className="h-4 w-4 animate-spin text-blue-500" /> <span className="text-blue-600">Saving...</span></>
             ) : draftError ? (
-              <><AlertCircle className="h-4 w-4 text-amber-500" /> <span className="text-amber-600">Offline / Retrying...</span></>
+              <><AlertCircle className="h-4 w-4 text-amber-500" /> <span className="text-amber-600">Connection issues — changes will sync when you are back online.</span></>
             ) : lastSaved ? (
               <><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Saved {lastSaved.toLocaleTimeString()}</>
             ) : draftId ? (
