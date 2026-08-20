@@ -127,14 +127,25 @@ export default function UsersPage() {
           const company = (u.company_name || '').toString();
           const email = (u.email || '').toString();
           const name = (u.full_name || email || 'Unknown user').toString();
+          const verificationStatus = (u.verification_status || 'pending').toString().toLowerCase();
+          const displayStatus: UserRow['status'] = verificationStatus === 'suspended'
+            ? 'Suspended'
+            : verificationStatus === 'banned'
+              ? 'Banned'
+              : 'Active';
+          const displayKyc: UserRow['kyc'] = verificationStatus === 'verified'
+            ? 'Verified'
+            : verificationStatus === 'rejected'
+              ? 'Rejected'
+              : 'Pending';
 
           return {
             id: u.id,
             name,
             email: email || 'No email available',
             role: u.role,
-            status: u.verification_status === 'verified' ? 'Active' : (u.verification_status as any),
-            kyc: u.verification_status === 'verified' ? 'Verified' : (u.verification_status as any),
+            status: displayStatus,
+            kyc: displayKyc,
             company,
             joined: u.created_at,
             lastLogin: (u as any).last_login ?? '',
