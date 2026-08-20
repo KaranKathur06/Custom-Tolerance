@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { protectApiRoute, logAdminAction } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
+import { getUserGovernanceContext } from '@/lib/admin/user-governance';
 
 type RouteParams = { params: { id: string } };
 
@@ -43,11 +44,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
-  const { data: current } = await auth.supabase
-    .from('profiles')
-    .select('id, full_name, email, profile_status')
-    .eq('id', params.id)
-    .maybeSingle();
+  const current = await getUserGovernanceContext(auth.supabase, params.id);
 
   if (!current) {
     return NextResponse.json(
@@ -56,15 +53,28 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
-  const newStatus = body.action === 'suspend' ? 'suspended' : 'complete';
+  if (body.action === 'suspend' && current.enforcementStatus === 'suspended') {
+    return NextResponse.json({ success: false, error: { code: 'CONFLICT', message: 'This user is already suspended.' } }, { status: 409 });
+  }
+  if (body.action === 'unsuspend' && current.enforcementStatus !== 'suspended') {
+    return NextResponse.json({ success: false, error: { code: 'CONFLICT', message: 'This user is not suspended.' } }, { status: 409 });
+  }
 
-  await auth.supabase
+  const newStatus = body.action === 'suspend' ? 'suspended' : 'normal';
+
+  const { error: updateError } = await auth.supabase
     .from('profiles')
     .update({
-      profile_status: newStatus,
+      enforcement_status: newStatus,
+      suspended_at: body.action === 'suspend' ? new Date().toISOString() : null,
+      suspended_by: body.action === 'suspend' ? auth.user.id : null,
+      suspension_reason: body.action === 'suspend' ? body.reason?.trim() || null : null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', params.id);
+  if (updateError) {
+    return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: 'Could not update the user enforcement state.' } }, { status: 500 });
+  }
 
   // If suspending, deactivate all their listings
   if (body.action === 'suspend') {
@@ -92,10 +102,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     resource: 'profiles',
     resourceId: params.id,
     details: {
-      userName: current.full_name,
-      email: current.email,
+      userName: current.user.fullName,
+      email: current.user.email,
       reason: body.reason,
-      previousStatus: current.profile_status,
+      previousStatus: current.enforcementStatus,
+      newStatus,
     },
     severity: 'critical',
     request,

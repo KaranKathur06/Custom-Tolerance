@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Ban,
   Bell,
@@ -8,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Edit3,
   Eye,
   KeyRound,
   LogOut,
@@ -18,7 +18,6 @@ import {
   Shield,
   ShieldCheck,
   Trash2,
-  UserCheck,
   UserCog,
   UserPlus,
   UserX,
@@ -54,6 +53,14 @@ type UserActionGroup = {
   actions: UserAction[];
 };
 
+type Confirmation = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  requiresTypedConfirmation?: boolean;
+  run: () => void;
+};
+
 const roles = [
   'Buyer',
   'Seller',
@@ -84,6 +91,9 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [roleModalUser, setRoleModalUser] = useState<UserRow | null>(null);
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [confirmationText, setConfirmationText] = useState('');
+  const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +127,7 @@ export default function UsersPage() {
         email: string;
         role: string;
         verification_status: string;
+        enforcement_status: 'normal' | 'suspended' | 'banned';
         company_name?: string | null;
         created_at: string;
         last_login?: string | null;
@@ -128,9 +139,9 @@ export default function UsersPage() {
           const email = (u.email || '').toString();
           const name = (u.full_name || email || 'Unknown user').toString();
           const verificationStatus = (u.verification_status || 'pending').toString().toLowerCase();
-          const displayStatus: UserRow['status'] = verificationStatus === 'suspended'
+          const displayStatus: UserRow['status'] = u.enforcement_status === 'suspended'
             ? 'Suspended'
-            : verificationStatus === 'banned'
+            : u.enforcement_status === 'banned'
               ? 'Banned'
               : 'Active';
           const displayKyc: UserRow['kyc'] = verificationStatus === 'verified'
@@ -143,7 +154,7 @@ export default function UsersPage() {
             id: u.id,
             name,
             email: email || 'No email available',
-            role: u.role,
+            role: u.role.toLowerCase().replaceAll('_', ' '),
             status: displayStatus,
             kyc: displayKyc,
             company,
@@ -178,7 +189,7 @@ export default function UsersPage() {
       users.filter((user) => {
         const needle = `${user.name} ${user.email} ${user.company}`.toLowerCase();
         if (search && !needle.includes(search.toLowerCase())) return false;
-        if (roleFilter !== 'all' && user.role !== roleFilter) return false;
+        if (roleFilter !== 'all' && user.role.toLowerCase() !== roleFilter.toLowerCase()) return false;
         if (statusFilter !== 'all' && user.status !== statusFilter) return false;
         return true;
       }),
@@ -216,6 +227,18 @@ export default function UsersPage() {
     window.setTimeout(() => setToast(null), 2200);
   }
 
+  function askForConfirmation(next: Confirmation) {
+    setConfirmationText('');
+    setConfirmation(next);
+  }
+
+  function confirmPendingAction() {
+    if (!confirmation) return;
+    if (confirmation.requiresTypedConfirmation && confirmationText !== 'DELETE') return;
+    confirmation.run();
+    setConfirmation(null);
+  }
+
   function updateUser(id: string, patch: Partial<UserRow>, message: string, eventName: OpsEventName = 'user.status_changed') {
     void performUserAction(id, patch, message, eventName);
   }
@@ -230,7 +253,9 @@ export default function UsersPage() {
         ? 'verified'
         : patch.kyc === 'Rejected'
           ? 'rejected'
-          : patch.status?.toLowerCase();
+          : patch.status?.toLowerCase() === 'active'
+            ? 'normal'
+            : patch.status?.toLowerCase();
     const res = await fetch('/api/admin/users', {
       method: 'PATCH',
       credentials: 'include',
@@ -300,14 +325,13 @@ export default function UsersPage() {
     {
       label: 'Information',
       actions: [
-        { label: 'View Profile', icon: Eye, run: (u: UserRow) => notify(`Opening profile for ${u.name}`) },
-        { label: 'View Activity', icon: Shield, run: (u: UserRow) => notify(`Opening activity trail for ${u.name}`) },
+        { label: 'View Profile', icon: Eye, run: (u: UserRow) => router.push(`/ops/admin/users/${u.id}`) },
+        { label: 'View Activity', icon: Shield, run: (u: UserRow) => router.push(`/ops/admin/users/${u.id}/activity`) },
       ],
     },
     {
       label: 'Management',
       actions: [
-        { label: 'Edit User', icon: Edit3, run: (u: UserRow) => notify(`Editing ${u.name}`) },
         { label: 'Change Role', icon: UserCog, run: (u: UserRow) => setRoleModalUser(u) },
         { label: 'Send Notification', icon: Bell, run: (u: UserRow) => void sendUserNotification(u) },
       ],
@@ -315,26 +339,21 @@ export default function UsersPage() {
     {
       label: 'Access Control',
       actions: [
-        { label: 'Promote', icon: UserCheck, run: (u: UserRow) => setRoleModalUser(u) },
-        { label: 'Demote', icon: UserX, run: (u: UserRow) => setRoleModalUser(u) },
-        { label: 'Suspend', icon: Shield, run: (u: UserRow) => updateUser(u.id, { status: 'Suspended' }, `${u.name} suspended`) },
-        { label: 'Unsuspend', icon: CheckCircle2, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} restored`) },
-        { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => void forceLogout(u) },
-        { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => void resetPassword(u) },
-        { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`, 'user.verification_changed') },
-        { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`, 'user.verification_changed') },
-        { label: 'Impersonate User', icon: UserCog, run: (u: UserRow) => notify(`Impersonation request logged for ${u.name}`) },
+        { label: 'Suspend', icon: Shield, run: (u: UserRow) => askForConfirmation({ title: 'Suspend User', description: `This will prevent ${u.name} from using normal marketplace functionality until restored.`, confirmLabel: 'Suspend User', run: () => updateUser(u.id, { status: 'Suspended' }, `${u.name} suspended`) }) },
+        { label: 'Unsuspend', icon: CheckCircle2, run: (u: UserRow) => askForConfirmation({ title: 'Unsuspend User', description: `Restore normal marketplace access for ${u.name}.`, confirmLabel: 'Unsuspend User', run: () => updateUser(u.id, { status: 'Active' }, `${u.name} restored`) }) },
+        { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => askForConfirmation({ title: 'Force Logout', description: `All active sessions for ${u.name} will be revoked.`, confirmLabel: 'Force Logout', run: () => void forceLogout(u) }) },
+        { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => askForConfirmation({ title: 'Reset Password', description: `${u.name} will receive a secure password reset link.`, confirmLabel: 'Send Reset Link', run: () => void resetPassword(u) }) },
+        { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => askForConfirmation({ title: 'Verify Account', description: `Change the verification state for ${u.name}.`, confirmLabel: 'Verify Account', run: () => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`, 'user.verification_changed') }) },
+        { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => askForConfirmation({ title: 'Reject Verification', description: `Reject the current verification request for ${u.name}.`, confirmLabel: 'Reject Verification', run: () => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`, 'user.verification_changed') }) },
       ],
     },
     {
       label: 'Enforcement',
       danger: true,
       actions: [
-        { label: 'Ban', icon: Ban, run: (u: UserRow) => updateUser(u.id, { status: 'Banned' }, `${u.name} banned`) },
-        { label: 'Unban', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} unbanned`) },
-        { label: 'Delete User', icon: Trash2, danger: true, run: (u: UserRow) => {
-          if (window.confirm(`Delete ${u.name}? This action will be audit logged.`)) void removeUser(u.id);
-        } },
+        { label: 'Ban', icon: Ban, run: (u: UserRow) => askForConfirmation({ title: 'Ban User', description: `This is a stronger enforcement action that blocks ${u.name} from the platform.`, confirmLabel: 'Ban User', run: () => updateUser(u.id, { status: 'Banned' }, `${u.name} banned`) }) },
+        { label: 'Unban', icon: ShieldCheck, run: (u: UserRow) => askForConfirmation({ title: 'Unban User', description: `Remove the ban from ${u.name}. Independent suspension state is preserved by the server.`, confirmLabel: 'Unban User', run: () => updateUser(u.id, { status: 'Active' }, `${u.name} unbanned`) }) },
+        { label: 'Delete User', icon: Trash2, danger: true, run: (u: UserRow) => askForConfirmation({ title: 'Delete User', description: `This soft-deletes ${u.name} and removes the account from the governance queue.`, confirmLabel: 'Delete User', requiresTypedConfirmation: true, run: () => void removeUser(u.id) }) },
       ],
     },
   ];
@@ -342,6 +361,16 @@ export default function UsersPage() {
   return (
     <div className="ops-users-page">
       {toast ? <div className="ops-toast">{toast}</div> : null}
+
+      {confirmation ? (
+        <div className="ops-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="ops-role-modal">
+            <div className="ops-modal-header"><div><h2>{confirmation.title}</h2><p>{confirmation.description}</p></div><button className="ops-icon-btn" onClick={() => setConfirmation(null)}>×</button></div>
+            {confirmation.requiresTypedConfirmation ? <input value={confirmationText} onChange={(event) => setConfirmationText(event.target.value)} placeholder="Type DELETE to confirm" aria-label="Type DELETE to confirm" /> : null}
+            <div className="ops-filter-actions"><button className="ops-icon-btn" onClick={() => setConfirmation(null)}>Cancel</button><button className="ops-primary-action" disabled={confirmation.requiresTypedConfirmation && confirmationText !== 'DELETE'} onClick={confirmPendingAction}>{confirmation.confirmLabel}</button></div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="ops-section-header">
         <div>
@@ -414,7 +443,7 @@ export default function UsersPage() {
                   <td className="ops-muted-cell">{user.lastLogin}</td>
                   <td>
                     <div className="ops-row-actions">
-                      <button className="ops-icon-btn ops-action-square" title="View profile" onClick={() => notify(`${user.name} · ${user.email}`)}><Eye className="w-4 h-4" /></button>
+                      <button className="ops-icon-btn ops-action-square" title="View profile" onClick={() => router.push(`/ops/admin/users/${user.id}`)}><Eye className="w-4 h-4" /></button>
                       <button className="ops-icon-btn ops-action-square" title="Send notification" onClick={() => void sendUserNotification(user)}><Mail className="w-4 h-4" /></button>
                       <div className="ops-action-menu-wrap">
                         <button className="ops-icon-btn ops-action-square" title="More actions" onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}>

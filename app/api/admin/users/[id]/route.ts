@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { protectApiRoute, logAdminAction } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import { ROLE_LEVELS } from '@/lib/constants/roles';
+import { getUserGovernanceContext } from '@/lib/admin/user-governance';
 
 type RouteParams = { params: { id: string } };
 
@@ -22,14 +23,8 @@ export async function GET(request: Request, { params }: RouteParams) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
 
-  // Get profile
-  const { data: profile, error } = await auth.supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', params.id)
-    .maybeSingle();
-
-  if (error || !profile) {
+  const context = await getUserGovernanceContext(auth.supabase, params.id);
+  if (!context) {
     return NextResponse.json(
       { success: false, error: { code: 'NOT_FOUND', message: 'User not found' } },
       { status: 404 },
@@ -37,11 +32,13 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   // Get related data in parallel
-  const [sellerResult, buyerResult, listingsResult, rfqsResult, settingsResult] = await Promise.all([
-    auth.supabase.from('seller_profiles').select('id, company_name, verification_status, certifications, companies:company_id(id, name, is_verified)').eq('profile_id', params.id).maybeSingle(),
-    auth.supabase.from('buyer_profiles').select('id, company_id').eq('profile_id', params.id).maybeSingle(),
-    auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', params.id),
-    auth.supabase.from('rfqs').select('id', { count: 'exact', head: true }),
+  const [listingsResult, rfqsResult, settingsResult] = await Promise.all([
+    context.sellerProfile?.id
+      ? auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile.id)
+      : Promise.resolve({ count: 0 }),
+    context.buyerProfile?.id
+      ? auth.supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('buyer_profile_id', context.buyerProfile.id)
+      : Promise.resolve({ count: 0 }),
     auth.supabase.from('user_settings').select('category, key, value').eq('user_id', params.id),
   ]);
 
@@ -49,16 +46,21 @@ export async function GET(request: Request, { params }: RouteParams) {
   const { data: recentLogs } = await auth.supabase
     .from('admin_audit_logs')
     .select('id, action, resource, details, created_at')
-    .eq('user_id', params.id)
+    .eq('resource_id', params.id)
     .order('created_at', { ascending: false })
     .limit(10);
 
   return NextResponse.json({
     success: true,
     data: {
-      profile,
-      sellerProfile: sellerResult.data || null,
-      buyerProfile: buyerResult.data || null,
+      user: context.user,
+      role: context.role,
+      accountStatus: context.accountStatus,
+      enforcementStatus: context.enforcementStatus,
+      profileStatus: context.profileStatus,
+      verificationStatus: context.verificationStatus,
+      sellerProfile: context.sellerProfile,
+      buyerProfile: context.buyerProfile,
       stats: {
         totalListings: listingsResult.count || 0,
         totalRfqs: rfqsResult.count || 0,

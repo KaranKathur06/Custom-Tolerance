@@ -113,9 +113,9 @@ export async function commitBuyerOnboardingV3(
     buyer_profile_id: buyerProfileId,
     profile_id: userId,
     company_id: baseResult.companyId,
-    // Store as array (new schema) + primary type for legacy column (backward compat)
+    // Keep the primary type in the deployed legacy column; all selected types
+    // are still accepted by the form and can be migrated to a dedicated table later.
     company_type: primaryCompanyType,
-    company_types: companyTypesArray,
     contact_designation: draftString(payload, "designation"),
     business_email: draftString(payload, "businessEmail"),
     mobile_number: draftString(payload, "mobileNumber"),
@@ -124,7 +124,6 @@ export async function commitBuyerOnboardingV3(
     order_frequency: draftString(payload, "orderFrequency"),
     procurement_methods: draftStringArray(payload, "procurementMethods"),
     import_experience: draftString(payload, "importExperience"),
-    countries_imported_from: draftStringArray(payload, "countriesImportedFrom"),
     preferred_incoterms: draftStringArray(payload, "preferredIncoterms"),
     preferred_payment_terms: draftStringArray(payload, "preferredPaymentTerms"),
     procurement_team_size: draftString(payload, "procurementTeamSize"),
