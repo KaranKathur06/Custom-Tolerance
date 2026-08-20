@@ -31,9 +31,8 @@ export async function GET(request: Request, { params }: RouteParams) {
     );
   }
 
-  // Get related data in parallel
-  const companyId = (context.sellerProfile?.company_id ?? context.buyerProfile?.company_id) as string | undefined;
-  const [listingsResult, rfqsResult, settingsResult, companyResult, verificationHistory] = await Promise.all([
+  // Load buyer and seller business data independently so one persona cannot mask the other.
+  const [listingsResult, rfqsResult, settingsResult, buyerCompanyResult, sellerCompanyResult, verificationHistory] = await Promise.all([
     context.sellerProfile?.id
       ? auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile.id)
       : Promise.resolve({ count: 0 }),
@@ -41,8 +40,11 @@ export async function GET(request: Request, { params }: RouteParams) {
       ? auth.supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('buyer_profile_id', context.buyerProfile.id)
       : Promise.resolve({ count: 0 }),
     auth.supabase.from('user_settings').select('category, key, value').eq('user_id', params.id),
-    companyId
-      ? auth.supabase.from('companies').select('*').eq('id', companyId).maybeSingle()
+    context.buyerProfile?.company_id
+      ? auth.supabase.from('companies').select('*').eq('id', context.buyerProfile.company_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    context.sellerProfile?.company_id
+      ? auth.supabase.from('companies').select('*').eq('id', context.sellerProfile.company_id).maybeSingle()
       : Promise.resolve({ data: null }),
     auth.supabase
       .from('admin_audit_logs')
@@ -61,22 +63,37 @@ export async function GET(request: Request, { params }: RouteParams) {
     .order('created_at', { ascending: false })
     .limit(10);
 
+  const activeProfile = context.role === 'seller'
+    ? context.sellerProfile
+    : context.role === 'buyer'
+      ? context.buyerProfile
+      : null;
+  const activeCompany = context.role === 'seller'
+    ? sellerCompanyResult.data
+    : context.role === 'buyer'
+      ? buyerCompanyResult.data
+      : null;
+
   return NextResponse.json({
     success: true,
     data: {
       user: context.user,
       role: displayRole(context.role),
+      roleCode: context.role,
       accountStatus: context.accountStatus,
       enforcementStatus: context.enforcementStatus,
       profileStatus: context.profileStatus,
       verificationStatus: context.verificationStatus,
       sellerProfile: context.sellerProfile,
       buyerProfile: context.buyerProfile,
-      company: companyResult.data || null,
+      activeProfile,
+      activeCompany: activeCompany || null,
+      buyerCompany: buyerCompanyResult.data || null,
+      sellerCompany: sellerCompanyResult.data || null,
       stats: {
         totalListings: listingsResult.count || 0,
         totalRfqs: rfqsResult.count || 0,
-        profileCompletion: context.sellerProfile?.profile_completion_percent ?? context.buyerProfile?.profile_completion_percent ?? 0,
+        profileCompletion: activeProfile?.profile_completion_percent ?? 0,
       },
       settings: settingsResult.data || [],
       verificationHistory: verificationHistory.data || [],

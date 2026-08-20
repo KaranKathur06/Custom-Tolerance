@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
-import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
+import { createAdminOtpDatabaseClient } from "@/lib/auth/admin-otp-db";
 import { canRequestAdminOtp, resolveEffectiveRole } from "@/lib/auth/rbac";
 import {
   isSuperAdminOtpBypassEligible,
@@ -99,7 +99,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = createSupabaseServiceRoleClient() ?? supabase;
+    const db = createAdminOtpDatabaseClient();
+    if (!db) {
+      return NextResponse.json({ error: "Admin session storage is not configured.", code: "OTP_STORAGE_CONFIGURATION_ERROR" }, { status: 503 });
+    }
     const ip = getClientIp(req);
     const userAgent = req.headers.get("user-agent");
 

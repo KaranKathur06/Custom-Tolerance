@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
-import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
+import { createAdminOtpDatabaseClient } from "@/lib/auth/admin-otp-db";
 import { canRequestAdminOtp, resolveEffectiveRole } from "@/lib/auth/rbac";
 import { authLog } from "@/lib/auth/auth-logger";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/auth/rate-limiter";
@@ -132,7 +132,13 @@ export async function POST(req: NextRequest) {
 
     step("STEP 3: admin validated", { role });
 
-    const db = createSupabaseServiceRoleClient() ?? supabase;
+    const db = createAdminOtpDatabaseClient();
+    if (!db) {
+      return NextResponse.json(
+        { error: "Admin OTP storage is not configured.", code: "OTP_STORAGE_CONFIGURATION_ERROR" },
+        { status: 503 },
+      );
+    }
     const emailConfig = getEmailConfigSnapshot();
 
     const { data: recentOtp } = await db

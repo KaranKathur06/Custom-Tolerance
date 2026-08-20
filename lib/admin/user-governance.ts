@@ -58,7 +58,7 @@ type ProfileRow = {
 };
 
 export function displayRole(value: unknown): string {
-  const role = normalizeStoredRole(value);
+  const role = normalizeGovernanceRole(value);
   const labels: Record<string, string> = {
     buyer: 'Buyer',
     seller: 'Seller',
@@ -74,6 +74,12 @@ export function displayRole(value: unknown): string {
   return labels[role] ?? role.replaceAll('_', ' ');
 }
 
+export function normalizeGovernanceRole(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) return 'buyer';
+  const normalized = value.trim().toLowerCase().replaceAll(' ', '_');
+  return normalized === 'both' ? 'both' : normalizeStoredRole(normalized);
+}
+
 function toGovernanceContext(profile: ProfileRow, related: { buyer: Record<string, unknown> | null; seller: Record<string, unknown> | null; lastLoginAt?: string | null }): AdminUserGovernanceContext {
   const enforcementStatus = profile.enforcement_status ?? 'normal';
   return {
@@ -87,7 +93,7 @@ function toGovernanceContext(profile: ProfileRow, related: { buyer: Record<strin
       lastLoginAt: related.lastLoginAt ?? null,
       deletedAt: profile.deleted_at,
     },
-    role: normalizeStoredRole(profile.role) as GovernanceRole,
+    role: normalizeGovernanceRole(profile.role) as GovernanceRole,
     accountStatus: profile.deleted_at ? 'deleted' : 'active',
     enforcementStatus,
     profileStatus: profile.profile_status,
@@ -125,7 +131,7 @@ export async function getUserGovernanceContext(
         lastLoginAt: directoryUser.last_login,
         deletedAt: directoryUser.deleted_at,
       },
-      role: normalizeStoredRole(directoryUser.role ?? directoryUser.auth_role) as GovernanceRole,
+      role: normalizeGovernanceRole(directoryUser.role ?? directoryUser.auth_role) as GovernanceRole,
       accountStatus: directoryUser.deleted_at ? 'deleted' : 'active',
       enforcementStatus: directoryUser.enforcement_status ?? 'normal',
       profileStatus: directoryUser.profile_status ?? 'incomplete',

@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
-import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
+import { createAdminOtpDatabaseClient } from "@/lib/auth/admin-otp-db";
 import { canRequestAdminOtp, resolveEffectiveRole } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
@@ -74,7 +74,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const db = createSupabaseServiceRoleClient() ?? supabase;
+    const db = createAdminOtpDatabaseClient();
+    if (!db) {
+      return NextResponse.json({ status: "UNAVAILABLE", code: "OTP_STORAGE_CONFIGURATION_ERROR" }, { status: 503 });
+    }
 
     const { data: recentOtp } = await db
       .from("otp_verifications")

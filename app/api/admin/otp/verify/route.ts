@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
-import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
+import { createAdminOtpDatabaseClient } from "@/lib/auth/admin-otp-db";
 import { canRequestAdminOtp, resolveEffectiveRole } from "@/lib/auth/rbac";
 import { hashOTP, verifyOTPHash } from "@/lib/auth/otp";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -91,7 +91,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid verification code format" }, { status: 400 });
     }
 
-    const db = createSupabaseServiceRoleClient() ?? supabase;
+    const db = createAdminOtpDatabaseClient();
+    if (!db) {
+      return NextResponse.json({ error: "Admin OTP storage is not configured.", code: "OTP_STORAGE_CONFIGURATION_ERROR" }, { status: 503 });
+    }
 
     const { data: otpRecord } = await db
       .from("otp_verifications")

@@ -23,8 +23,8 @@ export default function AdminUserProfilePage() {
   if (!payload) return <div className="ops-panel ops-panel-body">Loading user...</div>;
 
   const user = payload.user;
-  const persona = payload.sellerProfile || payload.buyerProfile;
-  const personaLabel = payload.sellerProfile ? 'Seller Profile' : payload.buyerProfile ? 'Buyer Profile' : 'No marketplace profile';
+  const roleCode = payload.roleCode || 'buyer';
+  const isBoth = roleCode === 'both';
   const initials = (user.fullName || user.email || 'U').slice(0, 2).toUpperCase();
   const formatDate = (value: string | null | undefined) => value ? new Date(value).toLocaleString() : 'Not recorded';
   const formatValue = (value: unknown) => {
@@ -34,7 +34,17 @@ export default function AdminUserProfilePage() {
     return String(value);
   };
   const excludedFields = new Set(['id', 'profile_id', 'company_id', 'created_at', 'updated_at', 'deleted_at']);
-  const personaFields = persona ? Object.entries(persona).filter(([key]) => !excludedFields.has(key)) : [];
+  const fieldsFor = (profile: Record<string, unknown> | null) => profile
+    ? Object.entries(profile).filter(([key]) => !excludedFields.has(key))
+    : [];
+  const renderProfile = (label: string, profile: Record<string, unknown> | null) => {
+    const fields = fieldsFor(profile);
+    return <section className="ops-panel ops-panel-body">
+      <h2 style={{ marginTop: 0 }}>{label}</h2>
+      {fields.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>{fields.map(([key, value]) => <div key={key}><div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 4 }}>{key.replaceAll('_', ' ')}</div><strong>{formatValue(value)}</strong></div>)}</div> : <p style={{ color: '#9ca3af' }}>No {label.toLowerCase()} has been created for this identity.</p>}
+    </section>;
+  };
+  const renderCompany = (label: string, company: Record<string, unknown> | null) => company ? <section className="ops-panel ops-panel-body"><h2 style={{ marginTop: 0 }}>{label}</h2><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>{Object.entries(company).filter(([key]) => !excludedFields.has(key)).map(([key, value]) => <div key={key}><div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 4 }}>{key.replaceAll('_', ' ')}</div><strong>{formatValue(value)}</strong></div>)}</div></section> : null;
 
   return (
     <div className="ops-users-page" style={{ maxWidth: 1320 }}>
@@ -84,12 +94,11 @@ export default function AdminUserProfilePage() {
             </div>
           </section>
 
-          <section className="ops-panel ops-panel-body">
-            <h2 style={{ marginTop: 0 }}>{personaLabel}</h2>
-            {personaFields.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>{personaFields.map(([key, value]) => <div key={key}><div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 4 }}>{key.replaceAll('_', ' ')}</div><strong>{formatValue(value)}</strong></div>)}</div> : <p style={{ color: '#9ca3af' }}>This identity has no linked marketplace profile yet. The Auth account remains visible and governable.</p>}
-          </section>
-
-          {payload.company ? <section className="ops-panel ops-panel-body"><h2 style={{ marginTop: 0 }}>Business / company</h2><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>{Object.entries(payload.company).filter(([key]) => !excludedFields.has(key)).map(([key, value]) => <div key={key}><div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 4 }}>{key.replaceAll('_', ' ')}</div><strong>{formatValue(value)}</strong></div>)}</div></section> : null}
+          {roleCode === 'buyer' || isBoth ? renderProfile('Buyer Profile', payload.buyerProfile) : null}
+          {roleCode === 'seller' || isBoth ? renderProfile('Seller Profile', payload.sellerProfile) : null}
+          {roleCode === 'buyer' ? renderCompany('Buyer business / company', payload.buyerCompany) : null}
+          {roleCode === 'seller' ? renderCompany('Seller business / company', payload.sellerCompany) : null}
+          {isBoth ? <>{renderCompany('Buyer business / company', payload.buyerCompany)}{renderCompany('Seller business / company', payload.sellerCompany)}</> : null}
         </div>
 
         <div style={{ display: 'grid', gap: 16 }}>

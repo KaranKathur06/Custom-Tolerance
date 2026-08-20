@@ -55,7 +55,9 @@ export async function GET() {
   }
 
   const emailConfig = getEmailConfigSnapshot();
-  const serviceRoleConfigured = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+  const serviceRoleConfigured = Boolean(
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)?.trim(),
+  );
 
   const { error: otpTableError } = await supabase
     .from("otp_verifications")
@@ -63,7 +65,7 @@ export async function GET() {
     .limit(1);
 
   return NextResponse.json({
-    ok: emailConfig.resendApiKeyConfigured,
+    ok: emailConfig.resendApiKeyConfigured && serviceRoleConfigured && !otpTableError,
     checks: {
       session: true,
       adminRole: true,
