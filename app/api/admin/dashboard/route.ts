@@ -41,10 +41,10 @@ export async function GET(request: Request) {
     leadsPipelineResult,
   ] = await Promise.all([
     // Total users
-    auth.supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    auth.supabase.from('admin_user_directory').select('id', { count: 'exact', head: true }),
 
     // New users (7 days)
-    auth.supabase.from('profiles').select('id', { count: 'exact', head: true })
+    auth.supabase.from('admin_user_directory').select('id', { count: 'exact', head: true })
       .gte('created_at', sevenDaysAgo.toISOString()),
 
     // Total listings

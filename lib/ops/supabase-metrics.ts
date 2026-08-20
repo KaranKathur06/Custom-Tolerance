@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 async function count(
   supabase: SupabaseClient,
   table: string,
-  applyFilter?: (query: { eq: (c: string, v: string) => unknown; in: (c: string, v: string[]) => unknown; gte: (c: string, v: string) => unknown }) => unknown,
+  applyFilter?: (query: { eq: (c: string, v: string) => unknown; in: (c: string, v: string[]) => unknown; gte: (c: string, v: string) => unknown; is: (c: string, v: null) => unknown }) => unknown,
 ): Promise<number> {
   try {
     let query = supabase.from(table).select("id", { count: "exact", head: true }) as unknown;
@@ -31,7 +31,7 @@ export async function getOpsAdminDashboardMetrics(supabase: SupabaseClient) {
     totalPayments,
     recentUsers,
   ] = await Promise.all([
-    count(supabase, "profiles"),
+    count(supabase, "admin_user_directory"),
     count(supabase, "listings"),
     count(supabase, "listings", (q) => q.eq("moderation_status", "pending")),
     count(supabase, "listings", (q) => q.eq("moderation_status", "approved")),
@@ -40,12 +40,15 @@ export async function getOpsAdminDashboardMetrics(supabase: SupabaseClient) {
       q.in("onboarding_status", ["PROFILE_SUBMITTED", "UNDER_REVIEW", "CHANGES_REQUESTED"]),
     ),
     count(supabase, "payments", (q) => q.eq("status", "SUCCESS")),
-    count(supabase, "profiles", (q) => q.gte("created_at", thirtyDaysAgo)),
+    count(supabase, "admin_user_directory", (q) => q.gte("created_at", thirtyDaysAgo)),
   ]);
 
   return {
     totalUsers,
-    activeUsers: totalUsers,
+    activeUsers: await count(supabase, "admin_user_directory", (q) => {
+      q.eq("enforcement_status", "normal");
+      return q.is("deleted_at", null);
+    }),
     totalListings,
     pendingListings,
     approvedListings,

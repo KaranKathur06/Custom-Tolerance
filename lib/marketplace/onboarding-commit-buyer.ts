@@ -25,6 +25,18 @@ export async function commitBuyerOnboarding(
 ): Promise<BuyerOnboardingCommitResult> {
   const companyName = draftString(payload, "companyName");
 
+  const { data: canonicalProfile, error: canonicalProfileError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (canonicalProfileError) {
+    throw new Error(`Failed to resolve canonical user profile: ${canonicalProfileError.message}`);
+  }
+  if (!canonicalProfile) {
+    throw new Error("Your account identity is missing its canonical profile record. Please run the Auth profile backfill migration before completing onboarding.");
+  }
+
   const completion = calculateProfileCompletion(
     {
       companyName: companyName ?? "Buyer",
