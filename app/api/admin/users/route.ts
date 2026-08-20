@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
   // Fallback when the admin_user_directory view does not contain rows for some
   // profiles (legacy identity import or missing auth.users entries).
-  if (rows.length === 0) {
+  if (error || rows.length === 0) {
     const fallbackQuery = auth.supabase
       .from('profiles')
       .select('id, full_name, email, phone, role, avatar_url, verification_status, created_at', {
@@ -85,6 +85,11 @@ export async function GET(request: Request) {
         company_name: null,
       }));
       totalCount = fallbackCount || fallbackData.length;
+    } else if (error && fallbackError) {
+      return NextResponse.json(
+        { success: false, error: { code: 'SERVER_ERROR', message: fallbackError.message } },
+        { status: 500 },
+      );
     }
   }
 

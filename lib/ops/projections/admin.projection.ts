@@ -16,17 +16,25 @@ export class AdminProjectionService {
     }
     
     try {
-      // Attempt to load settings or return defaults if table is empty
+      // Platform settings are stored as key/value rows.
       const { data, error } = await supabase
         .from('platform_settings')
-        .select('*')
-        .single();
+        .select('key, value, description, updated_at')
+        .order('key');
 
       if (error && error.code !== 'PGRST116') {
         console.error("Error fetching platform settings:", error);
       }
 
-      return data || {
+      if (!error && data?.length) {
+        return Object.fromEntries(data.map((row) => [row.key, {
+          value: row.value,
+          description: row.description,
+          updatedAt: row.updated_at,
+        }]));
+      }
+
+      return {
         marketplace_status: 'ACTIVE',
         maintenance_mode: false,
         registration_controls: { require_approval: true },
