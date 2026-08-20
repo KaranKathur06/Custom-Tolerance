@@ -1549,6 +1549,54 @@ body:has(.ops-shell) main.min-h-screen {
   cursor: pointer;
 }
 
+.ops-admin-profile-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.ops-admin-profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ops-text-action {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--ops-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ops-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--ops-transition);
+}
+
+.ops-text-action:hover {
+  background: var(--ops-surface-hover);
+  color: var(--ops-text);
+  border-color: var(--ops-border-light);
+}
+
+@media (max-width: 640px) {
+  .ops-admin-profile-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ops-admin-profile-actions {
+    justify-content: flex-start;
+  }
+}
+
 .ops-user-filters,
 .ops-filter-bar {
   gap: 12px;

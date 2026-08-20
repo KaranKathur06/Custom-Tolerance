@@ -38,10 +38,10 @@ export default function AdminUserProfilePage() {
 
   return (
     <div className="ops-users-page" style={{ maxWidth: 1320 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <button className="ops-icon-btn" onClick={() => router.back()}>Back to Users</button>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="ops-icon-btn" onClick={() => router.push(`/ops/admin/users/${params.id}/activity`)}>Activity</button>
+      <div className="ops-admin-profile-toolbar">
+        <button className="ops-text-action" onClick={() => router.back()}>Back to Users</button>
+        <div className="ops-admin-profile-actions">
+          <button className="ops-text-action" onClick={() => router.push(`/ops/admin/users/${params.id}/activity`)}>Activity</button>
           <button className="ops-primary-action">More actions</button>
         </div>
       </div>
