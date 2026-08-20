@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { KPICard } from '@/components/ops/shared/KPICard';
+import { ClientKPICard as KPICard } from '@/components/ops/shared/ClientKPICard';
 import { ArrowDownLeft, CreditCard, DollarSign, Download, TrendingUp } from 'lucide-react';
 
 type OpsAdminDashboardMetrics = {

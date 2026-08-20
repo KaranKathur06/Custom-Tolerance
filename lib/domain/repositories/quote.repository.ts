@@ -227,7 +227,7 @@ export class QuoteRepository {
       .select(
         `
         id, status, rfq_id, seller_profile_id,
-        rfqs:rfq_id(id, title, slug, buyer_profile_id, buyer_user_id)
+        rfqs:rfq_id(id, title, slug, status, quotation_deadline, buyer_profile_id, buyer_user_id)
       `,
       )
       .eq("id", quoteId)

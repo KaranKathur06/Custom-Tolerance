@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { KPICard } from '@/components/ops/shared/KPICard';
+import { ClientKPICard as KPICard } from '@/components/ops/shared/ClientKPICard';
 import { AlertTriangle, CheckCircle2, Clock, Headphones, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 

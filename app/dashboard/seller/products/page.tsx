@@ -318,7 +318,7 @@ export default function FeaturedProductsPage() {
             <ProductCard
               key={product.id}
               product={product}
-              onEdit={() => router.push("/dashboard/seller/products/new")}
+              onEdit={() => router.push(`/dashboard/seller/products/${product.id}`)}
               onDelete={() => void handleDelete(product.id)}
               onToggleFeatured={() =>
                 void toggleField(product.id, "isFeatured", Boolean(product.isFeatured))

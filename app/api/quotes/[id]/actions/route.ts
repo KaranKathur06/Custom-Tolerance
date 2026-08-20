@@ -4,7 +4,8 @@
 
 import { NextResponse } from "next/server";
 import { protectApiRoute } from "@/lib/auth/protect-route";
-import { canTransitionQuote, type QuoteStatus } from "@/lib/marketplace/procurement-workflow";
+import { canTransitionQuoteLifecycle, type QuoteLifecycleStatus } from "@/lib/services/quote-lifecycle";
+import { canProcessQuoteAction } from "@/lib/services/quote-operational-lifecycle";
 import { createNotification } from "@/lib/marketplace/notifications";
 import { QuoteService } from "@/lib/domain/services/quote.service";
 import { QuoteRepository } from "@/lib/domain/repositories/quote.repository";
@@ -72,6 +73,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       id: string;
       title: string;
       slug: string | null;
+      status: string;
+      quotation_deadline: string | null;
       buyer_profile_id: string | null;
       buyer_user_id: string | null;
     } | null;
@@ -97,14 +100,37 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    const currentStatus = quote.status as QuoteStatus;
+    const currentStatus = quote.status as QuoteLifecycleStatus;
     const { workflow, patch } = ACTION_PATCH[action];
 
-    if (!canTransitionQuote(currentStatus, workflow)) {
+    if (!canTransitionQuoteLifecycle(currentStatus, workflow)) {
       return NextResponse.json(
         {
           success: false,
           error: { code: "INVALID_STATE", message: `Cannot ${action} from status ${currentStatus}` },
+        },
+        { status: 400 },
+      );
+    }
+
+    // Validate operational constraints for quote actions via canonical service
+    const rfqStatusForOps = rfq?.status || "unknown";
+    const operationalContext = {
+      rfqId: rfq?.id || quote.rfq_id,
+      rfqStatus: rfqStatusForOps,
+      rfqClosedAt: null, // Closed status handled by status check
+      rfqExpiresAt: rfq?.quotation_deadline ?? null,
+      responderHasProfile: Boolean(quote.seller_profile_id),
+      responderHasProducts: true,
+    };
+
+    // Validate operational constraints - ensures RFQ and quote are in valid state for action
+    const operationalCheck = canProcessQuoteAction(currentStatus, workflow, operationalContext);
+    if (!operationalCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "OPERATIONAL_ERROR", message: operationalCheck.reason || "Action not allowed" },
         },
         { status: 400 },
       );

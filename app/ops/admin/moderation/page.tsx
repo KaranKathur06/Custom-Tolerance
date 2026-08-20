@@ -192,7 +192,7 @@ export default function ModerationPage() {
         <div className="ops-panel-header">
           <div>
             <div className="ops-panel-title">Operational Moderation Queue</div>
-            <p className="ops-section-subtitle">Each item is shown read-only for review; action controls are disabled until backend enforcement is connected.</p>
+            <p className="ops-section-subtitle">Review each item and use the authorized moderation workflow for decisions.</p>
           </div>
         </div>
 

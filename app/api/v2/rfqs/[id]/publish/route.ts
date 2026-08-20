@@ -4,6 +4,7 @@ import { assertRfqOwnership } from "@/lib/marketplace/irfq/resolve-buyer";
 import { getIrfqAuthContext } from "@/lib/marketplace/irfq/auth-context";
 import { publishIrfqDraft } from "@/lib/marketplace/irfq/publish";
 import { canUseAdvancedFilters } from "@/lib/marketplace/irfq/subscription-gates";
+import { canPublishRfq, validatePublishTransition } from "@/lib/services/rfq-publish-service";
 import type { IrfqDraftPayload } from "@/lib/marketplace/irfq/types";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,35 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (ownership.rfq.status !== "draft") {
     return NextResponse.json(
       { success: false, error: { code: "VALIDATION_ERROR", message: "RFQ is already published" } },
+      { status: 400 },
+    );
+  }
+
+  // Validate canonical publish state machine
+  const publishCheck = canPublishRfq(ownership.rfq);
+  if (!publishCheck.allowed) {
+    const errorMessages: Record<string, string> = {
+      INSUFFICIENT_DATA: "Complete at least 3 steps before publishing",
+      INVALID_STATUS: "RFQ is not in draft status",
+      RFQ_NOT_FOUND: "RFQ not found",
+    };
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: errorMessages[publishCheck.error || "INVALID_STATUS"],
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  // Validate state transition contract
+  const transitionCheck = validatePublishTransition(ownership.rfq.status, "open");
+  if (!transitionCheck.valid) {
+    return NextResponse.json(
+      { success: false, error: { code: "VALIDATION_ERROR", message: transitionCheck.error } },
       { status: 400 },
     );
   }

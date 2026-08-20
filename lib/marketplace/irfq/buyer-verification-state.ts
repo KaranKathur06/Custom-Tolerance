@@ -1,34 +1,15 @@
-export type BuyerVerificationStep = 'email_verification' | 'mobile_verification' | 'profile_completion';
+import { getBuyerEligibility, type BuyerVerificationStep, type BuyerEligibilityState } from '@/lib/services/rfq-service';
 
-export type BuyerVerificationState =
-  | { status: 'verified' }
-  | { status: 'unverified'; missing: BuyerVerificationStep[]; canPostAsDraft: true }
-  | { status: 'partially_verified'; missing: BuyerVerificationStep[]; canPostAsDraft: true };
+export type BuyerVerificationStep = BuyerVerificationStep;
+
+export type BuyerVerificationState = BuyerEligibilityState;
 
 export function buildBuyerVerificationState(input: {
   emailVerified?: boolean;
   mobileVerified?: boolean;
   profileCompletionPercent?: number | null;
 }): BuyerVerificationState {
-  const missing: BuyerVerificationStep[] = [];
-
-  if (!input.emailVerified) missing.push('email_verification');
-  if (!input.mobileVerified) missing.push('mobile_verification');
-  if ((input.profileCompletionPercent ?? 0) < 40) missing.push('profile_completion');
-
-  if (missing.length === 0) {
-    return { status: 'verified' };
-  }
-
-  if (missing.length === 1 && missing[0] === 'profile_completion') {
-    return { status: 'partially_verified', missing, canPostAsDraft: true };
-  }
-
-  if (missing.includes('email_verification') && missing.includes('mobile_verification')) {
-    return { status: 'unverified', missing, canPostAsDraft: true };
-  }
-
-  return { status: 'partially_verified', missing, canPostAsDraft: true };
+  return getBuyerEligibility(input);
 }
 
 const acronymMap: Record<string, string> = {

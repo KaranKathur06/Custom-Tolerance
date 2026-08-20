@@ -4,6 +4,7 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
+import { canPublishProductDraft, getCurrentProductPhase } from "@/lib/services/product-draft-service";
 
 export type ProductPublishingStatus = "draft" | "pending_review" | "approved" | "rejected";
 export type ProductEventType = "published" | "rejected" | "approved" | "updated" | "archived";
@@ -59,6 +60,26 @@ export async function publishProductToMarketplace(
       return { success: false, message: "Product already published", error: "Product already published" };
     }
 
+    const phase = getCurrentProductPhase({
+      productName: product.product_name,
+      priceType: product.price_type,
+      description: product.description,
+      moq: product.moq,
+      leadTime: product.lead_time,
+    });
+    if (!canPublishProductDraft({
+      id: product.id,
+      status: product.approval_status,
+      productName: product.product_name,
+      phase,
+    })) {
+      return {
+        success: false,
+        message: "Product is incomplete",
+        error: "Complete required product fields before submitting",
+      };
+    }
+
     // Update approval status to pending
     const { error: updateError } = await supabase
       .from("seller_products")
@@ -83,6 +104,10 @@ export async function publishProductToMarketplace(
       .single();
 
     if (approvalError || !approval) {
+      await supabase
+        .from("seller_products")
+        .update({ approval_status: product.approval_status })
+        .eq("id", productId);
       return { success: false, message: "Failed to create approval record", error: "Failed to create approval record" };
     }
 
@@ -113,22 +138,18 @@ export async function approveProduct(
       return { success: false, error: "Unauthorized" };
     }
 
-    // Update approval
-    const { error: approvalError } = await supabase
+    const { data: approval } = await supabase
       .from("product_approvals")
-      .update({
-        status: "approved",
-        reviewed_by: user.id,
-        reviewed_at: new Date().toISOString(),
-        notes: adminNotes,
-      })
-      .eq("id", approvalId);
-
-    if (approvalError) {
-      return { success: false, error: approvalError.message };
+      .select("id")
+      .eq("id", approvalId)
+      .eq("seller_product_id", productId)
+      .eq("status", "pending")
+      .maybeSingle();
+    if (!approval) {
+      return { success: false, error: "Pending approval not found" };
     }
 
-    // Publish to marketplace
+    // The secured RPC validates and consumes the pending approval.
     const { data: result, error: pubError } = await supabase.rpc(
       "publish_product_to_marketplace",
       {
@@ -138,6 +159,14 @@ export async function approveProduct(
 
     if (pubError || !result?.success) {
       return { success: false, error: result?.error || pubError?.message };
+    }
+
+    if (adminNotes) {
+      await supabase
+        .from("product_approvals")
+        .update({ notes: adminNotes })
+        .eq("id", approvalId)
+        .eq("status", "approved");
     }
 
     return {
@@ -174,7 +203,9 @@ export async function rejectProduct(
         reviewed_at: new Date().toISOString(),
         rejection_reason: rejectionReason,
       })
-      .eq("id", approvalId);
+      .eq("id", approvalId)
+      .eq("seller_product_id", productId)
+      .eq("status", "pending");
 
     if (approvalError) {
       return { success: false, error: approvalError.message };

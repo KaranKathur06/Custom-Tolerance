@@ -8,6 +8,7 @@ import CapabilitiesGrid from '@/components/home/CapabilitiesGrid';
 import { getCapabilities, getHeroBanners } from '@/lib/server/content';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 import { BRAND } from '@/config/brand';
+import { isDemoMode } from '@/lib/config/app-mode';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ const fallbackListings = [
 async function getFeaturedListings() {
   try {
     const supabase = createSupabaseServerClient();
-    if (!supabase) return fallbackListings;
+    if (!supabase) return isDemoMode ? fallbackListings : [];
 
     const { data, error } = await supabase
       .from('listings')
@@ -49,7 +50,7 @@ async function getFeaturedListings() {
       .order('created_at', { ascending: false })
       .limit(4);
 
-    if (error || !data || data.length === 0) return fallbackListings;
+    if (error || !data || data.length === 0) return isDemoMode ? fallbackListings : [];
 
     return data.map((l: any) => ({
       id: l.id,
@@ -61,7 +62,7 @@ async function getFeaturedListings() {
       seller: { verified: true, premium: l.is_featured, name: '', certifications: [] },
     }));
   } catch {
-    return fallbackListings;
+    return isDemoMode ? fallbackListings : [];
   }
 }
 

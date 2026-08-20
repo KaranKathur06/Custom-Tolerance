@@ -30,7 +30,7 @@ export const buyerNavItems: DashboardNavItem[] = [
   { label: "Messages", href: "/buyer/messages", icon: MessageSquare },
   { label: "Notifications", href: "/buyer/notifications", icon: Bell },
   { label: "Market Intelligence", href: "/market", icon: BarChart3 },
-  { label: "Profile", href: "/settings/profile", icon: User },
+  { label: "Profile", href: "/settings?tab=profile", icon: User },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -39,12 +39,12 @@ export const sellerNavItems: DashboardNavItem[] = [
   { label: "Browse RFQs", href: "/seller/rfqs", icon: Search },
   { label: "Products", href: "/dashboard/seller/products", icon: Package },
   { label: "Quotes", href: "/seller/quotes", icon: FileText },
-  { label: "Orders", href: "/seller/orders", icon: Package },
+  { label: "Orders", href: "/dashboard/seller/orders", icon: Package },
   { label: "Messages", href: "/seller/messages", icon: MessageSquare },
-  { label: "Buyers", href: "/seller/buyers", icon: Building2 },
+  { label: "Buyers", href: "/dashboard/seller/buyers", icon: Building2 },
   { label: "Analytics", href: "/seller/analytics", icon: BarChart3 },
   { label: "Membership", href: "/seller/membership", icon: Crown },
-  { label: "Profile", href: "/settings/profile", icon: User },
+  { label: "Profile", href: "/settings?tab=profile", icon: User },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

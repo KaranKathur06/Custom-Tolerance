@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { canPublishProductDraft, getCurrentProductPhase } from "@/lib/services/product-draft-service";
 
 export async function POST(
   req: NextRequest,
@@ -43,25 +44,39 @@ export async function POST(
       );
     }
 
-    // Call the publishing function
-    const { data: result, error: pubError } = await supabase.rpc(
-      "publish_product_to_marketplace",
-      {
-        p_seller_product_id: productId,
-      }
-    );
+    const originalApprovalStatus = product.approval_status;
 
-    if (pubError) {
+    const phase = getCurrentProductPhase({
+      productName: product.product_name,
+      priceType: product.price_type,
+      description: product.description,
+      moq: product.moq,
+      leadTime: product.lead_time,
+    });
+    const publishCheck = canPublishProductDraft({
+      id: product.id,
+      status: product.approval_status,
+      productName: product.product_name,
+      phase,
+    });
+
+    if (!publishCheck) {
       return NextResponse.json(
-        { error: pubError.message || "Failed to publish product" },
-        { status: 500 }
+        { error: "Complete the product name, pricing, description, MOQ, and lead time before submitting." },
+        { status: 400 },
       );
     }
 
-    if (result && !result.success) {
+    const { error: productError } = await supabase
+      .from("seller_products")
+      .update({ approval_status: "pending_review", updated_at: new Date().toISOString() })
+      .eq("id", productId)
+      .eq("profile_id", user.id);
+
+    if (productError) {
       return NextResponse.json(
-        { error: result.error || "Publishing failed" },
-        { status: 400 }
+        { error: productError.message || "Failed to submit product for review" },
+        { status: 500 },
       );
     }
 
@@ -76,13 +91,21 @@ export async function POST(
 
     if (approvalError) {
       console.error("[publish] Approval record creation failed:", approvalError);
+      await supabase
+        .from("seller_products")
+        .update({ approval_status: originalApprovalStatus, updated_at: new Date().toISOString() })
+        .eq("id", productId)
+        .eq("profile_id", user.id);
+      return NextResponse.json(
+        { error: approvalError.message || "Failed to create approval request" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({
       success: true,
       message: "Product submitted for marketplace approval",
-      listing_id: result?.listing_id,
-      approval_status: "pending",
+      approval_status: "pending_review",
     });
   } catch (err: any) {
     console.error("[publish]", err);

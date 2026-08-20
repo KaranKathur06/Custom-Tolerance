@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { createSupabaseServerClient as createServerSupabaseClient } from "@/lib/supabase/server-client";
 import { getServerUser } from "@/lib/supabase/server-client";
-import { buildBuyerVerificationState, type BuyerVerificationState } from "@/lib/marketplace/irfq/buyer-verification-state";
+import { getBuyerEligibility, type BuyerEligibilityState } from "@/lib/services/rfq-service";
 import { RfqWizard } from "@/components/marketplace/RfqWizard";
 import { IrfqComposerShell } from "@/components/irfq/composer/IrfqComposerShell";
 
@@ -18,11 +18,13 @@ export default async function NewRfqPage({ searchParams }: Props) {
   const params = await searchParams;
   const supplier =
     typeof params.supplier === "string" && params.supplier ? params.supplier : null;
+  const draftId =
+    typeof params.draft === "string" && params.draft ? params.draft : null;
 
   const Composer = IRFQ_V2_ENABLED ? IrfqComposerShell : RfqWizard;
 
   const authUser = await getServerUser();
-  let initialVerificationState: BuyerVerificationState = { status: "verified" } as BuyerVerificationState;
+  let initialVerificationState: BuyerEligibilityState = { status: "verified" } as BuyerEligibilityState;
 
   if (authUser?.id) {
     const supabase = createServerSupabaseClient();
@@ -40,7 +42,7 @@ export default async function NewRfqPage({ searchParams }: Props) {
         .eq("profile_id", authUser.id)
         .maybeSingle();
 
-      initialVerificationState = buildBuyerVerificationState({
+      initialVerificationState = getBuyerEligibility({
         emailVerified: Boolean(buyerPreferences?.email_verified ?? authUser.email_confirmed_at),
         mobileVerified: Boolean(buyerPreferences?.mobile_verified),
         profileCompletionPercent: buyerPreferences?.completion_percent ?? buyerProfile?.profile_completion_percent ?? 0,
@@ -56,7 +58,7 @@ export default async function NewRfqPage({ searchParams }: Props) {
         </div>
       }
     >
-      <Composer supplierSlug={supplier} initialVerificationState={initialVerificationState} />
+      <Composer supplierSlug={supplier} draftId={draftId} initialVerificationState={initialVerificationState} />
     </Suspense>
   );
 }

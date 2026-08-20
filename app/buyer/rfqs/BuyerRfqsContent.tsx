@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Plus, Search, Download, Copy, Archive } from "lucide-react";
+import { Loader2, Plus, Search, Download, Copy, Archive, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RfqSummaryCard } from "@/components/marketplace/RfqSummaryCard";
 import type { RfqStatus } from "@/lib/marketplace/procurement-workflow";
+import { getResumeUrl } from "@/lib/services/rfq-draft-service";
 
 type RfqRow = {
   id: string;
@@ -165,11 +166,13 @@ export default function BuyerRfqsContent() {
               .filter(Boolean)
               .join(", ");
             const quoteCount = rfq.quotes?.[0]?.count ?? 0;
+            const isDraft = rfq.status === "draft";
+            const resumeUrl = isDraft ? getResumeUrl(rfq.id) : null;
 
             return (
               <div key={rfq.id} className="group relative">
                 <RfqSummaryCard
-                  href={`/rfq/${rfq.slug}`}
+                  href={isDraft ? resumeUrl : `/rfq/${rfq.slug}`}
                   title={rfq.title}
                   status={(rfq.status as RfqStatus) ?? "open"}
                   visibilityLevel={rfq.visibility_level}
@@ -179,18 +182,29 @@ export default function BuyerRfqsContent() {
                 />
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
                   <p className="text-xs text-slate-500">
-                    {quoteCount} supplier quotes received
+                    {isDraft ? "Draft RFQ" : `${quoteCount} supplier quotes received`}
                   </p>
                   <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" disabled>
-                      <Copy className="h-3 w-3" />
-                      Duplicate
-                    </Button>
-                    <Link href={`/buyer/quotes?rfq=${rfq.slug}`}>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs">
-                        View Quotes
-                      </Button>
-                    </Link>
+                    {isDraft ? (
+                      <Link href={resumeUrl}>
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+                          <Edit2 className="h-3 w-3" />
+                          Resume
+                        </Button>
+                      </Link>
+                    ) : (
+                      <>
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" disabled>
+                          <Copy className="h-3 w-3" />
+                          Duplicate
+                        </Button>
+                        <Link href={`/buyer/quotes?rfq=${rfq.slug}`}>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs">
+                            View Quotes
+                          </Button>
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

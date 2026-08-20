@@ -8,6 +8,8 @@ import { Phase3Packaging, Phase3Data } from "./Phase3Packaging";
 import { Phase4Review } from "./Phase4Review";
 import { CheckCircle2, Loader2, Save, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { canEnterPhase } from "@/lib/services/product-service";
+import { canResumeProductDraft } from "@/lib/services/product-draft-service";
 
 type ProductData = Partial<Phase1Data> & Partial<Phase2Data> & Partial<Phase3Data>;
 
@@ -19,12 +21,102 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activePhase, setActivePhase] = useState<number>(1);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(existingDraftId));
   
   // A ref to store the latest data so the background autosave can access it
   const dataRef = useRef<ProductData>({});
   
   // Track active phase to trigger render for Review tab only
   const [reviewTrigger, setReviewTrigger] = useState(0);
+
+  useEffect(() => {
+    if (!existingDraftId) {
+      setIsLoadingDraft(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadDraft() {
+      try {
+        const response = await fetch("/api/dashboard/seller/products");
+        if (!response.ok) throw new Error("Failed to load product draft");
+
+        const result = (await response.json()) as { products?: Record<string, any>[] };
+        const product = result.products?.find((item) => item.id === existingDraftId);
+        if (!product || !canResumeProductDraft({ id: product.id, status: product.approval_status })) {
+          throw new Error("Product draft is unavailable");
+        }
+
+        const hydratedData: ProductData = {
+          productName: product.product_name ?? "",
+          priceType: product.price_type ?? "ask_for_price",
+          minPrice: product.min_price == null ? "" : String(product.min_price),
+          maxPrice: product.max_price == null ? "" : String(product.max_price),
+          currency: product.currency ?? "USD",
+          priceUnit: product.price_unit ?? "per_piece",
+          capabilities: (product.product_capabilities ?? []).map((item: any) => item.capability_id),
+          industries: (product.product_industries ?? []).map((item: any) => item.industry_id),
+          materials: (product.product_materials ?? []).map((item: any) => item.material_name),
+          grades: (product.product_grades ?? []).map((item: any) => item.grade_name),
+          images: (product.product_images ?? []).map((item: any, index: number) => ({
+            url: item.url,
+            path: item.storage_path ?? "",
+            isPrimary: Boolean(item.is_primary),
+            localId: `${existingDraftId}-image-${index}`,
+          })),
+          specification: product.specification ?? "",
+          tolerance: product.tolerance_capability ?? "",
+          qualityCertificate: product.quality_certificate ?? "",
+          brandMarking: product.brand_marking ?? "",
+          brandMarkingOther: product.brand_marking_other ?? "",
+          diesAndTools: product.dies_and_tools ?? "",
+          estimatedToolCost: product.estimated_tool_cost == null ? "" : String(product.estimated_tool_cost),
+          toolOwnership: product.tool_ownership ?? "",
+          toolLeadTime: product.tool_lead_time ?? "",
+          moq: product.moq == null ? "" : String(product.moq),
+          productionCapacity: product.monthly_capacity == null ? "" : String(product.monthly_capacity),
+          productionCapacityUnit: product.production_capacity_unit ?? "pcs",
+          leadTime: product.lead_time ?? "",
+          description: product.description ?? "",
+          countryOfOrigin: product.country_of_origin ?? "",
+          freeSample: product.free_sample ? "yes" : "no",
+          sampleShippingCost: product.sample_shipping_cost ?? "",
+          thirdPartyInspection: product.third_party_inspection ? "yes" : "no",
+          paymentTerms: (product.product_payment_terms ?? []).map((item: any) => item.payment_term_id),
+          incoterms: (product.product_incoterms ?? []).map((item: any) => item.incoterm_id),
+          deliveryTerms: product.delivery_terms ?? "",
+          weightValue: product.weight_value == null ? "" : String(product.weight_value),
+          weightUnit: product.weight_unit ?? "kg",
+          dimLength: product.dim_length == null ? "" : String(product.dim_length),
+          dimWidth: product.dim_width == null ? "" : String(product.dim_width),
+          dimHeight: product.dim_height == null ? "" : String(product.dim_height),
+          dimUnit: product.dim_unit ?? "mm",
+          shippingType: product.shipping_type ?? "packed",
+          primaryPackaging: product.primary_packaging ?? "",
+          secondaryPackaging: product.secondary_packaging ?? "",
+          packagingNotes: product.packaging_notes ?? "",
+        };
+
+        if (isMounted) {
+          dataRef.current = hydratedData;
+          setActivePhase(product.description || product.moq ? 2 : 1);
+          setLastSaved(product.updated_at ? new Date(product.updated_at) : null);
+        }
+      } catch (error) {
+        console.error("Draft loading failed", error);
+        if (isMounted) {
+          setDraftError(true);
+          setDraftErrorMessage(error instanceof Error ? error.message : "Unable to load product draft.");
+        }
+      } finally {
+        if (isMounted) setIsLoadingDraft(false);
+      }
+    }
+
+    void loadDraft();
+    return () => { isMounted = false; };
+  }, [existingDraftId]);
 
   // Background draft creation
   useEffect(() => {
@@ -109,11 +201,9 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       }
       
       if (dataToSave.materials !== undefined) payload.materials = dataToSave.materials;
-      if (dataToSave.tolerance !== undefined) payload.toleranceCapability = dataToSave.tolerance;
+      if (dataToSave.tolerance !== undefined) payload.tolerance = dataToSave.tolerance;
       if (dataToSave.images !== undefined) {
-        // Send image URLs in a format the backend can store if a column exists
-        // Currently we'll assume the backend handles it or we'll pass it in an unstructured field for now
-        payload.images = dataToSave.images.map(img => img.url);
+        payload.images = dataToSave.images;
       }
 
       // Phase 2
@@ -121,10 +211,10 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       if (dataToSave.productionCapacity !== undefined) payload.productionCapacity = Number(dataToSave.productionCapacity) || null;
       if (dataToSave.productionCapacityUnit !== undefined) payload.productionCapacityUnit = dataToSave.productionCapacityUnit;
       if (dataToSave.leadTime !== undefined) payload.leadTime = dataToSave.leadTime;
-      if (dataToSave.freeSample !== undefined) payload.customTolerance = dataToSave.freeSample; // Re-using customTolerance string for sample (hack before DB update)
+      if (dataToSave.freeSample !== undefined) payload.freeSample = dataToSave.freeSample;
       
       // Convert arrays for legacy string[] cols
-      if (dataToSave.paymentTerms !== undefined) payload.certifications = dataToSave.paymentTerms; 
+      if (dataToSave.paymentTerms !== undefined) payload.paymentTerms = dataToSave.paymentTerms;
       
       // Phase 3
       if (dataToSave.weightValue !== undefined) payload.quantityAvailable = Number(dataToSave.weightValue) || null;
@@ -152,6 +242,15 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     }
     triggerAutosave(dataRef.current);
   }, [triggerAutosave, activePhase]);
+
+  if (isLoadingDraft) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-16 text-center text-slate-500">
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" />
+        <p className="mt-4 text-sm">Loading product draft...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -204,11 +303,12 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
           { id: 4, label: "Review", icon: "✓" }
         ].map((phase) => {
           const isActive = phase.id === activePhase;
-          const isClickable = true; 
-          
+          const isClickable = canEnterPhase(dataRef.current, phase.id);
+
           return (
             <button
               key={phase.id}
+              disabled={!isClickable}
               onClick={() => isClickable && setActivePhase(phase.id)}
               className={`flex items-center gap-3 min-w-[160px] rounded-lg px-4 py-3 border transition-colors ${
                 isActive 

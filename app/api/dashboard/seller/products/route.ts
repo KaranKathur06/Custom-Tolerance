@@ -39,6 +39,7 @@ export async function GET() {
     .select(
       `
       id, product_name, price_type, currency, price_unit, min_price, max_price,
+      approval_notes,
       description, country_of_origin, third_party_inspection, free_sample, sample_shipping_cost,
       delivery_terms, weight_value, weight_unit, dim_length, dim_width, dim_height, dim_unit,
       shipping_type, primary_packaging, secondary_packaging, packaging_notes,
@@ -136,6 +137,28 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Product ID required" }, { status: 400 });
   }
 
+  const { data: existingProduct, error: existingProductError } = await supabase
+    .from("seller_products")
+    .select("id, approval_status, is_published")
+    .eq("id", productId)
+    .eq("profile_id", user.id)
+    .maybeSingle();
+
+  if (existingProductError) {
+    return NextResponse.json({ error: existingProductError.message }, { status: 500 });
+  }
+
+  if (!existingProduct) {
+    return NextResponse.json({ error: "Product not found or unauthorized" }, { status: 404 });
+  }
+
+  if (existingProduct.is_published || !["draft", "rejected"].includes(existingProduct.approval_status)) {
+    return NextResponse.json(
+      { error: "Only draft or rejected products can be edited" },
+      { status: 409 },
+    );
+  }
+
   const body = (await req.json()) as Record<string, any>;
 
   // 1. Update the main table
@@ -200,25 +223,44 @@ export async function PATCH(req: NextRequest) {
   
   const handleRelation = async (table: string, field: string, items: any[]) => {
     if (!items) return;
-    await supabase.from(table).delete().eq("seller_product_id", productId);
+    const { error: deleteError } = await supabase
+      .from(table)
+      .delete()
+      .eq("seller_product_id", productId);
+    if (deleteError) throw new Error(`${table} delete failed: ${deleteError.message}`);
     if (items.length > 0) {
       const inserts = items.map(item => ({ seller_product_id: productId, [field]: item }));
-      await supabase.from(table).insert(inserts);
+      const { error: insertError } = await supabase.from(table).insert(inserts);
+      if (insertError) throw new Error(`${table} insert failed: ${insertError.message}`);
     }
   };
 
-  await Promise.all([
-    body.capabilities && handleRelation("product_capabilities", "capability_id", body.capabilities),
-    body.industries && handleRelation("product_industries", "industry_id", body.industries),
-    body.materials && handleRelation("product_materials", "material_name", body.materials),
-    body.grades && handleRelation("product_grades", "grade_name", body.grades),
-    body.paymentTerms && handleRelation("product_payment_terms", "payment_term_id", body.paymentTerms),
-    body.incoterms && handleRelation("product_incoterms", "incoterm_id", body.incoterms),
-  ]);
+  try {
+    await Promise.all([
+      body.capabilities && handleRelation("product_capabilities", "capability_id", body.capabilities),
+      body.industries && handleRelation("product_industries", "industry_id", body.industries),
+      body.materials && handleRelation("product_materials", "material_name", body.materials),
+      body.grades && handleRelation("product_grades", "grade_name", body.grades),
+      body.paymentTerms && handleRelation("product_payment_terms", "payment_term_id", body.paymentTerms),
+      body.incoterms && handleRelation("product_incoterms", "incoterm_id", body.incoterms),
+    ]);
+  } catch (relationError) {
+    console.error("[seller/products PATCH] relation update failed:", relationError);
+    return NextResponse.json(
+      { error: relationError instanceof Error ? relationError.message : "Related product data failed to save" },
+      { status: 500 },
+    );
+  }
 
   // Handle images specifically since it requires multiple fields
   if (body.images && Array.isArray(body.images)) {
-    await supabase.from("product_images").delete().eq("seller_product_id", productId);
+    const { error: imageDeleteError } = await supabase
+      .from("product_images")
+      .delete()
+      .eq("seller_product_id", productId);
+    if (imageDeleteError) {
+      return NextResponse.json({ error: imageDeleteError.message }, { status: 500 });
+    }
     if (body.images.length > 0) {
       const inserts = body.images.map((img: any, idx: number) => ({
         seller_product_id: productId,
@@ -227,7 +269,10 @@ export async function PATCH(req: NextRequest) {
         is_primary: img.isPrimary || false,
         display_order: idx
       }));
-      await supabase.from("product_images").insert(inserts);
+      const { error: imageInsertError } = await supabase.from("product_images").insert(inserts);
+      if (imageInsertError) {
+        return NextResponse.json({ error: imageInsertError.message }, { status: 500 });
+      }
     }
   }
 

@@ -1,5 +1,3 @@
-'use client';
-
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
 
 interface KPICardProps {

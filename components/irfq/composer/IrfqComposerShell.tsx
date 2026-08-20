@@ -36,10 +36,11 @@ import { canUseAdvancedFilters, canUseCapabilityMatrixFilters } from "@/lib/mark
 
 type IrfqComposerShellProps = {
   supplierSlug?: string | null;
+  draftId?: string | null;
   initialVerificationState?: BuyerVerificationState;
 };
 
-export function IrfqComposerShell({ supplierSlug, initialVerificationState }: IrfqComposerShellProps) {
+export function IrfqComposerShell({ supplierSlug, draftId, initialVerificationState }: IrfqComposerShellProps) {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: taxonomy } = useTaxonomyRegistry();
   const [creationMethod, setCreationMethod] = useState<IrfqCreationMethod>("manual");
@@ -63,7 +64,7 @@ export function IrfqComposerShell({ supplierSlug, initialVerificationState }: Ir
   );
 
   const {
-    draftId,
+    draftId: hookDraftId,
     payload,
     referenceData,
     loading,
@@ -77,15 +78,26 @@ export function IrfqComposerShell({ supplierSlug, initialVerificationState }: Ir
     clearDraftStorage,
   } = useIrfqDraft(creationMethod);
 
+  // Use provided draftId if available, otherwise fall back to localStorage-stored draftId
+  const activeDraftId = draftId || hookDraftId;
+
   const { plan: subscriptionPlan, limits, usage, loading: subscriptionLoading } =
     useIrfqSubscription(isAuthenticated);
   const progress = step < 0 ? 0 : ((step + 1) / IRFQ_COMPOSER_STEPS.length) * 100;
   const needsVerification = verificationState.status !== "verified";
 
+  // Load draft from URL parameter if provided
   useEffect(() => {
-    if (step !== 7 || !draftId) return;
+    if (draftId && !hookDraftId) {
+      localStorage.setItem("ct_irfq_draft_id", draftId);
+      window.location.reload();
+    }
+  }, [draftId, hookDraftId]);
+
+  useEffect(() => {
+    if (step !== 7 || !activeDraftId) return;
     setRiskLoading(true);
-    fetch(`/api/v2/rfqs/${draftId}/risk`, {
+    fetch(`/api/v2/rfqs/${activeDraftId}/risk`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ payload }),
@@ -95,7 +107,7 @@ export function IrfqComposerShell({ supplierSlug, initialVerificationState }: Ir
         if (json.success) setRiskAssessment(json.data);
       })
       .finally(() => setRiskLoading(false));
-  }, [step, draftId, payload]);
+  }, [step, activeDraftId, payload]);
 
   useEffect(() => {
     updatePayload({ creationMethod });
@@ -142,7 +154,7 @@ export function IrfqComposerShell({ supplierSlug, initialVerificationState }: Ir
   }
 
   async function handleAddItem() {
-    const id = draftId ?? (await ensureDraft());
+    const id = activeDraftId ?? (await ensureDraft());
     if (!id) return;
 
     if (!itemDraft.itemName.trim() || !itemDraft.quantity.trim()) {
@@ -174,7 +186,7 @@ export function IrfqComposerShell({ supplierSlug, initialVerificationState }: Ir
 
   async function handleFileUpload(fileList: FileList | null) {
     if (!fileList?.length) return;
-    const id = draftId ?? (await ensureDraft());
+    const id = activeDraftId ?? (await ensureDraft());
     if (!id) return;
 
     setUploading(true);
@@ -201,7 +213,7 @@ export function IrfqComposerShell({ supplierSlug, initialVerificationState }: Ir
       return;
     }
 
-    const id = draftId ?? (await ensureDraft());
+    const id = activeDraftId ?? (await ensureDraft());
     if (!id) return;
 
     if (needsVerification) {

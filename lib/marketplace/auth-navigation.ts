@@ -57,7 +57,7 @@ export const sellerNavItems: MarketplaceNavItem[] = [
   },
   {
     label: "Orders",
-    href: "/seller/orders",
+    href: "/dashboard/seller/orders",
     roles: ["seller", "both", "admin"],
     requiresAuthenticated: true,
   },

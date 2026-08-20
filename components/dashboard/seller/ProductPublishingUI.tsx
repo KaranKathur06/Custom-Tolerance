@@ -2,9 +2,11 @@
 
 import { useSellerProducts, usePublishProduct } from "@/lib/products/hooks";
 import { useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, Clock, Package, RefreshCw, Rocket, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Edit2, Package, RefreshCw, Rocket, X } from "lucide-react";
+import { canResumeProductDraft } from "@/lib/services/product-draft-service";
 
 export function ProductPublishingUI() {
   const { products, loading, error, refetch } = useSellerProducts();
@@ -192,6 +194,15 @@ export function ProductPublishingUI() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-2">
+                  {canResumeProductDraft({ id: product.id, status: product.approval_status }) && (
+                    <Button asChild variant="outline">
+                      <Link href={`/dashboard/seller/products/${product.id}`}>
+                        <Edit2 className="mr-2 h-4 w-4" />
+                        Resume
+                      </Link>
+                    </Button>
+                  )}
+
                   {product.approval_status === "draft" && (
                     <Button
                       onClick={() => handlePublish(product.id)}

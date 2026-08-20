@@ -38,21 +38,26 @@ export class SupportProjectionService {
   static async getTicketStats() {
     const supabase = createSupabaseServiceRoleClient();
     if (!supabase) return { open: 0, inProgress: 0, resolved: 0, urgent: 0 };
-    
-    // In a real projection service, this might be a single query to a materialized view
-    // For now, doing multiple count queries
-    const [open, inProgress, resolved, urgent] = await Promise.all([
-      supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('status', 'OPEN'),
-      supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('status', 'IN_PROGRESS'),
-      supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('status', 'RESOLVED'),
-      supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('priority', 'URGENT').neq('status', 'CLOSED'),
-    ]);
 
-    return {
-      open: open.count || 0,
-      inProgress: inProgress.count || 0,
-      resolved: resolved.count || 0,
-      urgent: urgent.count || 0,
-    };
+    try {
+      // In a real projection service, this might be a single query to a materialized view
+      // For now, doing multiple count queries
+      const [open, inProgress, resolved, urgent] = await Promise.all([
+        supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('status', 'OPEN'),
+        supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('status', 'IN_PROGRESS'),
+        supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('status', 'RESOLVED'),
+        supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('priority', 'URGENT').neq('status', 'CLOSED'),
+      ]);
+
+      return {
+        open: open.count || 0,
+        inProgress: inProgress.count || 0,
+        resolved: resolved.count || 0,
+        urgent: urgent.count || 0,
+      };
+    } catch (error) {
+      console.error("Support statistics unavailable:", error);
+      return { open: 0, inProgress: 0, resolved: 0, urgent: 0 };
+    }
   }
 }

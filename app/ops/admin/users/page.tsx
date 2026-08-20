@@ -160,9 +160,6 @@ export default function UsersPage() {
     }
   }, [page, totalPages]);
 
-  // NOTE: mutations remain disabled until backend enforcement and audit APIs are connected.
-
-
   const filtered = useMemo(
     () =>
       users.filter((user) => {
@@ -291,7 +288,7 @@ export default function UsersPage() {
       </div>
       <div className="ops-panel ops-readonly-banner" style={{ marginBottom: 16 }}>
         <div className="ops-panel-body">
-          <p className="text-sm text-slate-500">User governance controls are preview-only and all management actions are disabled until the enforcement APIs are connected.</p>
+          <p className="text-sm text-slate-500">User governance actions require the appropriate administrative permission.</p>
         </div>
       </div>
 

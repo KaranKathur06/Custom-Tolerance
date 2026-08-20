@@ -1,0 +1,316 @@
+﻿node.exe : npm notice run custom-tolerance@0.1.0 build
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\kathu\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm notice run ...nce@0.1.0 build 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run next build
+  Γû▓ Next.js 14.2.35
+  - Environments: .env
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+
+./components/layout/header.tsx
+517:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/location/SearchableDropdown.tsx
+52:7  Warning: The attribute aria-expanded is not supported by the role textbox. This role is implicit on the element input.  jsx-a11y/role-supports-aria-props
+
+./components/marketplace/public/BuyerPublicProfile.tsx
+25:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/onboarding/seller/ImageUploadGrid.tsx
+105:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/onboarding/seller/SingleImageUploadField.tsx
+67:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/products/ProductWorkspace.tsx
+79:6  Warning: React Hook useEffect has a missing dependency: 'triggerAutosave'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/112) ...
+   Generating static pages (28/112) 
+   Generating static pages (56/112) 
+Error: Functions cannot be passed directly to Client Components unless you 
+explicitly expose it by marking it with "use server". Or maybe you meant to 
+call this function rather than return it.
+  {$$typeof: ..., render: function, displayName: ...}
+                          ^^^^^^^^
+    at e_ (C:\FREELANCING\Custom Tolerance\node_modules\next\dist\compiled\next
+-server\app-page.runtime.prod.js:12:140758)
+    at Object.toJSON (C:\FREELANCING\Custom Tolerance\node_modules\next\dist\co
+mpiled\next-server\app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (C:\FREELANCING\Custom Tolerance\node_modules\next\dist\compiled\next
+-server\app-page.runtime.prod.js:12:142242)
+    at eT (C:\FREELANCING\Custom Tolerance\node_modules\next\dist\compiled\next
+-server\app-page.runtime.prod.js:12:142721)
+    at Timeout._onTimeout (C:\FREELANCING\Custom Tolerance\node_modules\next\di
+st\compiled\next-server\app-page.runtime.prod.js:12:135497)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7) {
+  digest: '3107228044'
+}
+Error: Functions cannot be passed directly to Client Components unless you 
+explicitly expose it by marking it with "use server". Or maybe you meant to 
+call this function rather than return it.
+  {$$typeof: ..., render: function, displayName: ...}
+                          ^^^^^^^^
+    at e_ (C:\FREELANCING\Custom Tolerance\node_modules\next\dist\compiled\next
+-server\app-page.runtime.prod.js:12:140758)
+    at Object.toJSON (C:\FREELANCING\Custom Tolerance\node_modules\next\dist\co
+mpiled\next-server\app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (C:\FREELANCING\Custom Tolerance\node_modules\next\dist\compiled\next
+-server\app-page.runtime.prod.js:12:142242)
+    at eT (C:\FREELANCING\Custom Tolerance\node_modules\next\dist\compiled\next
+-server\app-page.runtime.prod.js:12:142721)
+    at Timeout._onTimeout (C:\FREELANCING\Custom Tolerance\node_modules\next\di
+st\compiled\next-server\app-page.runtime.prod.js:12:135497)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7) {
+  digest: '3107228044'
+}
+   Generating static pages (84/112) 
+ Γ£ô Generating static pages (112/112)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                      Size     First Load JS
+Γöî ╞Æ /                                            5.23 kB         114 kB
+Γö£ ╞Æ /_not-found                                  880 B          88.4 kB
+Γö£ ╞Æ /about                                       148 B           109 kB
+Γö£ ╞Æ /admin                                       209 B          87.7 kB
+Γö£ ╞Æ /admin/marketplace-settings                  209 B          87.7 kB
+Γö£ ╞Æ /admin/ranking-preview                       210 B          87.7 kB
+Γö£ ╞Æ /admin/rfqs                                  3.55 kB         107 kB
+Γö£ ╞Æ /admin/verify                                6.31 kB         178 kB
+Γö£ ╞Æ /api/admin/analytics                         0 B                0 B
+Γö£ ╞Æ /api/admin/banners                           0 B                0 B
+Γö£ ╞Æ /api/admin/banners/[id]                      0 B                0 B
+Γö£ ╞Æ /api/admin/banners/reorder                   0 B                0 B
+Γö£ ╞Æ /api/admin/capabilities                      0 B                0 B
+Γö£ ╞Æ /api/admin/capabilities/[id]                 0 B                0 B
+Γö£ ╞Æ /api/admin/capabilities/reorder              0 B                0 B
+Γö£ ╞Æ /api/admin/dashboard                         0 B                0 B
+Γö£ ╞Æ /api/admin/gst/revalidate                    0 B                0 B
+Γö£ ╞Æ /api/admin/gst/verify                        0 B                0 B
+Γö£ ╞Æ /api/admin/health                            0 B                0 B
+Γö£ ╞Æ /api/admin/listings/pending                  0 B                0 B
+Γö£ ╞Æ /api/admin/logs                              0 B                0 B
+Γö£ ╞Æ /api/admin/otp/bypass                        0 B                0 B
+Γö£ ╞Æ /api/admin/otp/bypass/status                 0 B                0 B
+Γö£ ╞Æ /api/admin/otp/health                        0 B                0 B
+Γö£ ╞Æ /api/admin/otp/send                          0 B                0 B
+Γö£ ╞Æ /api/admin/otp/status                        0 B                0 B
+Γö£ ╞Æ /api/admin/otp/verify                        0 B                0 B
+Γö£ ╞Æ /api/admin/products/approvals                0 B                0 B
+Γö£ ╞Æ /api/admin/profile-migration                 0 B                0 B
+Γö£ ╞Æ /api/admin/rfqs                              0 B                0 B
+Γö£ ╞Æ /api/admin/suppliers                         0 B                0 B
+Γö£ ╞Æ /api/admin/suppliers/[id]/approve            0 B                0 B
+Γö£ ╞Æ /api/admin/suppliers/pending                 0 B                0 B
+Γö£ ╞Æ /api/admin/users                             0 B                0 B
+Γö£ ╞Æ /api/admin/users/[id]                        0 B                0 B
+Γö£ ╞Æ /api/admin/users/[id]/suspend                0 B                0 B
+Γö£ ╞Æ /api/auth/logout                             0 B                0 B
+Γö£ ╞Æ /api/auth/verify-email/ack                   0 B                0 B
+Γö£ ╞Æ /api/auth/verify-email/resend                0 B                0 B
+Γö£ ╞Æ /api/auth/verify-email/send                  0 B                0 B
+Γö£ ╞Æ /api/auth/verify-email/verify                0 B                0 B
+Γö£ ╞Æ /api/banners                                 0 B                0 B
+Γö£ ╞Æ /api/buyers/[slug]                           0 B                0 B
+Γö£ ╞Æ /api/capabilities                            0 B                0 B
+Γö£ ╞Æ /api/capabilities/[slug]                     0 B                0 B
+Γö£ ╞Æ /api/crm/leads                               0 B                0 B
+Γö£ ╞Æ /api/crm/leads/[id]                          0 B                0 B
+Γö£ ╞Æ /api/crm/pipeline                            0 B                0 B
+Γö£ ╞Æ /api/dashboard/buyer/quotes                  0 B                0 B
+Γö£ ╞Æ /api/dashboard/buyer/stats                   0 B                0 B
+Γö£ ╞Æ /api/dashboard/seller/inquiries              0 B                0 B
+Γö£ ╞Æ /api/dashboard/seller/leads                  0 B                0 B
+Γö£ ╞Æ /api/dashboard/seller/products               0 B                0 B
+Γö£ ╞Æ /api/dashboard/seller/products/[id]/publish  0 B                0 B
+Γö£ ╞Æ /api/dashboard/seller/stats                  0 B                0 B
+Γö£ ╞Æ /api/inquiries                               0 B                0 B
+Γö£ ╞Æ /api/inquiries/[id]                          0 B                0 B
+Γö£ ╞Æ /api/inquiries/supplier                      0 B                0 B
+Γö£ ╞Æ /api/listings                                0 B                0 B
+Γö£ ╞Æ /api/marketplace                             0 B                0 B
+Γö£ ╞Æ /api/marketplace/search                      0 B                0 B
+Γö£ ╞Æ /api/marketplace/stats                       0 B                0 B
+Γö£ ╞Æ /api/message-threads                         0 B                0 B
+Γö£ ╞Æ /api/message-threads/[id]/messages           0 B                0 B
+Γö£ ╞Æ /api/notifications                           0 B                0 B
+Γö£ ╞Æ /api/onboarding/buyer                        0 B                0 B
+Γö£ ╞Æ /api/onboarding/mobile/reset                 0 B                0 B
+Γö£ ╞Æ /api/onboarding/mobile/send                  0 B                0 B
+Γö£ ╞Æ /api/onboarding/mobile/status                0 B                0 B
+Γö£ ╞Æ /api/onboarding/mobile/verify                0 B                0 B
+Γö£ ╞Æ /api/onboarding/seller                       0 B                0 B
+Γö£ ╞Æ /api/onboarding/seller/assets                0 B                0 B
+Γö£ ╞Æ /api/onboarding/seller/gst/verify            0 B                0 B
+Γö£ ╞Æ /api/onboarding/seller/upload                0 B                0 B
+Γö£ ╞Æ /api/ops/admin/dashboard                     0 B                0 B
+Γö£ ╞Æ /api/ops/crm/dashboard                       0 B                0 B
+Γö£ ╞Æ /api/ops/supplier-review                     0 B                0 B
+Γö£ ╞Æ /api/ops/supplier-review/[id]                0 B                0 B
+Γö£ ╞Æ /api/ops/verification-queue                  0 B                0 B
+Γö£ ╞Æ /api/ops/verification/[id]                   0 B                0 B
+Γö£ ╞Æ /api/otp/send                                0 B                0 B
+Γö£ ╞Æ /api/otp/verify                              0 B                0 B
+Γö£ ╞Æ /api/payment/create-order                    0 B                0 B
+Γö£ ╞Æ /api/payment/webhook                         0 B                0 B
+Γö£ ╞Æ /api/products                                0 B                0 B
+Γö£ ╞Æ /api/products/[slug]                         0 B                0 B
+Γö£ ╞Æ /api/products/[slug]/moderate                0 B                0 B
+Γö£ ╞Æ /api/products/events                         0 B                0 B
+Γö£ ╞Æ /api/products/images                         0 B                0 B
+Γö£ ╞Æ /api/products/search                         0 B                0 B
+Γö£ ╞Æ /api/profile/contact-unlock                  0 B                0 B
+Γö£ ╞Æ /api/profile/privacy                         0 B                0 B
+Γö£ ╞Æ /api/quotes                                  0 B                0 B
+Γö£ ╞Æ /api/quotes/[id]/actions                     0 B                0 B
+Γö£ ╞Æ /api/rfq/[slug]                              0 B                0 B
+Γö£ ╞Æ /api/settings/company/[id]                   0 B                0 B
+Γö£ ╞Æ /api/settings/platform                       0 B                0 B
+Γö£ ╞Æ /api/settings/user                           0 B                0 B
+Γö£ ╞Æ /api/supplier/onboarding/status              0 B                0 B
+Γö£ ╞Æ /api/supplier/onboarding/submit              0 B                0 B
+Γö£ ╞Æ /api/supplier/verification/otp               0 B                0 B
+Γö£ ╞Æ /api/suppliers                               0 B                0 B
+Γö£ ╞Æ /api/suppliers/[id]                          0 B                0 B
+Γö£ ╞Æ /api/suppliers/[id]/gallery                  0 B                0 B
+Γö£ ╞Æ /api/suppliers/[id]/reviews                  0 B                0 B
+Γö£ ╞Æ /api/suppliers/products                      0 B                0 B
+Γö£ ╞Æ /api/suppliers/profile                       0 B                0 B
+Γö£ ╞Æ /api/suppliers/saved                         0 B                0 B
+Γö£ ╞Æ /api/uploads                                 0 B                0 B
+Γö£ ╞Æ /api/uploads/[id]                            0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/[id]/activity                   0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/[id]/collaborators              0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/[id]/comments                   0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/[id]/files                      0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/[id]/items                      0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/[id]/matches                    0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/[id]/publish                    0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/[id]/risk                       0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/drafts                          0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/drafts/[id]                     0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/reference-data                  0 B                0 B
+Γö£ ╞Æ /api/v2/rfqs/subscription/plan               0 B                0 B
+Γö£ ╞Æ /api/waitlist                                0 B                0 B
+Γö£ ╞Æ /buyer                                       7.84 kB         179 kB
+Γö£ ╞Æ /buyer/dashboard                             209 B          87.7 kB
+Γö£ ╞Æ /buyer/messages                              394 B           108 kB
+Γö£ ╞Æ /buyer/notifications                         1.39 kB         108 kB
+Γö£ ╞Æ /buyer/quotes                                3.83 kB        98.5 kB
+Γö£ ╞Æ /buyer/requirements                          209 B          87.7 kB
+Γö£ ╞Æ /buyer/rfqs                                  5.11 kB         109 kB
+Γö£ ╞Æ /buyer/rfqs/[slug]/workspace                 3.36 kB         107 kB
+Γö£ ╞Æ /buyer/suppliers                             4.32 kB         108 kB
+Γö£ ╞Æ /buyers                                      209 B          87.7 kB
+Γö£ ╞Æ /buyers/[slug]                               209 B          87.7 kB
+Γö£ ╞Æ /capabilities                                2.71 kB         112 kB
+Γö£ ╞Æ /capabilities/[slug]                         209 B          87.7 kB
+Γö£ ╞Æ /careers                                     148 B           109 kB
+Γö£ ╞Æ /contact                                     148 B           109 kB
+Γö£ ╞Æ /dashboard/analytics                         147 B           109 kB
+Γö£ ╞Æ /dashboard/buyer                             209 B          87.7 kB
+Γö£ ╞Æ /dashboard/seller                            209 B          87.7 kB
+Γö£ ╞Æ /dashboard/seller/create                     13 kB           137 kB
+Γö£ ╞Æ /dashboard/seller/products                   5.66 kB         100 kB
+Γö£ ╞Æ /dashboard/seller/products/[productSlug]     142 B           110 kB
+Γö£ ╞Æ /dashboard/seller/products/create            209 B          87.7 kB
+Γö£ ╞Æ /dashboard/seller/products/new               144 B           110 kB
+Γö£ ╞Æ /faq                                         147 B           109 kB
+Γö£ ╞Æ /forgot-password                             3.79 kB         175 kB
+Γö£ ╞Æ /help                                        148 B           109 kB
+Γö£ ╞Æ /industries                                  4 kB            107 kB
+Γö£ ╞Æ /industries/[slug]                           5.6 kB          174 kB
+Γö£ ╞Æ /listings                                    209 B          87.7 kB
+Γö£ ╞Æ /listings/[id]                               209 B          87.7 kB
+Γö£ ╞Æ /login                                       6.51 kB         178 kB
+Γö£ Γùï /manifest.webmanifest                        0 B                0 B
+Γö£ ╞Æ /market                                      3.13 kB         167 kB
+Γö£ ╞Æ /marketplace                                 16.9 kB         208 kB
+Γö£ ╞Æ /marketplace/inquiry/[id]                    209 B          87.7 kB
+Γö£ ╞Æ /marketplace/listings/[slug]                 209 B          87.7 kB
+Γö£ ╞Æ /marketplace/supplier/[id]                   209 B          87.7 kB
+Γö£ ╞Æ /marketplace/suppliers/[slug]                209 B          87.7 kB
+Γö£ ╞Æ /messages                                    611 B           108 kB
+Γö£ ╞Æ /notifications                               4.22 kB         175 kB
+Γö£ ╞Æ /onboarding/buyer                            6.85 kB        2.47 MB
+Γö£ ╞Æ /onboarding/seller                           21.2 kB        2.49 MB
+Γö£ ╞Æ /ops                                         860 B          88.4 kB
+Γö£ ╞Æ /ops/account                                 3.6 kB         98.3 kB
+Γö£ ╞Æ /ops/admin                                   4.77 kB         101 kB
+Γö£ ╞Æ /ops/admin/audit                             2.31 kB        93.6 kB
+Γö£ ╞Æ /ops/admin/cms                               2.25 kB         102 kB
+Γö£ ╞Æ /ops/admin/finance                           2.58 kB        90.1 kB
+Γö£ ╞Æ /ops/admin/listings                          3.4 kB         90.9 kB
+Γö£ ╞Æ /ops/admin/moderation                        3.7 kB         91.2 kB
+Γö£ ╞Æ /ops/admin/security                          4.16 kB        91.7 kB
+Γö£ ╞Æ /ops/admin/settings                          2.3 kB         89.8 kB
+Γö£ ╞Æ /ops/admin/support                           3.04 kB        94.4 kB
+Γö£ ╞Æ /ops/admin/users                             6.19 kB         101 kB
+Γö£ ╞Æ /ops/admin/verification                      6.02 kB         109 kB
+Γö£ ╞Æ /ops/crm                                     1.42 kB        97.7 kB
+Γö£ ╞Æ /ops/crm/analytics                           2.76 kB        90.3 kB
+Γö£ ╞Æ /ops/crm/campaigns                           1.64 kB        89.2 kB
+Γö£ ╞Æ /ops/crm/customers                           2.75 kB        90.3 kB
+Γö£ ╞Æ /ops/crm/meetings                            2.19 kB        89.7 kB
+Γö£ ╞Æ /ops/crm/pipeline                            1.91 kB        89.4 kB
+Γö£ ╞Æ /ops/crm/revenue                             2.08 kB        89.6 kB
+Γö£ ╞Æ /ops/crm/tasks                               1.56 kB        92.9 kB
+Γö£ ╞Æ /post-requirement                            209 B          87.7 kB
+Γö£ ╞Æ /pricing                                     4.63 kB         108 kB
+Γö£ ╞Æ /privacy                                     148 B           109 kB
+Γö£ ╞Æ /products                                    148 B           109 kB
+Γö£ ╞Æ /products/[slug]                             187 B          96.4 kB
+Γö£ ╞Æ /profile/[slug]                              8.94 kB         180 kB
+Γö£ ╞Æ /refund                                      148 B           109 kB
+Γö£ ╞Æ /register                                    6.6 kB          178 kB
+Γö£ ╞Æ /reset-password                              4.22 kB         176 kB
+Γö£ ╞Æ /rfq/[slug]                                  6.44 kB         178 kB
+Γö£ ╞Æ /rfq/new                                     15.9 kB         187 kB
+Γö£ Γùï /robots.txt                                  0 B                0 B
+Γö£ ╞Æ /sell                                        187 B          96.4 kB
+Γö£ ╞Æ /seller                                      10.7 kB         182 kB
+Γö£ ╞Æ /seller/analytics                            3.97 kB         100 kB
+Γö£ ╞Æ /seller/buyers                               1.8 kB         89.3 kB
+Γö£ ╞Æ /seller/dashboard                            209 B          87.7 kB
+Γö£ ╞Æ /seller/membership                           4.01 kB         175 kB
+Γö£ ╞Æ /seller/messages                             391 B           108 kB
+Γö£ ╞Æ /seller/notifications                        1.66 kB         176 kB
+Γö£ ╞Æ /seller/orders                               2.19 kB         106 kB
+Γö£ ╞Æ /seller/products                             209 B          87.7 kB
+Γö£ ╞Æ /seller/quotes                               1.18 kB         168 kB
+Γö£ ╞Æ /seller/rfqs                                 1.78 kB         169 kB
+Γö£ ╞Æ /seller/settings/store                       209 B          87.7 kB
+Γö£ ╞Æ /services                                    187 B          96.4 kB
+Γö£ ╞Æ /settings                                    6.67 kB         178 kB
+Γö£ ╞Æ /settings/profile                            209 B          87.7 kB
+Γö£ ╞Æ /sitemap.xml                                 0 B                0 B
+Γö£ ╞Æ /suppliers                                   209 B          87.7 kB
+Γö£ ╞Æ /suppliers/[slug]                            9.58 kB         116 kB
+Γö£ ╞Æ /suppliers/verification                      147 B           109 kB
+Γö£ ╞Æ /terms                                       148 B           109 kB
+Γöö ╞Æ /verify-email                                6.87 kB         178 kB
++ First Load JS shared by all                    87.5 kB
+  Γö£ chunks/2117-2c672382be9a5ada.js              31.9 kB
+  Γö£ chunks/fd9d1056-36f772b4ade5155e.js          53.6 kB
+  Γöö other shared chunks (total)                  1.99 kB
+
+
+╞Æ Middleware                                     82.7 kB
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

@@ -31,13 +31,13 @@ export function CMSClient({ stats, initialContent, totalCount, currentSection, c
         <div>
           <h1 className="ops-section-title">CMS & Content</h1>
           <p className="ops-section-subtitle">Manage banners, pages, SEO, and platform content</p>
-          <div className="text-xs text-ops-text-muted mt-1">Read-only preview mode</div>
+          <div className="text-xs text-ops-text-muted mt-1">Content is available for review.</div>
         </div>
         <button className="ops-primary-action" disabled><Send className="w-4 h-4" /> Publish Selected</button>
       </div>
       <div className="ops-panel ops-readonly-banner">
         <div className="ops-panel-body">
-          <p className="text-sm text-slate-500">Content actions are disabled until the publishing workflow is fully connected.</p>
+          <p className="text-sm text-slate-500">Publishing access is managed through the platform content workflow.</p>
         </div>
       </div>
       

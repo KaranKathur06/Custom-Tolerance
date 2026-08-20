@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { isDemoMode } from "@/lib/config/app-mode";
 
 type Order = {
   id: string;
@@ -44,13 +45,13 @@ type ActiveOrdersProps = {
   orders?: Order[];
 };
 
-export function ActiveOrders({ orders = DEMO_ORDERS }: ActiveOrdersProps) {
+export function ActiveOrders({ orders = isDemoMode ? DEMO_ORDERS : [] }: ActiveOrdersProps) {
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="ct-section-title">Active Orders</h2>
         <Link
-          href="/seller/orders"
+          href="/dashboard/seller/orders"
           className="text-xs font-semibold text-ct-gold hover:text-ct-gold-light"
         >
           View All →

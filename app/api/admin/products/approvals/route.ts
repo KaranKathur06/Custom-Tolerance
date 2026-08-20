@@ -8,6 +8,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createNotification } from "@/lib/marketplace/notifications";
+import { sendEmail } from "@/lib/services/email";
 
 export const dynamic = "force-dynamic";
 
@@ -138,40 +140,123 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Approval not found" }, { status: 404 });
     }
 
-    const newStatus = action === "approve" ? "approved" : "rejected";
-
-    // Update approval
-    const { error: updateError } = await supabase
-      .from("product_approvals")
-      .update({
-        status: newStatus,
-        reviewed_by: user.id,
-        reviewed_at: new Date().toISOString(),
-        rejection_reason: action === "reject" ? rejection_reason : null,
-        notes,
-      })
-      .eq("id", approval_id);
-
-    if (updateError) {
-      return NextResponse.json(
-        { error: updateError.message },
-        { status: 500 }
-      );
+    if (approval.status !== "pending") {
+      return NextResponse.json({ error: "Approval has already been reviewed" }, { status: 400 });
     }
 
-    // If approved, update seller_products
+    const { data: product } = await supabase
+      .from("seller_products")
+      .select("id, product_name, profile_id")
+      .eq("id", approval.seller_product_id)
+      .maybeSingle();
+
+    const { data: sellerProfile } = product?.profile_id
+      ? await supabase
+          .from("profiles")
+          .select("email, full_name")
+          .eq("user_id", product.profile_id)
+          .maybeSingle()
+      : { data: null };
+
+    const newStatus = action === "approve" ? "approved" : "rejected";
+
     if (action === "approve") {
+      const { data: result, error: publishError } = await supabase.rpc(
+        "publish_product_to_marketplace",
+        { p_seller_product_id: approval.seller_product_id },
+      );
+
+      if (publishError || (result && !result.success)) {
+        return NextResponse.json(
+          { error: publishError?.message || result?.error || "Failed to publish approved product" },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (action === "reject") {
+      const { error: updateError } = await supabase
+        .from("product_approvals")
+        .update({
+          status: newStatus,
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+          rejection_reason,
+          notes,
+        })
+        .eq("id", approval_id)
+        .eq("status", "pending");
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Keep product status aligned for rejection. The approval RPC sets approved state.
+    if (action === "reject") {
       const { error: prodError } = await supabase
         .from("seller_products")
         .update({
-          approval_status: "approved",
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
+          approval_status: "rejected",
+          is_published: false,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", approval.seller_product_id);
 
       if (prodError) {
         console.error("[admin/approvals] Product update failed:", prodError);
+      }
+    }
+
+    if (product?.profile_id) {
+      try {
+        const isApproved = action === "approve";
+        await supabase.from("notifications").insert(
+          createNotification({
+            profileId: product.profile_id,
+            title: isApproved ? "Product approved" : "Product requires revision",
+            body: isApproved
+              ? `${product.product_name} is now live in the marketplace.`
+              : `${product.product_name} was rejected${rejection_reason ? `: ${rejection_reason}` : "."}`,
+            type: "system",
+            href: `/dashboard/seller/products/${product.id}`,
+            metadata: {
+              seller_product_id: product.id,
+              approval_id,
+              action,
+            },
+          }),
+        );
+      } catch (notificationError) {
+        console.error("[admin/approvals] Seller notification failed:", notificationError);
+      }
+    }
+
+    if (sellerProfile?.email) {
+      const isApproved = action === "approve";
+      const reason = rejection_reason?.toString().trim();
+      const subject = isApproved
+        ? `Product approved: ${product?.product_name ?? "Your product"}`
+        : `Product needs revision: ${product?.product_name ?? "Your product"}`;
+      const text = isApproved
+        ? `${product?.product_name ?? "Your product"} has been approved and is now live in the marketplace.`
+        : `${product?.product_name ?? "Your product"} needs revision.${reason ? ` Reason: ${reason}` : ""}`;
+
+      try {
+        const result = await sendEmail({
+          to: sellerProfile.email,
+          subject,
+          text,
+          html: `<p>Hello ${sellerProfile.full_name || "Seller"},</p><p>${text}</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}`,
+        });
+        if (!result.success) {
+          console.error("[admin/approvals] Seller email failed:", result.error);
+        }
+      } catch (emailError) {
+        console.error("[admin/approvals] Seller email failed:", emailError);
       }
     }
 

@@ -250,7 +250,7 @@ export class RfqRepository {
   async getForQuoteSubmission(rfqId: string): Promise<any> {
     const { data, error } = await this.supabase
       .from('rfqs')
-      .select('id, status, title, slug, buyer_profile_id, visibility_level')
+      .select('id, status, title, slug, buyer_profile_id, visibility_level, quotation_deadline, published_at')
       .eq('id', rfqId)
       .maybeSingle();
 

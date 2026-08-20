@@ -12,6 +12,7 @@ import { canTransitionQuote } from "@/lib/marketplace/procurement-workflow";
 import { createNotification } from "@/lib/marketplace/notifications";
 import { ensureProcurementThread, sendThreadMessage } from "@/lib/marketplace/messaging";
 import { getSellerV3ActivationContext } from "@/lib/marketplace/onboarding-v3-gates";
+import { isRfqAcceptingQuotes, canProcessQuoteAction } from "@/lib/services/quote-operational-lifecycle";
 import { QuoteService } from "@/lib/domain/services/quote.service";
 import { QuoteRepository } from "@/lib/domain/repositories/quote.repository";
 import { RfqService } from "@/lib/domain/services/rfq.service";
@@ -154,6 +155,46 @@ export async function POST(request: Request) {
     if (!rfq || !["open", "in_review", "quoted"].includes(rfq.status)) {
       return NextResponse.json(
         { success: false, error: { code: "RFQ_CLOSED", message: "This RFQ is not accepting quotes" } },
+        { status: 400 },
+      );
+    }
+
+    // Validate operational constraints via canonical service
+    const operationalContext = {
+      rfqId: rfq.id,
+      rfqStatus: rfq.status,
+      rfqClosedAt: null, // Closed status is checked above
+      rfqExpiresAt: rfq.quotation_deadline ? new Date(rfq.quotation_deadline).toISOString() : null,
+      responderHasProfile: Boolean(sellerProfile),
+      responderHasProducts: true, // Can submit quote without products
+    };
+
+    const acceptanceCheck = isRfqAcceptingQuotes(operationalContext);
+    if (!acceptanceCheck.accepting) {
+      const errorMessages: Record<string, string> = {
+        RFQ_EXPIRED: "Quote submission deadline has passed",
+        RFQ_NOT_ACCEPTING: "This RFQ is not accepting quotes",
+        SUBMISSION_CLOSED: "This RFQ has closed submissions",
+      };
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RFQ_CLOSED",
+            message: errorMessages[acceptanceCheck.error || "RFQ_NOT_ACCEPTING"],
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const operationalAction = canProcessQuoteAction("draft", "submit", operationalContext);
+    if (!operationalAction.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "OPERATIONAL_ERROR", message: operationalAction.reason || "Quote submission not allowed" },
+        },
         { status: 400 },
       );
     }

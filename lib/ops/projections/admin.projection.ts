@@ -15,22 +15,32 @@ export class AdminProjectionService {
       };
     }
     
-    // Attempt to load settings or return defaults if table is empty
-    const { data, error } = await supabase
-      .from('platform_settings')
-      .select('*')
-      .single();
+    try {
+      // Attempt to load settings or return defaults if table is empty
+      const { data, error } = await supabase
+        .from('platform_settings')
+        .select('*')
+        .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error("Error fetching platform settings:", error);
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching platform settings:", error);
+      }
+
+      return data || {
+        marketplace_status: 'ACTIVE',
+        maintenance_mode: false,
+        registration_controls: { require_approval: true },
+        verification_policies: { auto_approve: false },
+      };
+    } catch (error) {
+      console.error("Platform settings unavailable:", error);
+      return {
+        marketplace_status: 'ACTIVE',
+        maintenance_mode: false,
+        registration_controls: { require_approval: true },
+        verification_policies: { auto_approve: false },
+      };
     }
-    
-    return data || {
-      marketplace_status: 'ACTIVE',
-      maintenance_mode: false,
-      registration_controls: { require_approval: true },
-      verification_policies: { auto_approve: false },
-    };
   }
 
   /**
