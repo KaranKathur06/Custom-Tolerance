@@ -153,10 +153,17 @@ export function CountryMultiSelect({
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               setHighlightedIndex((index) => filtered.length ? (index - 1 + filtered.length) % filtered.length : 0);
-            } else if (e.key === "Enter" && filtered[highlightedIndex]) {
+            } else if (e.key === "Enter") {
               e.preventDefault();
-              toggle(filtered[highlightedIndex]);
-              setSearch("");
+              const normalizedSearch = search.trim().toLowerCase();
+              const exactMatchIndex = filtered.findIndex(
+                (country) => country.toLowerCase() === normalizedSearch,
+              );
+              const country = filtered[exactMatchIndex >= 0 ? exactMatchIndex : highlightedIndex];
+              if (country) {
+                toggle(country);
+                setSearch("");
+              }
             } else if (e.key === "Escape") {
               e.preventDefault();
               close();

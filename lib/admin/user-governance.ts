@@ -14,7 +14,8 @@ export type GovernanceRole =
   | 'support_agent'
   | 'supplier_success'
   | 'finance'
-  | 'marketing';
+  | 'marketing'
+  | 'unknown';
 
 export type AdminUserGovernanceContext = {
   user: {
@@ -75,7 +76,7 @@ export function displayRole(value: unknown): string {
 }
 
 export function normalizeGovernanceRole(value: unknown): string {
-  if (typeof value !== 'string' || !value.trim()) return 'buyer';
+  if (typeof value !== 'string' || !value.trim()) return 'unknown';
   const normalized = value.trim().toLowerCase().replaceAll(' ', '_');
   return normalized === 'both' ? 'both' : normalizeStoredRole(normalized);
 }
@@ -141,10 +142,13 @@ export async function getUserGovernanceContext(
     };
   }
 
-  const [buyerResult, sellerResult] = await Promise.all([
-    supabase.from('buyer_profiles').select('*').eq('profile_id', userId).maybeSingle(),
-    supabase.from('seller_profiles').select('*').eq('profile_id', userId).maybeSingle(),
-  ]);
+  const resolvedRole = normalizeGovernanceRole(profile.role);
+  const buyerResult = resolvedRole === 'buyer' || resolvedRole === 'both'
+    ? await supabase.from('buyer_profiles').select('*').eq('profile_id', userId).maybeSingle()
+    : { data: null };
+  const sellerResult = resolvedRole === 'seller' || resolvedRole === 'both'
+    ? await supabase.from('seller_profiles').select('*').eq('profile_id', userId).maybeSingle()
+    : { data: null };
 
   return toGovernanceContext(profile as ProfileRow, {
     buyer: (buyerResult.data as Record<string, unknown> | null) ?? null,
@@ -184,7 +188,7 @@ export async function listUserGovernanceContexts(
       email: directoryUser.email,
       full_name: directoryUser.full_name,
       phone: directoryUser.phone,
-      role: directoryUser.role ?? directoryUser.auth_role ?? 'buyer',
+      role: directoryUser.role ?? directoryUser.auth_role ?? 'unknown',
       profile_status: directoryUser.profile_status ?? 'incomplete',
       verification_status: directoryUser.verification_status,
       avatar_url: directoryUser.avatar_url,

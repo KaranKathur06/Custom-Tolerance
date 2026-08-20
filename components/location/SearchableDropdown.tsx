@@ -75,10 +75,17 @@ export function SearchableDropdown({
           } else if (e.key === "ArrowUp") {
             e.preventDefault();
             setHighlightedIndex((index) => filtered.length ? (index - 1 + filtered.length) % filtered.length : 0);
-          } else if (e.key === "Enter" && filtered[highlightedIndex]) {
+          } else if (e.key === "Enter") {
             e.preventDefault();
-            onSelect(filtered[highlightedIndex]);
-            close();
+            const normalizedSearch = search.trim().toLowerCase();
+            const exactMatchIndex = filtered.findIndex(
+              (option) => option.toLowerCase() === normalizedSearch,
+            );
+            const option = filtered[exactMatchIndex >= 0 ? exactMatchIndex : highlightedIndex];
+            if (option) {
+              onSelect(option);
+              close();
+            }
           } else if (e.key === "Escape") {
             e.preventDefault();
             close();
