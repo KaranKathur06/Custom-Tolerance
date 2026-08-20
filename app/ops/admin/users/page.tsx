@@ -69,7 +69,7 @@ const roles = [
   'Support Agent',
   'Finance Manager',
   'Admin',
-  'Superadmin',
+  'Super Admin',
 ];
 
 const roleOptions = [

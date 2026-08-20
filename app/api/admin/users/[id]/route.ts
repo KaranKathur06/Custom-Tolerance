@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { protectApiRoute, logAdminAction } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import { ROLE_LEVELS } from '@/lib/constants/roles';
-import { getUserGovernanceContext } from '@/lib/admin/user-governance';
+import { displayRole, getUserGovernanceContext } from '@/lib/admin/user-governance';
 
 type RouteParams = { params: { id: string } };
 
@@ -32,7 +32,8 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   // Get related data in parallel
-  const [listingsResult, rfqsResult, settingsResult] = await Promise.all([
+  const companyId = (context.sellerProfile?.company_id ?? context.buyerProfile?.company_id) as string | undefined;
+  const [listingsResult, rfqsResult, settingsResult, companyResult, verificationHistory] = await Promise.all([
     context.sellerProfile?.id
       ? auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile.id)
       : Promise.resolve({ count: 0 }),
@@ -40,6 +41,16 @@ export async function GET(request: Request, { params }: RouteParams) {
       ? auth.supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('buyer_profile_id', context.buyerProfile.id)
       : Promise.resolve({ count: 0 }),
     auth.supabase.from('user_settings').select('category, key, value').eq('user_id', params.id),
+    companyId
+      ? auth.supabase.from('companies').select('*').eq('id', companyId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    auth.supabase
+      .from('admin_audit_logs')
+      .select('id, action, details, severity, created_at')
+      .eq('resource_id', params.id)
+      .in('action', ['user.verification', 'user.verification_changed', 'user_updated'])
+      .order('created_at', { ascending: false })
+      .limit(20),
   ]);
 
   // Get recent audit logs for this user
@@ -54,18 +65,21 @@ export async function GET(request: Request, { params }: RouteParams) {
     success: true,
     data: {
       user: context.user,
-      role: context.role,
+      role: displayRole(context.role),
       accountStatus: context.accountStatus,
       enforcementStatus: context.enforcementStatus,
       profileStatus: context.profileStatus,
       verificationStatus: context.verificationStatus,
       sellerProfile: context.sellerProfile,
       buyerProfile: context.buyerProfile,
+      company: companyResult.data || null,
       stats: {
         totalListings: listingsResult.count || 0,
         totalRfqs: rfqsResult.count || 0,
+        profileCompletion: context.sellerProfile?.profile_completion_percent ?? context.buyerProfile?.profile_completion_percent ?? 0,
       },
       settings: settingsResult.data || [],
+      verificationHistory: verificationHistory.data || [],
       recentActivity: recentLogs || [],
     },
   });

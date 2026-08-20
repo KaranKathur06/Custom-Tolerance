@@ -107,7 +107,33 @@ export async function getUserGovernanceContext(
     .eq('id', userId)
     .maybeSingle();
 
-  if (error || !profile) return null;
+  if (error || !profile) {
+    const { data: directoryUser } = await supabase
+      .from('admin_user_directory')
+      .select('id, full_name, email, phone, role, auth_role, avatar_url, verification_status, created_at, last_login, enforcement_status, profile_status, deleted_at')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!directoryUser) return null;
+    return {
+      user: {
+        id: directoryUser.id,
+        email: directoryUser.email,
+        fullName: directoryUser.full_name,
+        phone: directoryUser.phone,
+        avatarUrl: directoryUser.avatar_url,
+        createdAt: directoryUser.created_at,
+        lastLoginAt: directoryUser.last_login,
+        deletedAt: directoryUser.deleted_at,
+      },
+      role: normalizeStoredRole(directoryUser.role ?? directoryUser.auth_role) as GovernanceRole,
+      accountStatus: directoryUser.deleted_at ? 'deleted' : 'active',
+      enforcementStatus: directoryUser.enforcement_status ?? 'normal',
+      profileStatus: directoryUser.profile_status ?? 'incomplete',
+      verificationStatus: directoryUser.verification_status ?? 'pending',
+      buyerProfile: null,
+      sellerProfile: null,
+    };
+  }
 
   const [buyerResult, sellerResult] = await Promise.all([
     supabase.from('buyer_profiles').select('*').eq('profile_id', userId).maybeSingle(),
@@ -122,13 +148,14 @@ export async function getUserGovernanceContext(
 
 export async function listUserGovernanceContexts(
   supabase: SupabaseClient,
-  options: { page: number; limit: number; role?: string | null; search?: string | null },
+  options: { page: number; limit: number; role?: string | null; status?: string | null; search?: string | null },
 ) {
   let query = supabase
-    .from('profiles')
-    .select('id, email, full_name, phone, role, profile_status, verification_status, avatar_url, created_at, updated_at, deleted_at, enforcement_status, suspended_at, suspended_by, suspension_reason, banned_at, banned_by, ban_reason', { count: 'exact' });
+    .from('admin_user_directory')
+    .select('id, email, full_name, phone, role, auth_role, avatar_url, verification_status, created_at, last_login, enforcement_status, profile_status, deleted_at', { count: 'exact' });
 
   if (options.role) query = query.eq('role', normalizeStoredRole(options.role));
+  if (options.status && ['normal', 'suspended', 'banned'].includes(options.status)) query = query.eq('enforcement_status', options.status);
   if (options.search) {
     const search = options.search.replaceAll(',', ' ');
     query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
@@ -140,15 +167,40 @@ export async function listUserGovernanceContexts(
 
   if (error) throw error;
 
-  const profiles = (data ?? []) as ProfileRow[];
-  const contexts = await Promise.all(profiles.map(async (profile) => {
+  const directoryRows = (data ?? []) as Array<{
+    id: string; email: string | null; full_name: string | null; phone: string | null; role: string | null; auth_role: string | null;
+    avatar_url: string | null; verification_status: string; created_at: string; last_login: string | null;
+    enforcement_status: EnforcementStatus; profile_status: ProfileStatus | null; deleted_at: string | null;
+  }>;
+  const contexts = await Promise.all(directoryRows.map(async (directoryUser) => {
+    const profile: ProfileRow = {
+      id: directoryUser.id,
+      email: directoryUser.email,
+      full_name: directoryUser.full_name,
+      phone: directoryUser.phone,
+      role: directoryUser.role ?? directoryUser.auth_role ?? 'buyer',
+      profile_status: directoryUser.profile_status ?? 'incomplete',
+      verification_status: directoryUser.verification_status,
+      avatar_url: directoryUser.avatar_url,
+      created_at: directoryUser.created_at,
+      updated_at: directoryUser.created_at,
+      deleted_at: directoryUser.deleted_at,
+      enforcement_status: directoryUser.enforcement_status,
+      suspended_at: null,
+      suspended_by: null,
+      suspension_reason: null,
+      banned_at: null,
+      banned_by: null,
+      ban_reason: null,
+    };
     const [buyerResult, sellerResult] = await Promise.all([
-      supabase.from('buyer_profiles').select('id, company_id, profile_completion_percent, verification_status').eq('profile_id', profile.id).maybeSingle(),
-      supabase.from('seller_profiles').select('id, company_id, company_name, profile_completion_percent, verification_status').eq('profile_id', profile.id).maybeSingle(),
+      supabase.from('buyer_profiles').select('id, company_id, profile_completion_percent, verification_status').eq('profile_id', directoryUser.id).maybeSingle(),
+      supabase.from('seller_profiles').select('id, company_id, company_name, profile_completion_percent, verification_status').eq('profile_id', directoryUser.id).maybeSingle(),
     ]);
     return toGovernanceContext(profile, {
       buyer: (buyerResult.data as Record<string, unknown> | null) ?? null,
       seller: (sellerResult.data as Record<string, unknown> | null) ?? null,
+      lastLoginAt: directoryUser.last_login,
     });
   }));
 

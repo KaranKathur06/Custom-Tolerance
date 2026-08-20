@@ -11,7 +11,7 @@ import { logAdminAction, protectApiRoute } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role-client';
 import { sendEmail } from '@/lib/services/email';
-import { getUserGovernanceContext, listUserGovernanceContexts } from '@/lib/admin/user-governance';
+import { displayRole, getUserGovernanceContext, listUserGovernanceContexts } from '@/lib/admin/user-governance';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
   let result;
   try {
-    result = await listUserGovernanceContexts(auth.supabase, { page, limit, role, search });
+    result = await listUserGovernanceContexts(auth.supabase, { page, limit, role, status: status === 'Active' ? 'normal' : status?.toLowerCase(), search });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: { code: 'SERVER_ERROR', message: error instanceof Error ? error.message : 'Could not load users' } },
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     full_name: context.user.fullName,
     email: context.user.email,
     phone: context.user.phone,
-    role: context.role,
+    role: displayRole(context.role),
     avatar_url: context.user.avatarUrl,
     account_status: context.accountStatus,
     enforcement_status: context.enforcementStatus,
