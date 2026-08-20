@@ -28,6 +28,7 @@ export function SearchableDropdown({
 }: SearchableDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
@@ -37,10 +38,19 @@ export function SearchableDropdown({
   }, [options, search]);
 
   useEffect(() => {
+    setHighlightedIndex(0);
+  }, [search, open]);
+
+  const close = () => {
+    setOpen(false);
+    setSearch("");
+    setHighlightedIndex(0);
+  };
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch("");
+        close();
       }
     };
     document.addEventListener("mousedown", handler);
@@ -57,10 +67,26 @@ export function SearchableDropdown({
           if (!open) setOpen(true);
         }}
         onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (!open) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setHighlightedIndex((index) => filtered.length ? (index + 1) % filtered.length : 0);
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHighlightedIndex((index) => filtered.length ? (index - 1 + filtered.length) % filtered.length : 0);
+          } else if (e.key === "Enter" && filtered[highlightedIndex]) {
+            e.preventDefault();
+            onSelect(filtered[highlightedIndex]);
+            close();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            close();
+          }
+        }}
         onBlur={() =>
           setTimeout(() => {
-            setOpen(false);
-            setSearch("");
+            close();
           }, 200)
         }
         placeholder={placeholder}
@@ -85,7 +111,7 @@ export function SearchableDropdown({
               {emptyMessage ?? "No options"}
             </div>
           ) : (
-            filtered.map((option) => (
+            filtered.map((option, index) => (
               <button
                 key={option}
                 type="button"
@@ -93,15 +119,17 @@ export function SearchableDropdown({
                 aria-selected={option === value}
                 className={cn(
                   "w-full px-3 py-2 text-left text-sm transition-colors",
-                  option === value
+                  index === highlightedIndex
+                    ? "bg-slate-100 text-slate-900"
+                    : option === value
                     ? "bg-blue-50 font-semibold text-blue-800"
                     : "text-slate-700 hover:bg-slate-50",
                 )}
+                onMouseEnter={() => setHighlightedIndex(index)}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onSelect(option);
-                  setOpen(false);
-                  setSearch("");
+                  close();
                 }}
               >
                 {option}

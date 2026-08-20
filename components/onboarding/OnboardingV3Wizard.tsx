@@ -621,15 +621,17 @@ export function Field({
   label,
   required,
   error,
+  composite = false,
   children,
 }: {
   label: string;
   required?: boolean;
   error?: string;
+  composite?: boolean;
   children: React.ReactNode;
 }) {
-  return (
-    <label className="block">
+  const content = (
+    <>
       <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
         {label}
         {required ? " *" : ""}
@@ -640,8 +642,10 @@ export function Field({
           {error}
         </span>
       ) : null}
-    </label>
+    </>
   );
+
+  return composite ? <div className="block">{content}</div> : <label className="block">{content}</label>;
 }
 
 export function NativeSelect({

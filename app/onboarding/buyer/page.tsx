@@ -501,6 +501,7 @@ export default function BuyerOnboardingPage() {
                 label="Company type"
                 required
                 error={fieldErrors.companyTypes}
+                composite
               >
                 <MultiSelectChips
                   options={[...COMPANY_TYPES]}
@@ -617,7 +618,7 @@ export default function BuyerOnboardingPage() {
               Procurement Interests
             </h3>
             <div>
-              <Field label="Industry" required error={fieldErrors.industries}>
+              <Field label="Industry" required error={fieldErrors.industries} composite>
                 <MultiSelectChips
                   options={[...INDUSTRY_OPTIONS]}
                   value={form.industries}
@@ -636,6 +637,7 @@ export default function BuyerOnboardingPage() {
                 label="Category interest"
                 required
                 error={fieldErrors.categoryInterests}
+                composite
               >
                 <MultiSelectChips
                   options={[...CATEGORY_INTEREST_OPTIONS]}
@@ -785,6 +787,7 @@ export default function BuyerOnboardingPage() {
                 label="Procurement method"
                 required
                 error={fieldErrors.procurementMethods}
+                composite
               >
                 <MultiSelectChips
                   options={[...PROCUREMENT_METHODS]}
@@ -811,6 +814,7 @@ export default function BuyerOnboardingPage() {
                 label="Countries imported from"
                 required
                 error={fieldErrors.countriesImportedFrom}
+                composite
               >
                 <CountryMultiSelect
                   value={form.countriesImportedFrom}
@@ -839,6 +843,7 @@ export default function BuyerOnboardingPage() {
                 label="Preferred incoterms"
                 required
                 error={fieldErrors.preferredIncoterms}
+                composite
               >
                 <MultiSelectChips
                   options={[...INCOTERMS]}
@@ -858,6 +863,7 @@ export default function BuyerOnboardingPage() {
                 label="Preferred payment terms"
                 required
                 error={fieldErrors.preferredPaymentTerms}
+                composite
               >
                 <MultiSelectChips
                   options={[...PAYMENT_TERMS]}

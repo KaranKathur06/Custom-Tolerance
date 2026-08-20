@@ -23,6 +23,7 @@ export function CountryMultiSelect({
 }: CountryMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,8 +35,14 @@ export function CountryMultiSelect({
   }, [search]);
 
   useEffect(() => {
+    setHighlightedIndex(0);
+  }, [search, open]);
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const clickedPortal = target instanceof Element && target.closest("[data-country-dropdown]");
+      if (containerRef.current && !containerRef.current.contains(target) && !clickedPortal) {
         setOpen(false);
         setSearch("");
       }
@@ -52,15 +59,18 @@ export function CountryMultiSelect({
     }
   }, [open]);
 
-  // Close on scroll/resize
+  // Recalculate the portal position when the viewport changes. Do not close on
+  // scroll because the options list itself is scrollable.
   useEffect(() => {
     if (!open) return;
-    const close = () => { setOpen(false); setSearch(""); };
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
+    const reposition = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    window.addEventListener("resize", reposition);
     return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      window.removeEventListener("resize", reposition);
     };
   }, [open]);
 
@@ -74,6 +84,12 @@ export function CountryMultiSelect({
 
   const remove = (country: string) => {
     onChange(value.filter((c) => c !== country));
+  };
+
+  const close = () => {
+    setOpen(false);
+    setSearch("");
+    setHighlightedIndex(0);
   };
 
   const visibleChips = value.slice(0, maxVisibleChips);
@@ -119,6 +135,23 @@ export function CountryMultiSelect({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (!open) return;
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setHighlightedIndex((index) => filtered.length ? (index + 1) % filtered.length : 0);
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlightedIndex((index) => filtered.length ? (index - 1 + filtered.length) % filtered.length : 0);
+            } else if (e.key === "Enter" && filtered[highlightedIndex]) {
+              e.preventDefault();
+              toggle(filtered[highlightedIndex]);
+              setSearch("");
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              close();
+            }
+          }}
           placeholder={value.length === 0 ? placeholder : ""}
           className="min-w-[120px] flex-1 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
         />
@@ -128,6 +161,7 @@ export function CountryMultiSelect({
       {open && typeof document !== "undefined"
         ? createPortal(
             <div
+              data-country-dropdown
               className="max-h-80 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
               style={{
                 position: "fixed",
@@ -140,7 +174,7 @@ export function CountryMultiSelect({
               {filtered.length === 0 ? (
                 <div className="px-3 py-4 text-center text-sm text-slate-500">No countries found</div>
               ) : (
-                filtered.map((country) => {
+                filtered.map((country, index) => {
                   const selected = value.includes(country);
                   return (
                     <button
@@ -148,9 +182,15 @@ export function CountryMultiSelect({
                       type="button"
                       className={cn(
                         "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
-                        selected ? "bg-blue-50 font-semibold text-blue-800" : "text-slate-700 hover:bg-slate-50"
+                        index === highlightedIndex
+                          ? "bg-slate-100 text-slate-900"
+                          : selected ? "bg-blue-50 font-semibold text-blue-800" : "text-slate-700 hover:bg-slate-50"
                       )}
-                      onClick={() => toggle(country)}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        toggle(country);
+                      }}
                     >
                       <span className={cn(
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded border",

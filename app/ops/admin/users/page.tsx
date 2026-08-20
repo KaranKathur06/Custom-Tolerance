@@ -125,11 +125,13 @@ export default function UsersPage() {
       setUsers(
         rows.map((u) => {
           const company = (u.company_name || '').toString();
+          const email = (u.email || '').toString();
+          const name = (u.full_name || email || 'Unknown user').toString();
 
           return {
             id: u.id,
-            name: u.full_name,
-            email: u.email,
+            name,
+            email: email || 'No email available',
             role: u.role,
             status: u.verification_status === 'verified' ? 'Active' : (u.verification_status as any),
             kyc: u.verification_status === 'verified' ? 'Verified' : (u.verification_status as any),
@@ -324,7 +326,7 @@ export default function UsersPage() {
               ) : filtered.map((user) => (
                 <tr key={user.id}>
                   <td className="ops-user-cell">
-                    <div className="ops-user-avatar">{user.name[0]}</div>
+                    <div className="ops-user-avatar">{user.name.charAt(0).toUpperCase()}</div>
                     <div>
                       <strong>{user.name}</strong>
                       <span>{user.email}</span>
