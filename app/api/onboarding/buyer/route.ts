@@ -87,7 +87,6 @@ export async function GET() {
     .eq("role", "buyer")
     .eq("flow_key", BUYER_ONBOARDING_V3_FLOW_KEY)
     .eq("flow_version", ONBOARDING_V3_FLOW_VERSION)
-    .eq("status", "active")
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -96,7 +95,10 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ session: data ?? null });
+  return NextResponse.json({
+    session: data ?? null,
+    completed: Boolean(data?.is_completed || data?.status === "completed"),
+  });
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

@@ -109,6 +109,16 @@ export async function commitBuyerOnboardingV3(
 
   const buyerProfileId = baseResult.buyerProfileId;
 
+  // The legacy base commit calculates a narrower profile score. The v3
+  // wizard is authoritative for this flow, so persist its score everywhere.
+  const { error: completionSyncError } = await supabase
+    .from("buyer_profiles")
+    .update({ profile_completion_percent: completion.overallPercent })
+    .eq("id", buyerProfileId);
+  if (completionSyncError) {
+    throw new Error(`Failed to sync buyer completion: ${completionSyncError.message}`);
+  }
+
   const preferencePatch = {
     buyer_profile_id: buyerProfileId,
     profile_id: userId,

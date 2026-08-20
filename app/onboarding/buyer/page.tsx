@@ -208,7 +208,7 @@ function normalizeDraftPayload(
 
 export default function BuyerOnboardingPage() {
   const router = useRouter();
-  const { profile, isAuthenticated, loading, user } = useAuth();
+  const { profile, isAuthenticated, loading, user, refreshIdentity } = useAuth();
   const [form, setForm] = useState<BuyerForm>(initialForm);
   const [activeIndex, setActiveIndex] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -234,8 +234,13 @@ export default function BuyerOnboardingPage() {
       });
       if (!response.ok) return;
       const payload = (await response.json()) as {
+        completed?: boolean;
         session?: { draft_payload?: Record<string, unknown> };
       };
+      if (payload.completed) {
+        router.replace("/buyer/requirements");
+        return;
+      }
       if (payload.session?.draft_payload) {
         setForm((prev) => ({
           ...prev,
@@ -365,6 +370,7 @@ export default function BuyerOnboardingPage() {
         );
         return false;
       }
+      if (action === "commit") await refreshIdentity();
       return true;
     } catch (err) {
       setGlobalError(
