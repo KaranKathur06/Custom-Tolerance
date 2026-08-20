@@ -154,7 +154,7 @@ test("E2E: Quote Submission on Open RFQ", () => {
 
 test("E2E: Quote Lifecycle Actions", () => {
   // Submitted quote can be viewed, shortlisted, accepted, rejected
-  const submittedQuote = { status: "submitted" };
+  const submittedQuote = { status: "submitted" as const };
 
   assert.equal(
     canTransitionQuoteLifecycle(submittedQuote.status, "view"),
@@ -178,7 +178,7 @@ test("E2E: Quote Lifecycle Actions", () => {
   );
 
   // After viewing
-  const viewedQuote = { status: "viewed" };
+  const viewedQuote = { status: "viewed" as const };
   assert.equal(
     canTransitionQuoteLifecycle(viewedQuote.status, "shortlist"),
     true,
@@ -186,7 +186,7 @@ test("E2E: Quote Lifecycle Actions", () => {
   );
 
   // After shortlisting
-  const shortlistedQuote = { status: "shortlisted" };
+  const shortlistedQuote = { status: "shortlisted" as const };
   assert.equal(
     canTransitionQuoteLifecycle(shortlistedQuote.status, "accept"),
     true,
@@ -194,7 +194,7 @@ test("E2E: Quote Lifecycle Actions", () => {
   );
 
   // Terminal state
-  const acceptedQuote = { status: "accepted" };
+  const acceptedQuote = { status: "accepted" as const };
   assert.equal(
     canTransitionQuoteLifecycle(acceptedQuote.status, "reject"),
     false,

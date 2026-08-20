@@ -167,7 +167,7 @@ export default function BuyerRfqsContent() {
               .join(", ");
             const quoteCount = rfq.quotes?.[0]?.count ?? 0;
             const isDraft = rfq.status === "draft";
-            const resumeUrl = isDraft ? getResumeUrl(rfq.id) : null;
+            const resumeUrl = getResumeUrl(rfq.id);
 
             return (
               <div key={rfq.id} className="group relative">

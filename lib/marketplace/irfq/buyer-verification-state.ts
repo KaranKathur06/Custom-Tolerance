@@ -1,6 +1,6 @@
-import { getBuyerEligibility, type BuyerVerificationStep, type BuyerEligibilityState } from '@/lib/services/rfq-service';
+import { getBuyerEligibility, type BuyerVerificationStep as EligibilityVerificationStep, type BuyerEligibilityState } from '@/lib/services/rfq-service';
 
-export type BuyerVerificationStep = BuyerVerificationStep;
+export type BuyerVerificationStep = EligibilityVerificationStep;
 
 export type BuyerVerificationState = BuyerEligibilityState;
 

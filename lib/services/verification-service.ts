@@ -35,7 +35,7 @@ export function normalizeVerificationState(input: {
   const requiredDocumentCount = Number(input.requiredDocumentCount ?? input.documentCount ?? 0);
   const approvedDocumentCount = Number(input.approvedDocumentCount ?? input.documentCount ?? 0);
 
-  const items = {
+  const items: VerificationState["items"] = {
     email: {
       key: "email",
       label: "Email verification",

@@ -30,7 +30,7 @@ export default async function NewRfqPage({ searchParams }: Props) {
     const supabase = createServerSupabaseClient();
 
     if (supabase == null) {
-      initialVerificationState = { status: "verified" } as BuyerVerificationState;
+      initialVerificationState = { status: "verified" } as BuyerEligibilityState;
     } else {
       const { data: buyerPreferences } = await supabase
         .from("buyer_preferences")

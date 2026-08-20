@@ -123,7 +123,7 @@ EXCEPTION WHEN OTHERS THEN
     'error', SQLERRM
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
 REVOKE ALL ON FUNCTION public.publish_product_to_marketplace(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.publish_product_to_marketplace(uuid) TO authenticated;
