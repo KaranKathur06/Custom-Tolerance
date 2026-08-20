@@ -1,160 +1,102 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { Save, Search } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { AlertTriangle, ArrowLeft, Check, ChevronRight, Loader2, Search, ShieldCheck } from 'lucide-react';
 
-export function SettingsClient({ initialSettings }: { initialSettings: Record<string, any> }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+type Setting = {
+  key: string; category: string; label: string; description: string; type: string; value: unknown;
+  version: number; updatedAt: string | null; editable: boolean; dangerous: boolean; consumer: string;
+};
+
+const CATEGORY_META: Record<string, { title: string; description: string }> = {
+  general: { title: 'General', description: 'Platform status, maintenance, and operating posture.' },
+  registration: { title: 'Registration & Onboarding', description: 'Control who can enter buyer and seller journeys.' },
+  verification: { title: 'Verification', description: 'Trust requirements that protect procurement actions.' },
+  rfq: { title: 'RFQ & Procurement', description: 'Control requirement creation and draft workflows.' },
+  marketplace: { title: 'Marketplace & Listings', description: 'Control public discovery and seller publication.' },
+  notifications: { title: 'Notifications', description: 'Operational delivery preferences and retention.' },
+  uploads: { title: 'Files & Uploads', description: 'Control supported upload surfaces and limits.' },
+  payments: { title: 'Payments & Finance', description: 'Operational payment availability, never credentials.' },
+  security: { title: 'Security', description: 'Admin protection and abuse-prevention controls.' },
+  features: { title: 'Feature Flags', description: 'Availability controls for implemented capabilities.' },
+  search: { title: 'Search & Matching', description: 'Discovery controls backed by current search behavior.' },
+  compliance: { title: 'Compliance', description: 'Retention and policy requirements.' },
+  integrations: { title: 'Integrations', description: 'Provider status and diagnostics without secrets.' },
+  system: { title: 'System Health', description: 'Runtime health and deployment visibility.' },
+  advanced: { title: 'Advanced Configuration', description: 'Restricted compatibility settings and metadata.' },
+};
+
+function formatValue(value: unknown) {
+  if (typeof value === 'boolean') return value ? 'Enabled' : 'Disabled';
+  if (typeof value === 'string') return value.replace(/_/g, ' ');
+  return 'Configured';
+}
+
+async function loadSettings(category?: string) {
+  const response = await fetch(category ? `/api/admin/settings/${category}` : '/api/admin/settings', { credentials: 'include' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || 'Unable to load settings.');
+  return payload.data as Setting[];
+}
+
+export function SettingsClient({ category }: { category?: string }) {
+  const [settings, setSettings] = useState<Setting[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [draft, setDraft] = useState<Record<string, string>>(() => {
-    const next: Record<string, string> = {};
-    for (const [key, row] of Object.entries(initialSettings)) {
-      const v = row.value;
-      next[key] = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
-    }
-    return next;
-  });
   const [query, setQuery] = useState('');
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, unknown>>({});
 
-  const visibleKeys = useMemo(() => {
-    const keys = Object.keys(initialSettings);
-    const q = query.trim().toLowerCase();
-    if (!q) return keys.sort();
-    return keys
-      .filter((k) => k.toLowerCase().includes(q) || (initialSettings[k]?.description ?? '').toLowerCase().includes(q))
-      .sort();
-  }, [initialSettings, query]);
+  useEffect(() => {
+    setLoading(true); setError(null);
+    void loadSettings(category).then((data) => {
+      setSettings(data);
+      setDrafts(Object.fromEntries(data.map((item) => [item.key, item.value])));
+    }).catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Unable to load settings.')).finally(() => setLoading(false));
+  }, [category]);
 
-  const parseValueForUpsert = useCallback((raw: string) => {
-    const trimmed = raw.trim();
-    if (!trimmed) return '';
+  const visibleSettings = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return settings;
+    return settings.filter((item) => `${item.key} ${item.label} ${item.description} ${item.category}`.toLowerCase().includes(normalized));
+  }, [query, settings]);
+
+  async function save(setting: Setting) {
+    if (!setting.editable || drafts[setting.key] === undefined) return;
+    if (setting.dangerous && !window.confirm(`Change ${setting.label}? This may affect active marketplace users.`)) return;
+    setSavingKey(setting.key); setSavedKey(null); setError(null);
     try {
-      return JSON.parse(trimmed);
-    } catch {
-      if (trimmed === 'true') return true;
-      if (trimmed === 'false') return false;
-      if (!Number.isNaN(Number(trimmed)) && /^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
-      return raw;
-    }
-  }, []);
-
-  const onSave = useCallback(async () => {
-    setSaving(true);
-    setError(null);
-
-    try {
-      const updates: Record<string, any> = {};
-      for (const key of Object.keys(draft)) {
-        const before = initialSettings[key]?.value;
-        const afterRaw = draft[key];
-        const afterParsed = parseValueForUpsert(afterRaw);
-
-        const beforeStr = typeof before === 'string' ? before : JSON.stringify(before);
-        const afterStr = typeof afterParsed === 'string' ? afterParsed : JSON.stringify(afterParsed);
-
-        if (beforeStr !== afterStr) updates[key] = afterParsed;
-      }
-
-      if (Object.keys(updates).length === 0) {
-        setSaving(false);
-        return;
-      }
-
-      const res = await fetch('/api/settings/platform', {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(updates),
+      const response = await fetch(`/api/admin/settings/${setting.category}`, {
+        method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key: setting.key, value: drafts[setting.key], expectedVersion: setting.version, reason: 'Updated from Settings Control Plane' }),
       });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message || 'Unable to save setting.');
+      setSettings((current) => current.map((item) => item.key === setting.key ? payload.data : item));
+      setDrafts((current) => ({ ...current, [setting.key]: payload.data.value })); setSavedKey(setting.key);
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : 'Unable to save setting.'); }
+    finally { setSavingKey(null); }
+  }
 
-      const payload = await res.json().catch(() => null);
+  if (loading) return <div className="ops-panel-body py-12 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" aria-label="Loading settings" /></div>;
 
-      if (!res.ok || !payload?.success) {
-        throw new Error(payload?.error?.message || `Failed to save (${res.status})`);
-      }
-
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  }, [draft, initialSettings, parseValueForUpsert, router]);
-
-  return (
-    <div className="ops-settings-page">
-      <div className="ops-section-header">
-        <div>
-          <h1 className="ops-section-title">Platform Settings</h1>
-          <p className="ops-section-subtitle">Audit-backed key/value configuration (no placeholder values).</p>
-        </div>
-        <button
-          className="ops-primary-action"
-          type="button"
-          onClick={() => void onSave()}
-          disabled={saving || loading}
-        >
-          <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save Changes'}
-        </button>
-      </div>
-
-      <div className="ops-settings-search">
-        <div className="ops-settings-search-icon">
-          <Search className="w-4 h-4" />
-        </div>
-        <input
-          className="ops-settings-search-input"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter by key or description…"
-        />
-      </div>
-
-      {error && <div className="ops-panel-body py-4 text-center text-red-600">{error}</div>}
-      
-      {visibleKeys.length === 0 ? (
-        <div className="ops-panel-body py-12 text-center text-slate-500">
-          No platform settings found.
-        </div>
-      ) : (
-        <div className="ops-settings-keyvals">
-          {visibleKeys.map((key) => {
-            const row = initialSettings[key];
-            const desc = row?.description ?? '';
-            return (
-              <div key={key} className="ops-settings-row">
-                <div className="ops-settings-row-meta">
-                  <div className="ops-settings-key">{key}</div>
-                  <div className="ops-settings-desc">
-                    {desc ? desc : <span className="text-slate-500 italic">No description</span>}
-                  </div>
-                  {row?.updatedAt && (
-                    <div className="ops-settings-updated">
-                      Updated: {new Date(row.updatedAt).toLocaleString()}
-                    </div>
-                  )}
-                </div>
-
-                <div className="ops-settings-row-editor">
-                  <textarea
-                    className="ops-settings-textarea"
-                    value={draft[key] ?? ''}
-                    onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
-                    rows={6}
-                  />
-                  <div className="ops-settings-helper">
-                    Enter JSON for objects/arrays; primitives may be entered as raw text (e.g. <code>true</code>, <code>3.5</code>).
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  return <div className="ops-settings-page">
+    <div className="ops-section-header"><div>
+      {category ? <Link className="ops-settings-back" href="/ops/admin/settings"><ArrowLeft className="h-4 w-4" /> Settings overview</Link> : null}
+      <h1 className="ops-section-title">{category ? CATEGORY_META[category]?.title ?? 'Settings' : 'Platform Settings'}</h1>
+      <p className="ops-section-subtitle">{category ? CATEGORY_META[category]?.description : 'Control and govern CustomTolerance operational behavior.'}</p>
+    </div>{category ? <span className="ops-settings-scope"><ShieldCheck className="h-4 w-4" /> Audited control plane</span> : null}</div>
+    <div className="ops-settings-search"><Search className="h-4 w-4" aria-hidden="true" /><input className="ops-settings-search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search settings, categories, or keys..." /></div>
+    {error ? <div className="ops-settings-alert"><AlertTriangle className="h-4 w-4" />{error}</div> : null}
+    {!category ? <div className="ops-settings-category-grid">{Object.entries(CATEGORY_META).map(([key, meta]) => {
+      const items = settings.filter((item) => item.category === key);
+      const active = items.filter((item) => item.value === true || ['open', 'live'].includes(String(item.value))).length;
+      return <Link key={key} href={`/ops/admin/settings/${key}`} className="ops-settings-category-card"><div className="ops-settings-category-top"><span className="ops-settings-category-kicker">{key}</span><ChevronRight className="h-4 w-4" /></div><strong>{meta.title}</strong><p>{meta.description}</p><div className="ops-settings-category-foot"><span>{items.length ? `${active} active controls` : 'No active controls yet'}</span><span>{items.length ? 'Manage' : 'View status'}</span></div></Link>;
+    })}</div> : <div className="ops-settings-control-list">{visibleSettings.length === 0 ? <div className="ops-panel-body py-12 text-center text-slate-500">No configurable settings are available in this category.</div> : visibleSettings.map((setting) => <div key={setting.key} className="ops-settings-control">
+      <div className="ops-settings-control-copy"><div className="ops-settings-control-label">{setting.label} {setting.dangerous ? <span className="ops-settings-danger">Sensitive</span> : null}</div><p>{setting.description}</p><small>Consumer: {setting.consumer}</small><small>Last changed: {setting.updatedAt ? new Date(setting.updatedAt).toLocaleString() : 'Using safe default'}</small></div>
+      <div className="ops-settings-control-input">{setting.type === 'boolean' ? <button type="button" className={`ops-setting-switch ${drafts[setting.key] ? 'active' : ''}`} onClick={() => setDrafts((current) => ({ ...current, [setting.key]: !current[setting.key] }))} disabled={!setting.editable} aria-pressed={Boolean(drafts[setting.key])}><span />{formatValue(drafts[setting.key])}</button> : setting.type === 'enum' ? <select className="ops-settings-select" value={String(drafts[setting.key])} onChange={(event) => setDrafts((current) => ({ ...current, [setting.key]: event.target.value }))} disabled={!setting.editable}>{setting.key === 'marketplace_status' ? <><option value="open">Open</option><option value="limited">Limited</option><option value="closed">Closed</option></> : <><option value="live">Live</option><option value="maintenance">Maintenance</option><option value="limited">Limited</option><option value="read_only">Read-only</option></>}</select> : <span className="ops-settings-readonly">{formatValue(drafts[setting.key])}</span>}{setting.editable ? <button type="button" className="ops-primary-action ops-settings-save" onClick={() => void save(setting)} disabled={savingKey === setting.key}>{savingKey === setting.key ? <Loader2 className="h-4 w-4 animate-spin" /> : savedKey === setting.key ? <Check className="h-4 w-4" /> : null}{savingKey === setting.key ? 'Saving' : savedKey === setting.key ? 'Saved' : 'Save'}</button> : null}</div>
+    </div>)}</div>}
+  </div>;
 }

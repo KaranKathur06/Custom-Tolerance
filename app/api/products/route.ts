@@ -11,12 +11,17 @@ import { PERMISSIONS } from '@/lib/constants/permissions';
 import { RATE_LIMITS } from '@/lib/auth/rate-limiter';
 import { ListingRepository } from '@/lib/domain/repositories/listing.repository';
 import { ListingService } from '@/lib/domain/services/listing.service';
+import { marketplaceStatusAllowsPublicRead, readBooleanSetting, readEnumSetting } from '@/lib/settings/policy';
 
 export async function GET(request: Request) {
   // Public endpoint — parse user if present but don't require auth
   const auth = await protectApiRoute(request, { allowPublic: true });
   if (auth.error) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  }
+
+  if (!marketplaceStatusAllowsPublicRead(await readEnumSetting(auth.supabase, 'marketplace_status', 'open')) || !(await readBooleanSetting(auth.supabase, 'product_marketplace_enabled', true))) {
+    return NextResponse.json({ success: true, data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } });
   }
 
   const { searchParams } = new URL(request.url);
@@ -82,6 +87,10 @@ export async function POST(request: Request) {
   });
   if (auth.error) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  }
+
+  if (!(await readBooleanSetting(auth.supabase, 'listing_publishing_enabled', true))) {
+    return NextResponse.json({ success: false, error: { code: 'LISTING_PUBLISHING_DISABLED', message: 'Listing publishing is temporarily unavailable.' } }, { status: 403 });
   }
 
   let body: any;

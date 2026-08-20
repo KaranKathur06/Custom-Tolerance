@@ -6,6 +6,7 @@ import { publishIrfqDraft } from "@/lib/marketplace/irfq/publish";
 import { canUseAdvancedFilters } from "@/lib/marketplace/irfq/subscription-gates";
 import { canPublishRfq, validatePublishTransition } from "@/lib/services/rfq-publish-service";
 import type { IrfqDraftPayload } from "@/lib/marketplace/irfq/types";
+import { readBooleanSetting, isVerifiedBuyer } from "@/lib/settings/policy";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,20 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const ctx = await getIrfqAuthContext(auth.supabase, auth.user.id, auth.role);
+  const rfqEnabled = await readBooleanSetting(auth.supabase, "feature_rfq", true);
+  const verifiedBuyerRequired = await readBooleanSetting(auth.supabase, "require_verified_buyer_to_publish", true);
+  if (!rfqEnabled) {
+    return NextResponse.json(
+      { success: false, error: { code: "RFQ_PUBLISHING_DISABLED", message: "RFQ publishing is temporarily unavailable." } },
+      { status: 403 },
+    );
+  }
+  if (verifiedBuyerRequired && !isVerifiedBuyer(ctx.buyerGateContext)) {
+    return NextResponse.json(
+      { success: false, error: { code: "VERIFIED_BUYER_REQUIRED", message: "Complete buyer verification before publishing this RFQ." } },
+      { status: 403 },
+    );
+  }
   if (!ctx.publishGate.allowed && ctx.publishGate.hardBlocked) {
     return NextResponse.json(
       {

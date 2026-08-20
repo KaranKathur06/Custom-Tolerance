@@ -388,6 +388,33 @@ body:has(.ops-shell) main.min-h-screen {
 .ops-settings-desc { margin-top: 6px; color: var(--ops-text-muted); font-size: 12px; line-height: 1.5; }
 .ops-settings-updated { margin-top: 12px; color: var(--ops-text-muted); font-size: 11px; }
 .ops-settings-row-editor { min-width: 0; }
+.ops-settings-category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.ops-settings-category-card { display: flex; flex-direction: column; gap: 8px; padding: 18px; border: 1px solid var(--ops-border); border-radius: var(--ops-radius); background: var(--ops-surface); color: inherit; text-decoration: none; transition: border-color .18s ease, transform .18s ease; }
+.ops-settings-category-card:hover { border-color: var(--ops-gold); transform: translateY(-2px); }
+.ops-settings-category-top, .ops-settings-category-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ops-settings-category-kicker { color: var(--ops-gold); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.ops-settings-category-card strong { color: var(--ops-text); font-size: 15px; }
+.ops-settings-category-card p, .ops-settings-control-copy p { margin: 0; color: var(--ops-text-muted); font-size: 12px; line-height: 1.5; }
+.ops-settings-category-foot { margin-top: auto; padding-top: 12px; color: var(--ops-text-muted); font-size: 11px; }
+.ops-settings-control-list { display: flex; flex-direction: column; gap: 10px; }
+.ops-settings-control { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 18px; border: 1px solid var(--ops-border); border-radius: var(--ops-radius); background: var(--ops-surface); }
+.ops-settings-control-copy { min-width: 0; }
+.ops-settings-control-label { color: var(--ops-text); font-size: 14px; font-weight: 650; }
+.ops-settings-control-copy small { display: block; margin-top: 6px; color: var(--ops-text-muted); font-size: 11px; }
+.ops-settings-control-input { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 190px; }
+.ops-setting-switch { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ops-border); border-radius: 999px; padding: 7px 10px; background: transparent; color: var(--ops-text-muted); font-size: 12px; }
+.ops-setting-switch span { width: 10px; height: 10px; border-radius: 50%; background: var(--ops-text-muted); }
+.ops-setting-switch.active { border-color: rgba(210, 164, 63, .65); color: var(--ops-gold); }
+.ops-setting-switch.active span { background: var(--ops-gold); }
+.ops-settings-select { min-height: 34px; border: 1px solid var(--ops-border); border-radius: var(--ops-radius-sm); padding: 0 10px; background: var(--ops-surface); color: var(--ops-text); font-size: 12px; }
+.ops-settings-readonly { color: var(--ops-text-muted); font-size: 12px; }
+.ops-settings-save { min-height: 34px; padding: 0 10px; font-size: 12px; }
+.ops-settings-danger { display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 6px; border-radius: 999px; background: rgba(220, 38, 38, .12); color: #f87171; font-size: 10px; font-weight: 600; }
+.ops-settings-alert { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid rgba(220, 38, 38, .25); border-radius: var(--ops-radius-sm); background: rgba(220, 38, 38, .08); color: #fca5a5; font-size: 13px; }
+.ops-settings-back, .ops-settings-scope { display: inline-flex; align-items: center; gap: 6px; color: var(--ops-text-muted); font-size: 12px; text-decoration: none; }
+.ops-settings-back { margin-bottom: 8px; }
+.ops-settings-scope { color: var(--ops-gold); }
+@media (max-width: 700px) { .ops-settings-control { align-items: stretch; flex-direction: column; } .ops-settings-control-input { justify-content: flex-start; min-width: 0; } }
 .ops-settings-textarea {
   display: block; width: 100%; min-height: 116px; resize: vertical;
   padding: 12px; border: 1px solid var(--ops-border-light);
@@ -1748,6 +1775,15 @@ body:has(.ops-shell) main.min-h-screen {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ops-user-cell > div:last-child {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ops-user-cell span {
+  max-width: 180px;
 }
 
 .ops-user-cell strong {

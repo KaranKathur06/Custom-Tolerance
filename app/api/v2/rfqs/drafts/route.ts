@@ -4,6 +4,7 @@ import { createIrfqDraft } from "@/lib/marketplace/irfq/create-draft";
 import { getIrfqAuthContext } from "@/lib/marketplace/irfq/auth-context";
 import { canUseCreationMethod } from "@/lib/marketplace/irfq/subscription-gates";
 import type { IrfqCreationMethod, IrfqDraftPayload } from "@/lib/marketplace/irfq/types";
+import { readBooleanSetting } from "@/lib/settings/policy";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,14 @@ export async function POST(request: Request) {
     : "manual") as IrfqCreationMethod;
 
   const ctx = await getIrfqAuthContext(auth.supabase, auth.user.id, auth.role);
+  const rfqEnabled = await readBooleanSetting(auth.supabase, "feature_rfq", true);
+  const draftsAllowed = await readBooleanSetting(auth.supabase, "allow_unverified_rfq_drafts", true);
+  if (!rfqEnabled || !draftsAllowed && !ctx.publishGate.allowed) {
+    return NextResponse.json(
+      { success: false, error: { code: "RFQ_CREATION_DISABLED", message: "RFQ creation is not available for this account." } },
+      { status: 403 },
+    );
+  }
   const methodGate = canUseCreationMethod(creationMethod, ctx.subscriptionPlan);
   if (!methodGate.allowed) {
     return NextResponse.json(

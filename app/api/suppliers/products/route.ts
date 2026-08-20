@@ -11,6 +11,7 @@ import { getServerDevelopmentTrustMode } from '@/lib/marketplace/trust-mode-serv
 import { getSellerV3ActivationContext } from '@/lib/marketplace/onboarding-v3-gates';
 import { ListingRepository } from '@/lib/domain/repositories/listing.repository';
 import { ListingService } from '@/lib/domain/services/listing.service';
+import { readBooleanSetting } from '@/lib/settings/policy';
 
 export async function POST(request: Request) {
   const auth = await protectApiRoute(request, {
@@ -18,6 +19,10 @@ export async function POST(request: Request) {
   });
   if (auth.error) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  }
+
+  if (!(await readBooleanSetting(auth.supabase, 'listing_publishing_enabled', true))) {
+    return NextResponse.json({ success: false, error: { code: 'LISTING_PUBLISHING_DISABLED', message: 'Listing publishing is temporarily unavailable.' } }, { status: 403 });
   }
 
   let body: any;

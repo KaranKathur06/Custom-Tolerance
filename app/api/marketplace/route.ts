@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 import { parseSupplierSearchParams } from '@/lib/marketplace/search';
 import { searchMarketplaceSuppliers } from '@/lib/marketplace/supplier-query';
+import { marketplaceStatusAllowsPublicRead, readBooleanSetting, readEnumSetting } from '@/lib/settings/policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,19 @@ export async function GET(request: NextRequest) {
     const url = request.nextUrl;
     const type = url.searchParams.get('type') || 'products';
     const filters = parseSupplierSearchParams(url.searchParams);
+    const marketplaceStatus = await readEnumSetting(supabase, 'marketplace_status', 'open');
+    if (!marketplaceStatusAllowsPublicRead(marketplaceStatus)) {
+      return NextResponse.json({ type, products: [], suppliers: [], inquiries: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } });
+    }
+    if (type === 'products' && !(await readBooleanSetting(supabase, 'product_marketplace_enabled', true))) {
+      return NextResponse.json({ type: 'products', products: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } });
+    }
+    if (type === 'suppliers' && !(await readBooleanSetting(supabase, 'supplier_directory_enabled', true))) {
+      return NextResponse.json({ type: 'suppliers', suppliers: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } });
+    }
+    if (type === 'buyers' && !(await readBooleanSetting(supabase, 'rfq_marketplace_enabled', true))) {
+      return NextResponse.json({ type: 'buyers', inquiries: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } });
+    }
 
     // Default: Published seller products
     if (type === 'products' || type === 'buyers') {

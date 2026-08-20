@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { protectApiRoute, logAdminAction } from '@/lib/auth/protect-route';
 import { RATE_LIMITS } from '@/lib/auth/rate-limiter';
+import { readBooleanSetting } from '@/lib/settings/policy';
 
 // ── Upload rules per bucket ──
 const UPLOAD_RULES: Record<string, { maxSize: number; allowedTypes: string[]; maxFiles: number }> = {
@@ -95,6 +96,13 @@ export async function POST(request: Request) {
   const bucket = (formData.get('bucket') as string) || 'product-images';
   const entityType = (formData.get('entity_type') as string) || null;
   const entityId = (formData.get('entity_id') as string) || null;
+
+  const settingKey = bucket === 'product-images' || bucket === 'product-videos' || bucket === 'user-avatars' || bucket === 'company-logos' || bucket === 'factory-photos'
+    ? 'image_upload_enabled'
+    : 'document_upload_enabled';
+  if (!(await readBooleanSetting(auth.supabase, settingKey, true))) {
+    return NextResponse.json({ success: false, error: { code: 'UPLOADS_DISABLED', message: 'This upload type is temporarily unavailable.' } }, { status: 403 });
+  }
 
   if (!file) {
     return NextResponse.json(

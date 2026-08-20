@@ -28,6 +28,23 @@ export function CountryMultiSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const updateDropdownPosition = () => {
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const dropdownHeight = Math.min(320, window.innerHeight - 16);
+    const spaceBelow = window.innerHeight - rect.bottom - 4;
+    const openAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight + 4;
+
+    setDropdownPos({
+      top: openAbove
+        ? Math.max(8, rect.top - Math.min(dropdownHeight, rect.top - 8) - 4)
+        : rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    });
+  };
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     if (!q) return [...ALL_COUNTRIES];
@@ -53,24 +70,17 @@ export function CountryMultiSelect({
 
   // Compute position when opening
   useEffect(() => {
-    if (open && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
-    }
+    if (open) updateDropdownPosition();
   }, [open]);
 
-  // Recalculate the portal position when the viewport changes. Do not close on
-  // scroll because the options list itself is scrollable.
+  // Keep the fixed portal attached to the trigger while any ancestor scrolls.
   useEffect(() => {
     if (!open) return;
-    const reposition = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
-    };
-    window.addEventListener("resize", reposition);
+    window.addEventListener("resize", updateDropdownPosition);
+    window.addEventListener("scroll", updateDropdownPosition, true);
     return () => {
-      window.removeEventListener("resize", reposition);
+      window.removeEventListener("resize", updateDropdownPosition);
+      window.removeEventListener("scroll", updateDropdownPosition, true);
     };
   }, [open]);
 

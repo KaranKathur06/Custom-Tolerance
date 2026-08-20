@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID, createHash } from "crypto";
 import { protectApiRoute, logAdminAction } from "@/lib/auth/protect-route";
+import { readBooleanSetting } from "@/lib/settings/policy";
 
 const BUCKET_CONFIG: Record<
   string,
@@ -106,6 +107,11 @@ export async function POST(request: Request) {
       { success: false, error: { code: "VALIDATION_ERROR", message: `Invalid bucket: ${bucket}` } },
       { status: 400 },
     );
+  }
+
+  const settingKey = bucket === 'seller-images' ? 'image_upload_enabled' : 'document_upload_enabled';
+  if (!(await readBooleanSetting(auth.supabase, settingKey, true))) {
+    return NextResponse.json({ success: false, error: { code: 'UPLOADS_DISABLED', message: 'This upload type is temporarily unavailable.' } }, { status: 403 });
   }
 
   if (file.size > config.maxSize) {

@@ -217,17 +217,83 @@ export default function UsersPage() {
   }
 
   function updateUser(id: string, patch: Partial<UserRow>, message: string, eventName: OpsEventName = 'user.status_changed') {
-    setUsers((current) => current.map((user) => (user.id === id ? { ...user, ...patch } : user)));
+    void performUserAction(id, patch, message, eventName);
+  }
+
+  async function performUserAction(id: string, patch: Partial<UserRow>, message: string, eventName: OpsEventName = 'user.status_changed') {
+    const user = users.find((item) => item.id === id);
+    if (!user) return;
+    const action = patch.role ? 'role' : patch.kyc ? 'verification' : 'status';
+    const value = patch.role
+      ? patch.role.toLowerCase().replaceAll(' ', '_')
+      : patch.kyc === 'Verified'
+        ? 'verified'
+        : patch.kyc === 'Rejected'
+          ? 'rejected'
+          : patch.status?.toLowerCase();
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId: id, action, value }),
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload?.success) {
+      notify(payload?.error?.message || 'User action failed');
+      return;
+    }
+    setUsers((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
     setOpenMenu(null);
     publishOpsEvent(eventName, { entityId: id, message, metadata: patch as Record<string, string | number | boolean> });
     notify(message);
   }
 
-  function removeUser(id: string) {
+  async function removeUser(id: string) {
+    const res = await fetch('/api/admin/users', { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: id, action: 'delete' }) });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload?.success) return notify(payload?.error?.message || 'Delete failed');
     setUsers((current) => current.filter((user) => user.id !== id));
     setOpenMenu(null);
-    publishOpsEvent('user.status_changed', { entityId: id, message: 'User deleted from governance queue' });
     notify('User deleted from governance queue');
+  }
+
+  async function sendUserNotification(user: UserRow) {
+    const message = window.prompt(`Message for ${user.name}`);
+    if (!message?.trim()) return;
+    const res = await fetch('/api/admin/users', { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: user.id, action: 'notify', message }) });
+    const payload = await res.json().catch(() => null);
+    notify(res.ok && payload?.success ? `Notification sent to ${user.name}` : payload?.error?.message || 'Notification failed');
+  }
+
+  async function resetPassword(user: UserRow) {
+    const res = await fetch('/api/admin/users', { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: user.id, action: 'reset_password' }) });
+    const payload = await res.json().catch(() => null);
+    notify(res.ok && payload?.success ? `Password reset sent to ${user.email}` : payload?.error?.message || 'Password reset failed');
+  }
+
+  async function forceLogout(user: UserRow) {
+    const res = await fetch('/api/admin/users', { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: user.id, action: 'force_logout' }) });
+    const payload = await res.json().catch(() => null);
+    notify(res.ok && payload?.success ? `${user.name} sessions revoked` : payload?.error?.message || 'Logout failed');
+  }
+
+  async function inviteUser() {
+    const email = window.prompt('Invite email address');
+    if (!email?.trim()) return;
+    const res = await fetch('/api/admin/users', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) });
+    const payload = await res.json().catch(() => null);
+    notify(res.ok && payload?.success ? `Invitation sent to ${email}` : payload?.error?.message || 'Invitation failed');
+  }
+
+  function exportUsers() {
+    const header = 'Name,Email,Role,Status,Verification,Company,Last Login';
+    const lines = users.map((user) => [user.name, user.email, user.role, user.status, user.kyc, user.company, user.lastLogin].map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','));
+    const blob = new Blob([[header, ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'users.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
   }
 
   const actionGroups: UserActionGroup[] = [
@@ -243,10 +309,7 @@ export default function UsersPage() {
       actions: [
         { label: 'Edit User', icon: Edit3, run: (u: UserRow) => notify(`Editing ${u.name}`) },
         { label: 'Change Role', icon: UserCog, run: (u: UserRow) => setRoleModalUser(u) },
-        { label: 'Send Notification', icon: Bell, run: (u: UserRow) => {
-          publishOpsEvent('user.notification_sent', { entityId: u.id, entityLabel: u.name, message: `Notification queued for ${u.name}` });
-          notify(`Notification queued for ${u.name}`);
-        } },
+        { label: 'Send Notification', icon: Bell, run: (u: UserRow) => void sendUserNotification(u) },
       ],
     },
     {
@@ -256,8 +319,8 @@ export default function UsersPage() {
         { label: 'Demote', icon: UserX, run: (u: UserRow) => setRoleModalUser(u) },
         { label: 'Suspend', icon: Shield, run: (u: UserRow) => updateUser(u.id, { status: 'Suspended' }, `${u.name} suspended`) },
         { label: 'Unsuspend', icon: CheckCircle2, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} restored`) },
-        { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => notify(`${u.name} will be logged out on next request`) },
-        { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => notify(`Password reset sent to ${u.email}`) },
+        { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => void forceLogout(u) },
+        { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => void resetPassword(u) },
         { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`, 'user.verification_changed') },
         { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`, 'user.verification_changed') },
         { label: 'Impersonate User', icon: UserCog, run: (u: UserRow) => notify(`Impersonation request logged for ${u.name}`) },
@@ -270,7 +333,7 @@ export default function UsersPage() {
         { label: 'Ban', icon: Ban, run: (u: UserRow) => updateUser(u.id, { status: 'Banned' }, `${u.name} banned`) },
         { label: 'Unban', icon: ShieldCheck, run: (u: UserRow) => updateUser(u.id, { status: 'Active' }, `${u.name} unbanned`) },
         { label: 'Delete User', icon: Trash2, danger: true, run: (u: UserRow) => {
-          if (window.confirm(`Delete ${u.name}? This action will be audit logged.`)) removeUser(u.id);
+          if (window.confirm(`Delete ${u.name}? This action will be audit logged.`)) void removeUser(u.id);
         } },
       ],
     },
@@ -295,8 +358,8 @@ export default function UsersPage() {
         <EnterpriseSelect value={roleFilter} onValueChange={setRoleFilter} options={roleOptions} searchable ariaLabel="Filter by role" />
         <EnterpriseSelect value={statusFilter} onValueChange={setStatusFilter} options={statusOptions} ariaLabel="Filter by status" />
         <div className="ops-filter-actions">
-          <button className="ops-icon-btn ops-action-square" title="Export users" disabled><Download className="w-4 h-4" /></button>
-          <button className="ops-primary-action" disabled><UserPlus className="w-4 h-4" /> Invite User</button>
+          <button className="ops-icon-btn ops-action-square" title="Export users" onClick={exportUsers}><Download className="w-4 h-4" /></button>
+          <button className="ops-primary-action" onClick={() => void inviteUser()}><UserPlus className="w-4 h-4" /> Invite User</button>
         </div>
       </div>
       <div className="ops-panel ops-readonly-banner" style={{ marginBottom: 16 }}>
@@ -351,8 +414,8 @@ export default function UsersPage() {
                   <td className="ops-muted-cell">{user.lastLogin}</td>
                   <td>
                     <div className="ops-row-actions">
-                      <button className="ops-icon-btn ops-action-square" title="Preview only" disabled><Eye className="w-4 h-4" /></button>
-                      <button className="ops-icon-btn ops-action-square" title="Preview only" disabled><Mail className="w-4 h-4" /></button>
+                      <button className="ops-icon-btn ops-action-square" title="View profile" onClick={() => notify(`${user.name} · ${user.email}`)}><Eye className="w-4 h-4" /></button>
+                      <button className="ops-icon-btn ops-action-square" title="Send notification" onClick={() => void sendUserNotification(user)}><Mail className="w-4 h-4" /></button>
                       <div className="ops-action-menu-wrap">
                         <button className="ops-icon-btn ops-action-square" title="More actions" onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}>
                           <MoreVertical className="w-4 h-4" />
@@ -365,7 +428,7 @@ export default function UsersPage() {
                                 {group.actions.map((action) => {
                                   const Icon = action.icon;
                                   return (
-                                    <button key={action.label} className={action.danger ? 'danger' : ''} disabled title="Preview only">
+                                    <button key={action.label} className={action.danger ? 'danger' : ''} onClick={() => action.run(user)}>
                                       <Icon className="w-4 h-4" /> {action.label}
                                     </button>
                                   );

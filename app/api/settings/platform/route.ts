@@ -6,8 +6,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { protectApiRoute, logAdminAction } from '@/lib/auth/protect-route';
+import { protectApiRoute } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
+import { SettingsError, SettingsService } from '@/lib/settings/service';
 
 export async function GET(request: Request) {
   const auth = await protectApiRoute(request, {
@@ -48,7 +49,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
 
-  let body: Record<string, any>;
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
@@ -58,30 +59,19 @@ export async function PUT(request: Request) {
     );
   }
 
-  // Body format: { key: value, key2: value2 }
-  const updates: string[] = [];
-  for (const [key, value] of Object.entries(body)) {
-    const { error } = await auth.supabase
-      .from('platform_settings')
-      .upsert({
-        key,
-        value: typeof value === 'object' ? value : JSON.parse(JSON.stringify(value)),
-        updated_by: auth.user.id,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'key' });
-
-    if (!error) updates.push(key);
+  const service = new SettingsService(auth.supabase);
+  const updated: string[] = [];
+  try {
+    for (const [key, value] of Object.entries(body)) {
+      await service.update({ key, value, userId: auth.user.id, request, reason: 'Legacy platform settings update' });
+      updated.push(key);
+    }
+    return NextResponse.json({ success: true, data: { updated } });
+  } catch (error) {
+    if (error instanceof SettingsError) {
+      const status = error.code === 'SETTINGS_CONFLICT' ? 409 : error.code === 'SETTINGS_VALIDATION_FAILED' ? 422 : error.code === 'SETTINGS_NOT_FOUND' ? 404 : 500;
+      return NextResponse.json({ success: false, error: { code: error.code, message: error.message, details: error.details }, data: { updated } }, { status });
+    }
+    return NextResponse.json({ success: false, error: { code: 'SETTINGS_UPDATE_FAILED', message: 'Unable to save platform settings.' }, data: { updated } }, { status: 500 });
   }
-
-  // Audit log
-  await logAdminAction(auth.supabase, {
-    userId: auth.user.id,
-    action: 'platform_settings_updated',
-    resource: 'platform_settings',
-    details: { keys: updates, changes: body },
-    severity: 'warning',
-    request,
-  });
-
-  return NextResponse.json({ success: true, data: { updated: updates } });
 }
