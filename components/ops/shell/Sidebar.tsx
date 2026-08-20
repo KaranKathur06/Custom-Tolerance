@@ -13,6 +13,12 @@ export function Sidebar() {
 
   return (
     <aside className={`ops-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mode}`}>
+      <div className="ops-sidebar-header">
+        <button className="ops-collapse-btn" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+          <ChevronLeft className={`w-4 h-4 ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+          {!sidebarCollapsed && <span>Collapse</span>}
+        </button>
+      </div>
       <nav className="ops-sidebar-nav">
         {items.map((item) => {
           const isActive = pathname === item.href ||
@@ -39,12 +45,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="ops-sidebar-footer">
-        <button className="ops-collapse-btn" onClick={toggleSidebar}>
-          <ChevronLeft className={`w-4 h-4 ${sidebarCollapsed ? 'rotate-180' : ''}`} />
-          {!sidebarCollapsed && <span>Collapse</span>}
-        </button>
-      </div>
     </aside>
   );
 }

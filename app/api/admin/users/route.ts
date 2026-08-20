@@ -12,6 +12,8 @@ import { PERMISSIONS } from '@/lib/constants/permissions';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role-client';
 import { sendEmail } from '@/lib/services/email';
 import { displayRole, getUserGovernanceContext, listUserGovernanceContexts } from '@/lib/admin/user-governance';
+import { ROLE_LEVELS } from '@/lib/constants/roles';
+import { normalizeStoredRole } from '@/lib/auth/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +103,29 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'The selected user no longer exists.' } }, { status: 404 });
   }
 
+  const { data: existingProfile, error: profileLookupError } = await auth.supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', target.user.id)
+    .maybeSingle();
+  if (profileLookupError) {
+    return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: 'Could not resolve the canonical user profile.' } }, { status: 500 });
+  }
+  if (!existingProfile) {
+    const { error: profileCreateError } = await auth.supabase.from('profiles').insert({
+      id: target.user.id,
+      email: target.user.email,
+      full_name: target.user.fullName,
+      phone: target.user.phone,
+      role: target.role,
+      profile_status: 'incomplete',
+      verification_status: 'pending',
+    });
+    if (profileCreateError) {
+      return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: 'Could not create the canonical governance profile for this account.' } }, { status: 500 });
+    }
+  }
+
   const action = body.action;
   if (action === 'status' || action === 'role' || action === 'verification') {
     const column = action === 'status' ? 'enforcement_status' : action === 'role' ? 'role' : 'verification_status';
@@ -112,9 +137,17 @@ export async function PATCH(request: Request) {
     if (action === 'status' && value === target.enforcementStatus) {
       return NextResponse.json({ success: false, error: { code: 'CONFLICT', message: `This user is already ${value}.` } }, { status: 409 });
     }
+    if (action === 'role') {
+      const normalizedRole = normalizeStoredRole(value);
+      const actorLevel = ROLE_LEVELS[normalizeStoredRole(auth.role)];
+      const targetLevel = ROLE_LEVELS[normalizedRole];
+      if (targetLevel === undefined) return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Unsupported role.' } }, { status: 400 });
+      if (actorLevel === undefined || targetLevel <= actorLevel) return NextResponse.json({ success: false, error: { code: 'FORBIDDEN', message: 'You cannot assign a role equal to or higher than your own.' } }, { status: 403 });
+      if (normalizedRole === normalizeStoredRole(target.role)) return NextResponse.json({ success: false, error: { code: 'CONFLICT', message: 'This user already has that role.' } }, { status: 409 });
+    }
 
     const timestamp = new Date().toISOString();
-    const updates: Record<string, string | null> = { [column]: value, updated_at: timestamp };
+    const updates: Record<string, string | null> = { [column]: action === 'role' ? normalizeStoredRole(value) : value, updated_at: timestamp };
     if (action === 'status' && value === 'suspended') {
       updates.suspended_at = timestamp;
       updates.suspended_by = auth.user.id;
@@ -142,7 +175,7 @@ export async function PATCH(request: Request) {
 
   if (action === 'force_logout') {
     const serviceClient = createSupabaseServiceRoleClient();
-    if (!serviceClient) return NextResponse.json({ success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'Session revocation service unavailable' } }, { status: 503 });
+    if (!serviceClient) return NextResponse.json({ success: false, error: { code: 'SERVICE_CONFIGURATION_ERROR', message: 'Force logout requires the server-only Supabase service role key. Configure SUPABASE_SERVICE_ROLE_KEY in the deployment environment.' } }, { status: 503 });
     const { error } = await serviceClient.auth.admin.signOut(target.user.id, 'global');
     if (error) return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } }, { status: 500 });
     await logAdminAction(auth.supabase, { userId: auth.user.id, action: 'user.force_logout', resource: 'profile', resourceId: target.user.id, request });
@@ -151,10 +184,15 @@ export async function PATCH(request: Request) {
 
   if (action === 'reset_password') {
     const serviceClient = createSupabaseServiceRoleClient();
-    if (!serviceClient || !target.user.email) return NextResponse.json({ success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'Password reset service unavailable' } }, { status: 503 });
-    const { data: link, error } = await serviceClient.auth.admin.generateLink({ type: 'recovery', email: target.user.email, options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/reset-password` } });
-    if (error || !link?.properties?.action_link) return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: error?.message || 'Could not create reset link' } }, { status: 500 });
-    await sendEmail({ to: target.user.email, subject: 'Reset your Custom Tolerance password', text: `Use this link to reset your password: ${link.properties.action_link}`, html: `<p>Use the following link to reset your password:</p><p><a href="${link.properties.action_link}">Reset password</a></p>` });
+    if (!target.user.email) return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'This user has no email address for password recovery.' } }, { status: 400 });
+    if (serviceClient) {
+      const { data: link, error } = await serviceClient.auth.admin.generateLink({ type: 'recovery', email: target.user.email, options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/reset-password` } });
+      if (error || !link?.properties?.action_link) return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: error?.message || 'Could not create reset link' } }, { status: 500 });
+      await sendEmail({ to: target.user.email, subject: 'Reset your Custom Tolerance password', text: `Use this link to reset your password: ${link.properties.action_link}`, html: `<p>Use the following link to reset your password:</p><p><a href="${link.properties.action_link}">Reset password</a></p>` });
+    } else {
+      const { error } = await auth.supabase.auth.resetPasswordForEmail(target.user.email, { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/reset-password` });
+      if (error) return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } }, { status: 500 });
+    }
     await logAdminAction(auth.supabase, { userId: auth.user.id, action: 'user.password_reset_sent', resource: 'profile', resourceId: target.user.id, request });
     return NextResponse.json({ success: true });
   }

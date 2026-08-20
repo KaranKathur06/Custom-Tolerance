@@ -221,6 +221,15 @@ body:has(.ops-shell) main.min-h-screen {
 }
 .ops-sidebar.collapsed { width: var(--ops-sidebar-collapsed); }
 
+.ops-sidebar-header {
+  height: var(--ops-topbar-h);
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--ops-border);
+  flex-shrink: 0;
+}
+
 .ops-sidebar-nav {
   flex: 1;
   padding: 12px 8px;
@@ -229,7 +238,7 @@ body:has(.ops-shell) main.min-h-screen {
   gap: 2px;
   overflow-y: auto;
   overflow-x: hidden;
-  margin-top: var(--ops-topbar-h);
+  margin-top: 0;
 }
 
 .ops-nav-item {
@@ -268,10 +277,6 @@ body:has(.ops-shell) main.min-h-screen {
   color: white;
 }
 
-.ops-sidebar-footer {
-  padding: 12px 8px;
-  border-top: 1px solid var(--ops-border);
-}
 .ops-collapse-btn {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
@@ -283,6 +288,11 @@ body:has(.ops-shell) main.min-h-screen {
   font-size: 12px;
   cursor: pointer;
   transition: all var(--ops-transition);
+}
+.ops-sidebar.collapsed .ops-collapse-btn {
+  justify-content: center;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 .ops-collapse-btn:hover { background: var(--ops-surface-hover); color: var(--ops-text-secondary); }
 .ops-collapse-btn svg { transition: transform var(--ops-transition); }
@@ -1895,9 +1905,10 @@ body:has(.ops-shell) main.min-h-screen {
   top: calc(100% + 8px);
   right: 0;
   z-index: 80;
-  width: 292px;
-  max-height: 430px;
+  width: min(292px, calc(100vw - 32px));
+  max-height: min(430px, calc(100vh - 110px));
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--ops-border);
   border-radius: 12px;
   background: var(--ops-surface);
@@ -2019,6 +2030,95 @@ body:has(.ops-shell) main.min-h-screen {
   margin: 4px 0 0;
   color: var(--ops-text-muted);
   font-size: 13px;
+}
+
+.ops-confirmation-modal {
+  width: min(520px, 100%);
+}
+
+.ops-confirmation-modal.severity-danger,
+.ops-confirmation-modal.severity-critical {
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.ops-confirmation-modal.severity-critical .ops-modal-header h2 {
+  color: #ff9a9a;
+}
+
+.ops-confirmation-caution {
+  display: grid;
+  gap: 5px;
+  margin: 18px 20px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--ops-warning);
+  border-radius: 0 8px 8px 0;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--ops-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ops-confirmation-caution strong {
+  color: var(--ops-warning);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ops-confirmation-field {
+  display: grid;
+  gap: 7px;
+  margin: 18px 20px 0;
+  color: var(--ops-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ops-confirmation-field input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--ops-border-light);
+  border-radius: 8px;
+  background: var(--ops-bg);
+  color: var(--ops-text);
+  font: inherit;
+}
+
+.ops-confirmation-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--ops-border);
+}
+
+.ops-confirm-button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #050505;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ops-confirm-button.warning {
+  background: var(--ops-accent-admin);
+}
+
+.ops-confirm-button.danger,
+.ops-confirm-button.critical {
+  background: #dc5757;
+  color: #fff;
+}
+
+.ops-confirm-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .ops-role-grid {

@@ -58,6 +58,7 @@ type Confirmation = {
   description: string;
   confirmLabel: string;
   requiresTypedConfirmation?: boolean;
+  severity?: 'warning' | 'danger' | 'critical';
   run: () => void;
 };
 
@@ -65,9 +66,10 @@ const roles = [
   'Buyer',
   'Seller',
   'Moderator',
-  'Verification Officer',
   'Support Agent',
-  'Finance Manager',
+  'Supplier Success',
+  'Finance',
+  'Marketing',
   'Admin',
   'Super Admin',
 ];
@@ -239,6 +241,16 @@ export default function UsersPage() {
     setConfirmation(null);
   }
 
+  function actionIsAvailable(label: string, user: UserRow) {
+    if (label === 'Suspend') return user.status === 'Active';
+    if (label === 'Unsuspend') return user.status === 'Suspended';
+    if (label === 'Ban') return user.status !== 'Banned';
+    if (label === 'Unban') return user.status === 'Banned';
+    if (label === 'Verify Account') return user.kyc !== 'Verified';
+    if (label === 'Reject Verification') return user.kyc === 'Pending';
+    return true;
+  }
+
   function updateUser(id: string, patch: Partial<UserRow>, message: string, eventName: OpsEventName = 'user.status_changed') {
     void performUserAction(id, patch, message, eventName);
   }
@@ -339,21 +351,21 @@ export default function UsersPage() {
     {
       label: 'Access Control',
       actions: [
-        { label: 'Suspend', icon: Shield, run: (u: UserRow) => askForConfirmation({ title: 'Suspend User', description: `This will prevent ${u.name} from using normal marketplace functionality until restored.`, confirmLabel: 'Suspend User', run: () => updateUser(u.id, { status: 'Suspended' }, `${u.name} suspended`) }) },
-        { label: 'Unsuspend', icon: CheckCircle2, run: (u: UserRow) => askForConfirmation({ title: 'Unsuspend User', description: `Restore normal marketplace access for ${u.name}.`, confirmLabel: 'Unsuspend User', run: () => updateUser(u.id, { status: 'Active' }, `${u.name} restored`) }) },
-        { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => askForConfirmation({ title: 'Force Logout', description: `All active sessions for ${u.name} will be revoked.`, confirmLabel: 'Force Logout', run: () => void forceLogout(u) }) },
-        { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => askForConfirmation({ title: 'Reset Password', description: `${u.name} will receive a secure password reset link.`, confirmLabel: 'Send Reset Link', run: () => void resetPassword(u) }) },
-        { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => askForConfirmation({ title: 'Verify Account', description: `Change the verification state for ${u.name}.`, confirmLabel: 'Verify Account', run: () => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`, 'user.verification_changed') }) },
-        { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => askForConfirmation({ title: 'Reject Verification', description: `Reject the current verification request for ${u.name}.`, confirmLabel: 'Reject Verification', run: () => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`, 'user.verification_changed') }) },
+        { label: 'Suspend', icon: Shield, run: (u: UserRow) => askForConfirmation({ title: 'Suspend User', description: `This will prevent ${u.name} from using normal marketplace functionality until restored.`, confirmLabel: 'Suspend User', severity: 'danger', run: () => updateUser(u.id, { status: 'Suspended' }, `${u.name} suspended`) }) },
+        { label: 'Unsuspend', icon: CheckCircle2, run: (u: UserRow) => askForConfirmation({ title: 'Unsuspend User', description: `Restore normal marketplace access for ${u.name}.`, confirmLabel: 'Unsuspend User', severity: 'warning', run: () => updateUser(u.id, { status: 'Active' }, `${u.name} restored`) }) },
+        { label: 'Force Logout', icon: LogOut, run: (u: UserRow) => askForConfirmation({ title: 'Force Logout', description: `All active sessions for ${u.name} will be revoked. They will need to sign in again.`, confirmLabel: 'Force Logout', severity: 'warning', run: () => void forceLogout(u) }) },
+        { label: 'Reset Password', icon: KeyRound, run: (u: UserRow) => askForConfirmation({ title: 'Reset Password', description: `${u.name} will receive a secure password reset link. No password is shown to administrators.`, confirmLabel: 'Send Reset Link', severity: 'danger', run: () => void resetPassword(u) }) },
+        { label: 'Verify Account', icon: ShieldCheck, run: (u: UserRow) => askForConfirmation({ title: 'Verify Account', description: `Change the verification state for ${u.name}. This decision will be recorded in the audit trail.`, confirmLabel: 'Verify Account', severity: 'warning', run: () => updateUser(u.id, { kyc: 'Verified' }, `${u.name} verified`, 'user.verification_changed') }) },
+        { label: 'Reject Verification', icon: UserX, run: (u: UserRow) => askForConfirmation({ title: 'Reject Verification', description: `Reject the current verification request for ${u.name}. This decision will be recorded in the audit trail.`, confirmLabel: 'Reject Verification', severity: 'danger', run: () => updateUser(u.id, { kyc: 'Rejected' }, `${u.name} verification rejected`, 'user.verification_changed') }) },
       ],
     },
     {
       label: 'Enforcement',
       danger: true,
       actions: [
-        { label: 'Ban', icon: Ban, run: (u: UserRow) => askForConfirmation({ title: 'Ban User', description: `This is a stronger enforcement action that blocks ${u.name} from the platform.`, confirmLabel: 'Ban User', run: () => updateUser(u.id, { status: 'Banned' }, `${u.name} banned`) }) },
-        { label: 'Unban', icon: ShieldCheck, run: (u: UserRow) => askForConfirmation({ title: 'Unban User', description: `Remove the ban from ${u.name}. Independent suspension state is preserved by the server.`, confirmLabel: 'Unban User', run: () => updateUser(u.id, { status: 'Active' }, `${u.name} unbanned`) }) },
-        { label: 'Delete User', icon: Trash2, danger: true, run: (u: UserRow) => askForConfirmation({ title: 'Delete User', description: `This soft-deletes ${u.name} and removes the account from the governance queue.`, confirmLabel: 'Delete User', requiresTypedConfirmation: true, run: () => void removeUser(u.id) }) },
+        { label: 'Ban', icon: Ban, run: (u: UserRow) => askForConfirmation({ title: 'Ban User', description: `This is a stronger enforcement action that blocks ${u.name} from the platform.`, confirmLabel: 'Ban User', severity: 'critical', run: () => updateUser(u.id, { status: 'Banned' }, `${u.name} banned`) }) },
+        { label: 'Unban', icon: ShieldCheck, run: (u: UserRow) => askForConfirmation({ title: 'Unban User', description: `Remove the ban from ${u.name}. Independent suspension state is preserved by the server.`, confirmLabel: 'Unban User', severity: 'warning', run: () => updateUser(u.id, { status: 'Active' }, `${u.name} unbanned`) }) },
+        { label: 'Delete User', icon: Trash2, danger: true, run: (u: UserRow) => askForConfirmation({ title: 'Delete User', description: `This soft-deletes ${u.name} and removes the account from the governance queue. This cannot be undone from this screen.`, confirmLabel: 'Delete User', severity: 'critical', requiresTypedConfirmation: true, run: () => void removeUser(u.id) }) },
       ],
     },
   ];
@@ -364,10 +376,11 @@ export default function UsersPage() {
 
       {confirmation ? (
         <div className="ops-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="ops-role-modal">
+          <div className={`ops-role-modal ops-confirmation-modal ${confirmation.severity ? `severity-${confirmation.severity}` : ''}`}>
             <div className="ops-modal-header"><div><h2>{confirmation.title}</h2><p>{confirmation.description}</p></div><button className="ops-icon-btn" onClick={() => setConfirmation(null)}>×</button></div>
-            {confirmation.requiresTypedConfirmation ? <input value={confirmationText} onChange={(event) => setConfirmationText(event.target.value)} placeholder="Type DELETE to confirm" aria-label="Type DELETE to confirm" /> : null}
-            <div className="ops-filter-actions"><button className="ops-icon-btn" onClick={() => setConfirmation(null)}>Cancel</button><button className="ops-primary-action" disabled={confirmation.requiresTypedConfirmation && confirmationText !== 'DELETE'} onClick={confirmPendingAction}>{confirmation.confirmLabel}</button></div>
+            <div className="ops-confirmation-caution"><strong>Administrative caution</strong><span>Confirm only after reviewing the selected user's current state. This action will be audit logged.</span></div>
+            {confirmation.requiresTypedConfirmation ? <label className="ops-confirmation-field"><span>Type DELETE to continue</span><input value={confirmationText} onChange={(event) => setConfirmationText(event.target.value)} placeholder="DELETE" aria-label="Type DELETE to confirm" autoFocus /></label> : null}
+            <div className="ops-confirmation-footer"><button className="ops-text-action" onClick={() => setConfirmation(null)}>Cancel</button><button className={`ops-confirm-button ${confirmation.severity || 'warning'}`} disabled={confirmation.requiresTypedConfirmation && confirmationText !== 'DELETE'} onClick={confirmPendingAction}>{confirmation.confirmLabel}</button></div>
           </div>
         </div>
       ) : null}
@@ -454,7 +467,7 @@ export default function UsersPage() {
                             {actionGroups.map((group) => (
                               <div key={group.label} className={`ops-action-menu-section ${group.danger ? 'danger-zone' : ''}`}>
                                 <div className="ops-action-menu-label">{group.label}</div>
-                                {group.actions.map((action) => {
+                                {group.actions.filter((action) => actionIsAvailable(action.label, user)).map((action) => {
                                   const Icon = action.icon;
                                   return (
                                     <button key={action.label} className={action.danger ? 'danger' : ''} onClick={() => action.run(user)}>

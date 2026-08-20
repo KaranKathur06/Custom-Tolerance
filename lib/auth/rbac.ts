@@ -35,7 +35,7 @@ export const ADMIN_OTP_ROLES = new Set(["super_admin", "admin"]);
 export function normalizeStoredRole(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) return "buyer";
   const trimmed = value.trim();
-  const lower = trimmed.toLowerCase();
+  const lower = trimmed.toLowerCase().replaceAll(" ", "_");
   return ROLE_ALIASES[lower] ?? ROLE_ALIASES[trimmed] ?? trimmed;
 }
 
