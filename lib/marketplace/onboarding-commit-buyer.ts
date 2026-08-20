@@ -62,7 +62,7 @@ export async function commitBuyerOnboarding(
       }));
 
     if (existingCompany?.id) {
-      await supabase
+      const { error: companyUpdateError } = await supabase
         .from("companies")
         .update({
           name: companyName,
@@ -72,9 +72,12 @@ export async function commitBuyerOnboarding(
           city_id: draftString(payload, "cityId"),
         })
         .eq("id", existingCompany.id);
+      if (companyUpdateError) {
+        throw new Error(`Failed to save company profile: ${companyUpdateError.message}`);
+      }
       companyId = existingCompany.id;
     } else {
-      const { data: created } = await supabase
+      const { data: created, error: companyInsertError } = await supabase
         .from("companies")
         .insert({
           owner_id: userId,
@@ -88,6 +91,9 @@ export async function commitBuyerOnboarding(
         })
         .select("id")
         .single();
+      if (companyInsertError) {
+        throw new Error(`Failed to create company profile: ${companyInsertError.message}`);
+      }
       companyId = created?.id ?? null;
     }
   }
@@ -111,18 +117,27 @@ export async function commitBuyerOnboarding(
   let buyerProfileId = existingBuyer?.id ?? null;
 
   if (buyerProfileId) {
-    await supabase.from("buyer_profiles").update(buyerPatch).eq("id", buyerProfileId);
+    const { error: buyerUpdateError } = await supabase
+      .from("buyer_profiles")
+      .update(buyerPatch)
+      .eq("id", buyerProfileId);
+    if (buyerUpdateError) {
+      throw new Error(`Failed to update buyer profile: ${buyerUpdateError.message}`);
+    }
   } else {
-    const { data: created } = await supabase
+    const { data: created, error: buyerInsertError } = await supabase
       .from("buyer_profiles")
       .insert(buyerPatch)
       .select("id")
       .single();
+    if (buyerInsertError) {
+      throw new Error(`Failed to create buyer profile: ${buyerInsertError.message}`);
+    }
     buyerProfileId = created?.id ?? null;
   }
 
   if (!buyerProfileId) {
-    throw new Error("Failed to save buyer profile");
+    throw new Error("Buyer profile was not returned after saving. Refresh and try again.");
   }
 
   await supabase

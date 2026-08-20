@@ -202,6 +202,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, result, completion });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Commit failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error("[buyer-onboarding] commit failed", { userId: user.id, message });
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+        code: message.includes("row-level security") ? "RLS_BLOCKED" : "BUYER_PROFILE_COMMIT_FAILED",
+      },
+      { status: message.includes("row-level security") ? 403 : 400 },
+    );
   }
 }
