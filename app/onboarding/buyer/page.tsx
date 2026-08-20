@@ -248,7 +248,7 @@ export default function BuyerOnboardingPage() {
         }));
       }
     })();
-  }, []);
+  }, [router]);
 
   const completion = useMemo(
     () => calculateBuyerOnboardingV3Completion(form),
