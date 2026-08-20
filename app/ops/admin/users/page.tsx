@@ -378,7 +378,7 @@ export default function UsersPage() {
         <div className="ops-modal-backdrop" role="dialog" aria-modal="true">
           <div className={`ops-role-modal ops-confirmation-modal ${confirmation.severity ? `severity-${confirmation.severity}` : ''}`}>
             <div className="ops-modal-header"><div><h2>{confirmation.title}</h2><p>{confirmation.description}</p></div><button className="ops-icon-btn" onClick={() => setConfirmation(null)}>×</button></div>
-            <div className="ops-confirmation-caution"><strong>Administrative caution</strong><span>Confirm only after reviewing the selected user's current state. This action will be audit logged.</span></div>
+            <div className="ops-confirmation-caution"><strong>Administrative caution</strong><span>Confirm only after reviewing the selected user&apos;s current state. This action will be audit logged.</span></div>
             {confirmation.requiresTypedConfirmation ? <label className="ops-confirmation-field"><span>Type DELETE to continue</span><input value={confirmationText} onChange={(event) => setConfirmationText(event.target.value)} placeholder="DELETE" aria-label="Type DELETE to confirm" autoFocus /></label> : null}
             <div className="ops-confirmation-footer"><button className="ops-text-action" onClick={() => setConfirmation(null)}>Cancel</button><button className={`ops-confirm-button ${confirmation.severity || 'warning'}`} disabled={confirmation.requiresTypedConfirmation && confirmationText !== 'DELETE'} onClick={confirmPendingAction}>{confirmation.confirmLabel}</button></div>
           </div>
