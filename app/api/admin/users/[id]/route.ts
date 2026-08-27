@@ -33,6 +33,22 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   const role = dossierRole(context.role);
+  if (role === 'unknown') {
+    console.error('admin_user_profile_resolution_failed', {
+      userId: params.id,
+      resolvedRole: context.role,
+      requestId: request.headers.get('x-request-id') ?? null,
+    });
+  }
+    const quoteMetrics = role === 'buyer' || role === 'both'
+      ? context.buyerProfile?.id
+        ? auth.supabase.from('quotes').select('id, rfqs!inner(buyer_profile_id)', { count: 'exact', head: true }).eq('rfqs.buyer_profile_id', context.buyerProfile.id).is('deleted_at', null)
+        : Promise.resolve({ count: null })
+      : role === 'seller'
+        ? context.sellerProfile?.id
+          ? auth.supabase.from('quotes').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile.id).is('deleted_at', null)
+          : Promise.resolve({ count: null })
+        : Promise.resolve({ count: null });
   const settingsResult = auth.supabase.from('user_settings').select('category, key, value').eq('user_id', params.id);
   const verificationHistory = auth.supabase
     .from('admin_audit_logs')
@@ -62,6 +78,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile.id),
       ])
       : null;
+  const quoteMetricResult = await quoteMetrics;
 
   // Get recent audit logs for this user
   const { data: recentLogs } = await auth.supabase
@@ -77,13 +94,13 @@ export async function GET(request: Request, { params }: RouteParams) {
   const secondaryProfile = role === 'both' ? context.sellerProfile : null;
   const secondaryCompany = role === 'both' ? roleData?.[3]?.data ?? null : null;
   const metricCount = role === 'buyer' ? roleData?.[2]?.count : role === 'seller' ? roleData?.[1]?.count : null;
-  const metrics = role === 'buyer'
-    ? { rfqs: metricCount ?? null, quotesReceived: null, orders: null }
-    : role === 'seller'
-      ? { listings: metricCount ?? null, rfqsReceived: null, orders: null }
-      : role === 'both'
-        ? { rfqs: roleData?.[2]?.count ?? null, listings: roleData?.[4]?.count ?? null, quotesReceived: null, orders: null }
-      : {};
+    const metrics = role === 'buyer'
+        ? { rfqs: metricCount ?? null, quotesReceived: quoteMetricResult.count ?? null, orders: null }
+      : role === 'seller'
+          ? { listings: metricCount ?? null, rfqsReceived: quoteMetricResult.count ?? null, orders: null }
+        : role === 'both'
+            ? { rfqs: roleData?.[2]?.count ?? null, listings: roleData?.[4]?.count ?? null, quotesReceived: quoteMetricResult.count ?? null, orders: null }
+          : {};
 
   return NextResponse.json({
     success: true,

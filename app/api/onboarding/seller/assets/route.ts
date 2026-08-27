@@ -12,6 +12,19 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const includeSigned = searchParams.get("signed") === "true";
 
+  const { data: sellerProfile, error: sellerProfileError } = await auth.supabase
+    .from("seller_profiles")
+    .select("id")
+    .eq("profile_id", auth.user.id)
+    .maybeSingle();
+
+  if (sellerProfileError || !sellerProfile) {
+    return NextResponse.json(
+      { success: false, error: { code: "SELLER_PROFILE_REQUIRED", message: "Seller profile not found" } },
+      { status: 409 },
+    );
+  }
+
   const [docsResult, mediaResult] = await Promise.all([
     auth.supabase
       .from("supplier_documents")
@@ -22,7 +35,7 @@ export async function GET(request: Request) {
     auth.supabase
       .from("supplier_media")
       .select("id, media_type, category, file_url, storage_path, bucket_name, mime_type, file_size_bytes, original_filename, created_at")
-      .eq("profile_id", auth.user.id)
+      .eq("seller_profile_id", sellerProfile.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
   ]);

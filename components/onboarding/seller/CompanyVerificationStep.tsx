@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldCheck, Search, ShieldPlus } from "lucide-react";
+import { useState } from "react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldCheck, ShieldPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Field, TextInput, NativeSelect } from "@/components/onboarding/OnboardingV3Wizard";
+import { SearchableDropdown } from "@/components/location/SearchableDropdown";
 import { DocumentUploadField } from "./DocumentUploadField";
 import { StructuredAddressFields, ALL_COUNTRIES } from "./StructuredAddressFields";
 import { SELLER_DOCUMENT_TYPE_KEYS } from "@/lib/marketplace/seller-onboarding-validation";
@@ -37,21 +38,19 @@ export function CompanyVerificationStep({
   const verificationType = String(form.verificationType ?? "");
   const businessNature = String(form.businessNature ?? "");
   const sellerTypeOther = String(form.sellerTypeOther ?? "");
-
-  const [countrySearch, setCountrySearch] = useState("");
-  const [countryOpen, setCountryOpen] = useState(false);
-
-  const filteredCountries = useMemo(() => {
-    const q = countrySearch.toLowerCase().trim();
-    const list = [...ALL_COUNTRIES];
-    if (!q) return list;
-    return list.filter((c) => c.toLowerCase().includes(q));
-  }, [countrySearch]);
+  const gstErrorMessage = gstError === "INVALID_GSTIN"
+    ? "Enter a valid 15-character GST number."
+    : gstError === "GST_API_NOT_CONFIGURED"
+      ? "GST verification is not configured yet. Please contact support."
+      : "Unable to verify GST right now. Please try again.";
+  const gstErrorTitle = gstError === "INVALID_GSTIN"
+    ? "Invalid GST number"
+    : gstError === "GST_API_NOT_CONFIGURED"
+      ? "GST verification unavailable"
+      : "GST API Error";
 
   const handleCountrySelect = (country: string) => {
     onFieldChange("countryOrigin", country);
-    setCountryOpen(false);
-    setCountrySearch("");
   };
 
   return (
@@ -102,51 +101,16 @@ export function CompanyVerificationStep({
         ) : null}
       </div>
       {/* Country of Origin — searchable dropdown */}
-      <div className="relative">
-        <Field label="Country of Origin" required error={errors.countryOrigin}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={countryOpen ? countrySearch : countryOrigin}
-              onChange={(e) => {
-                setCountrySearch(e.target.value);
-                if (!countryOpen) setCountryOpen(true);
-              }}
-              onFocus={() => setCountryOpen(true)}
-              onBlur={() => {
-                // delay to allow click on option
-                setTimeout(() => setCountryOpen(false), 200);
-              }}
-              placeholder="Search country..."
-              className={cn(
-                "w-full rounded-lg border bg-white py-2.5 pl-9 pr-4 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400",
-                errors.countryOrigin ? "border-red-300" : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-              )}
-            />
-          </div>
-        </Field>
-        {countryOpen ? (
-          <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-            {filteredCountries.map((country) => (
-              <button
-                key={country}
-                type="button"
-                className={cn(
-                  "w-full px-3 py-2 text-left text-sm transition-colors",
-                  country === countryOrigin ? "bg-blue-50 font-semibold text-blue-800" : "text-slate-700 hover:bg-slate-50"
-                )}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleCountrySelect(country);
-                }}
-              >
-                {country}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      <Field label="Country of Origin" required error={errors.countryOrigin}>
+        <SearchableDropdown
+          value={countryOrigin}
+          options={ALL_COUNTRIES}
+          onSelect={handleCountrySelect}
+          placeholder="Search country..."
+          error={Boolean(errors.countryOrigin)}
+          emptyMessage="No countries found"
+        />
+      </Field>
 
       {/* Conditional Verification Section */}
       {countryOrigin ? (
@@ -160,8 +124,8 @@ export function CompanyVerificationStep({
                   <div className="flex items-start gap-3">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
                     <div className="flex-1 text-sm text-red-800">
-                      <p className="font-semibold">GST API Error</p>
-                      <p className="mt-1">Unable to verify GST right now. Please try again.</p>
+                      <p className="font-semibold">{gstErrorTitle}</p>
+                      <p className="mt-1">{gstErrorMessage}</p>
                       {onRetryGst ? (
                         <Button
                           type="button"

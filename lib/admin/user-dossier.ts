@@ -18,12 +18,32 @@ export type AdminUserDossier = {
 };
 
 const BUYER_PROFILE_FIELDS: Record<string, string> = {
+  primary_procurement_category_id: 'Primary procurement category',
   procurement_category_id: 'Primary procurement category',
   annual_procurement_volume: 'Annual procurement volume',
   profile_completion_percent: 'Profile completion',
   verification_status: 'Verification status',
   trust_level: 'Trust level',
   company_id: 'Company',
+};
+
+export const BUYER_PREFERENCE_FIELDS: Record<string, string> = {
+  company_type: 'Business type',
+  contact_designation: 'Contact designation',
+  business_email: 'Business email',
+  mobile_number: 'Mobile number',
+  company_website: 'Company website',
+  annual_procurement_budget: 'Annual procurement budget',
+  order_frequency: 'Order frequency',
+  procurement_methods: 'Procurement methods',
+  import_experience: 'Import experience',
+  preferred_incoterms: 'Preferred Incoterms',
+  preferred_payment_terms: 'Preferred payment terms',
+  procurement_team_size: 'Procurement team size',
+  company_description: 'Company description',
+  email_verified: 'Email verification',
+  mobile_verified: 'Mobile verification',
+  completion_percent: 'Profile completion',
 };
 
 const SELLER_PROFILE_FIELDS: Record<string, string> = {

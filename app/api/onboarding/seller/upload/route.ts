@@ -114,6 +114,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: { code: 'UPLOADS_DISABLED', message: 'This upload type is temporarily unavailable.' } }, { status: 403 });
   }
 
+  const { data: sellerProfile, error: sellerProfileError } = await auth.supabase
+    .from("seller_profiles")
+    .select("id, company_id")
+    .eq("profile_id", auth.user.id)
+    .maybeSingle();
+
+  if (sellerProfileError || !sellerProfile) {
+    return NextResponse.json(
+      { success: false, error: { code: "SELLER_PROFILE_REQUIRED", message: "Complete your seller profile before uploading files." } },
+      { status: 409 },
+    );
+  }
+
   if (file.size > config.maxSize) {
     const maxMB = Math.round(config.maxSize / 1024 / 1024);
     return NextResponse.json(
@@ -140,9 +153,9 @@ export async function POST(request: Request) {
   const tableName = bucket === "seller-documents" ? "supplier_documents" : "supplier_media";
   const { data: duplicate } = await auth.supabase
     .from(tableName)
-    .select("id, profile_id")
+    .select("id, seller_profile_id")
     .eq("file_fingerprint", fileFingerprint)
-    .neq("profile_id", auth.user.id)
+    .neq("seller_profile_id", sellerProfile.id)
     .is("deleted_at", null)
     .limit(1)
     .maybeSingle();
@@ -157,7 +170,7 @@ export async function POST(request: Request) {
       severity: "medium",
       evidence: {
         fingerprint: fileFingerprint,
-        matchedProfileId: duplicate.profile_id,
+        matchedSellerProfileId: duplicate.seller_profile_id,
         bucket,
         path: storagePath,
       },
@@ -201,15 +214,18 @@ export async function POST(request: Request) {
     const { data, error } = await auth.supabase
       .from("supplier_documents")
       .insert({
+        seller_profile_id: sellerProfile.id,
+        company_id: sellerProfile.company_id,
         profile_id: auth.user.id,
         document_type: documentType || "unknown",
-        file_url: fileUrl,
+        file_url: fileUrl || storagePath,
         storage_path: storagePath,
         bucket_name: bucket,
         mime_type: file.type,
         file_size_bytes: file.size,
         original_filename: file.name,
         file_fingerprint: fileFingerprint,
+        created_by: auth.user.id,
         verification_status: "pending",
         document_status: "uploaded",
       })
@@ -221,16 +237,18 @@ export async function POST(request: Request) {
     const { data, error } = await auth.supabase
       .from("supplier_media")
       .insert({
-        profile_id: auth.user.id,
+        seller_profile_id: sellerProfile.id,
+        company_id: sellerProfile.company_id,
         media_type: bucket === "seller-videos" ? "video" : "image",
         category: category || "general",
-        file_url: fileUrl,
+        file_url: fileUrl || storagePath,
         storage_path: storagePath,
         bucket_name: bucket,
         mime_type: file.type,
         file_size_bytes: file.size,
         original_filename: file.name,
         file_fingerprint: fileFingerprint,
+        created_by: auth.user.id,
       })
       .select("id, media_type, category, file_url, storage_path, bucket_name, mime_type, file_size_bytes, original_filename")
       .single();
@@ -294,10 +312,24 @@ export async function DELETE(request: Request) {
   }
 
   const table = bucket === "seller-documents" ? "supplier_documents" : "supplier_media";
+  const { data: sellerProfile } = await auth.supabase
+    .from("seller_profiles")
+    .select("id")
+    .eq("profile_id", auth.user.id)
+    .maybeSingle();
+
+  if (!sellerProfile) {
+    return NextResponse.json(
+      { success: false, error: { code: "SELLER_PROFILE_REQUIRED", message: "Seller profile not found" } },
+      { status: 409 },
+    );
+  }
+
   const { data: record } = await auth.supabase
     .from(table)
-    .select("id, storage_path, profile_id")
+    .select("id, storage_path, seller_profile_id")
     .eq("id", id)
+    .eq("seller_profile_id", sellerProfile.id)
     .is("deleted_at", null)
     .maybeSingle();
 
@@ -305,13 +337,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json(
       { success: false, error: { code: "NOT_FOUND", message: "Upload not found" } },
       { status: 404 },
-    );
-  }
-
-  if (record.profile_id !== auth.user.id) {
-    return NextResponse.json(
-      { success: false, error: { code: "FORBIDDEN", message: "Only the owner can delete this upload" } },
-      { status: 403 },
     );
   }
 

@@ -547,9 +547,14 @@ export default function SellerOnboardingPage() {
       }
 
       if (!response.ok) {
-        setGstError("api");
+        const error = payload?.error as Record<string, unknown> | undefined;
+        const errorCode = typeof error?.code === "string" ? error.code : "api";
+        const errorMessage = typeof error?.message === "string"
+          ? error.message
+          : "Unable to verify GST right now. Please try again in a few minutes.";
+        setGstError(errorCode);
         setGlobalErrorType("gst_api");
-        setGlobalError("Unable to verify GST right now. Please try again in a few minutes.");
+        setGlobalError(errorMessage);
         return;
       }
 

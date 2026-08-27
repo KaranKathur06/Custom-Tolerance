@@ -16,6 +16,8 @@ export type GstLookupResult = {
   raw: Record<string, unknown>;
 };
 
+const GST_LOOKUP_TIMEOUT_MS = 10_000;
+
 export function isGstApiEnabled(): boolean {
   return (
     process.env.NEXT_PUBLIC_ENABLE_GST_API === "true" &&
@@ -38,14 +40,27 @@ export async function lookupGstin(gstin: string): Promise<GstLookupResult> {
   }
 
   const normalized = gstin.trim().toUpperCase();
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/verify/${normalized}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${process.env.GST_API_KEY}`,
-      "X-GST-Provider": provider,
-      Accept: "application/json",
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GST_LOOKUP_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl.replace(/\/$/, "")}/verify/${normalized}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${process.env.GST_API_KEY}`,
+        "X-GST-Provider": provider,
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("GST lookup timed out. Please try again.");
+    }
+    throw new Error("Unable to reach the GST verification provider.");
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -53,26 +68,31 @@ export async function lookupGstin(gstin: string): Promise<GstLookupResult> {
   }
 
   const raw = (await response.json()) as Record<string, unknown>;
+  const details = isRecord(raw.data) ? raw.data : isRecord(raw.result) ? raw.result : raw;
 
   return {
     gstin: normalized,
-    legalName: (raw.legal_name as string) ?? (raw.lgnm as string) ?? null,
-    tradeName: (raw.trade_name as string) ?? (raw.tradeName as string) ?? null,
-    gstState: (raw.state as string) ?? null,
-    gstStateCode: (raw.state_code as string) ?? null,
-    registrationDate: (raw.registration_date as string) ?? null,
-    status: mapGstStatus(raw.status),
-    constitutionOfBusiness: (raw.constitution as string) ?? null,
-    taxpayerType: (raw.taxpayer_type as string) ?? null,
+    legalName: (details.legal_name as string) ?? (details.lgnm as string) ?? null,
+    tradeName: (details.trade_name as string) ?? (details.tradeName as string) ?? null,
+    gstState: (details.state as string) ?? null,
+    gstStateCode: (details.state_code as string) ?? null,
+    registrationDate: (details.registration_date as string) ?? null,
+    status: mapGstStatus(details.status),
+    constitutionOfBusiness: (details.constitution as string) ?? null,
+    taxpayerType: (details.taxpayer_type as string) ?? null,
     raw,
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function mapGstStatus(value: unknown): GstLookupResult["status"] {
   const s = String(value ?? "unknown").toLowerCase();
-  if (s.includes("active")) return "active";
   if (s.includes("cancel")) return "cancelled";
   if (s.includes("suspend")) return "suspended";
   if (s.includes("inactive")) return "inactive";
+  if (s.includes("active")) return "active";
   return "unknown";
 }

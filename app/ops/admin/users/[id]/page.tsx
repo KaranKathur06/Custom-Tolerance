@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { normalizeDossierValue, selectDossierFields, type DossierField } from '@/lib/admin/user-dossier';
+import { BUYER_PREFERENCE_FIELDS, normalizeDossierValue, selectDossierFields, type DossierField } from '@/lib/admin/user-dossier';
 
 type DossierPayload = {
   role: 'buyer' | 'seller' | 'both' | 'admin' | 'unknown';
@@ -49,7 +49,7 @@ export default function AdminUserProfilePage() {
   const profileFields = dossier.role === 'buyer' || dossier.role === 'seller' ? selectDossierFields(dossier.profile, dossier.role, 'profile') : [];
   const companyFields = dossier.role === 'buyer' || dossier.role === 'seller' ? selectDossierFields(dossier.company, dossier.role, 'company') : [];
   const preferenceFields = dossier.role === 'buyer' && dossier.preferences
-    ? Object.entries(dossier.preferences).map(([key, value]) => ({ key, label: key.replaceAll('_', ' '), value }))
+    ? Object.entries(BUYER_PREFERENCE_FIELDS).filter(([key]) => key in dossier.preferences!).map(([key, label]) => ({ key, label, value: dossier.preferences![key] }))
     : [];
   const metricLabels = dossier.role === 'buyer'
     ? [['Profile completion', dossier.metrics.profileCompletion == null ? '—' : `${dossier.metrics.profileCompletion}%`], ['RFQs', dossier.metrics.rfqs ?? '—'], ['Quotes received', dossier.metrics.quotesReceived ?? '—'], ['Orders', dossier.metrics.orders ?? '—']]
