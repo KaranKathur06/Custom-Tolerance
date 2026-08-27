@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const [docsResult, mediaResult] = await Promise.all([
     auth.supabase
       .from("supplier_documents")
-      .select("id, document_type, file_url, storage_path, bucket_name, mime_type, file_size_bytes, original_filename, created_at")
+      .select("id, document_type, file_url, storage_path, bucket_name, mime_type, file_size_bytes, original_filename, verification_status, created_at")
       .eq("profile_id", auth.user.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
@@ -108,10 +108,11 @@ async function buildAsset(
     originalFilename: record.original_filename,
     mimeType: record.mime_type,
     fileSize: record.file_size_bytes,
-    publicUrl: record.file_url,
+    publicUrl: bucket === "seller-documents" ? null : record.file_url,
     signedUrl,
-    storagePath,
-    bucketName: bucket,
+    storagePath: bucket === "seller-documents" ? "" : storagePath,
+    bucketName: bucket === "seller-documents" ? "" : bucket,
+    verificationStatus: record.verification_status,
     createdAt: record.created_at,
   };
 }

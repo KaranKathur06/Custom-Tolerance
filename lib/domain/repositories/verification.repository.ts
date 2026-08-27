@@ -19,7 +19,14 @@ export class VerificationRepository {
       .maybeSingle();
 
     if (error || !data) {
-      return null;
+      const { data: sellerDocument } = await this.supabase
+        .from('supplier_documents')
+        .select('id, profile_id, company_id, document_type, verification_status')
+        .eq('id', id)
+        .is('deleted_at', null)
+        .maybeSingle();
+      if (!sellerDocument) return null;
+      return { id: sellerDocument.id, profileId: sellerDocument.profile_id, companyId: sellerDocument.company_id, documentType: sellerDocument.document_type, status: sellerDocument.verification_status };
     }
 
     return {
@@ -37,10 +44,19 @@ export class VerificationRepository {
     reviewerId: string;
     notes?: string | null;
   }): Promise<void> {
-    const { error } = await this.supabase
+    const { data: legacyDocument } = await this.supabase
       .from('verification_documents')
+      .select('id')
+      .eq('id', input.id)
+      .maybeSingle();
+    const table = legacyDocument ? 'verification_documents' : 'supplier_documents';
+    const statusPatch = legacyDocument
+      ? { status: input.status }
+      : { verification_status: input.status, review_status: input.status };
+    const { error } = await this.supabase
+      .from(table)
       .update({
-        status: input.status,
+        ...statusPatch,
         reviewer_id: input.reviewerId,
         reviewer_notes: input.notes ?? null,
         reviewed_at: new Date().toISOString(),

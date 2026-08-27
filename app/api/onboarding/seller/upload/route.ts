@@ -60,6 +60,30 @@ const IMAGE_STORAGE_FOLDERS: Record<string, string> = {
   certificate_images: "certifications",
 };
 
+const DOCUMENT_TYPES = new Set([
+  "cancelled_cheque",
+  "gst_certificate",
+  "pan_card",
+  "factory_license",
+  "iec_certificate",
+  "udyam_certificate",
+  "duns_certificate",
+  "company_registration_certificate",
+]);
+
+function sanitizeFilename(filename: string): string {
+  const basename = filename.split(/[\\/]/).pop() || "document";
+  return basename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180) || "document";
+}
+
+function contentMatchesMime(bytes: Uint8Array, mimeType: string): boolean {
+  if (mimeType === "application/pdf") return new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-";
+  if (mimeType === "image/jpeg") return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (mimeType === "image/png") return bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  if (mimeType === "image/webp") return new TextDecoder().decode(bytes.slice(0, 4)) === "RIFF" && new TextDecoder().decode(bytes.slice(8, 12)) === "WEBP";
+  return mimeType === "video/mp4";
+}
+
 function resolveStorageFolder(bucket: string, documentType: string | null, category: string | null): string {
   if (bucket === "seller-documents" && documentType) {
     return DOCUMENT_STORAGE_FOLDERS[documentType] || documentType;
@@ -93,6 +117,7 @@ export async function POST(request: Request) {
   const bucket = (formData.get("bucket") as string) || "";
   const documentType = (formData.get("documentType") as string) || null;
   const category = (formData.get("category") as string) || null;
+  const replaceDocumentId = (formData.get("replaceDocumentId") as string) || null;
 
   if (!file) {
     return NextResponse.json(
@@ -142,13 +167,45 @@ export async function POST(request: Request) {
     );
   }
 
-  const ext = EXTENSIONS[file.type] || (file.name.split(".").pop() || "bin");
+  if (bucket === "seller-documents" && (!documentType || !DOCUMENT_TYPES.has(documentType))) {
+    return NextResponse.json(
+      { success: false, error: { code: "INVALID_DOCUMENT_TYPE", message: "This document type is not supported." } },
+      { status: 400 },
+    );
+  }
+
+  const fileBuffer = await file.arrayBuffer();
+  if (!contentMatchesMime(new Uint8Array(fileBuffer), file.type)) {
+    return NextResponse.json(
+      { success: false, error: { code: "INVALID_FILE_CONTENT", message: "The file content does not match its declared type." } },
+      { status: 400 },
+    );
+  }
+
+  const ext = EXTENSIONS[file.type] || "bin";
   const safeName = `${randomUUID()}.${ext}`;
   const folder = resolveStorageFolder(bucket, documentType, category);
   const storagePath = `${auth.user.id}/${folder}/${safeName}`;
 
-  const fileBuffer = await file.arrayBuffer();
   const fileFingerprint = createHash("sha256").update(Buffer.from(fileBuffer)).digest("hex");
+
+  let replacement: { id: string; storage_path: string | null } | null = null;
+  if (replaceDocumentId && bucket === "seller-documents") {
+    const { data } = await auth.supabase
+      .from("supplier_documents")
+      .select("id, storage_path")
+      .eq("id", replaceDocumentId)
+      .eq("seller_profile_id", sellerProfile.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!data) {
+      return NextResponse.json(
+        { success: false, error: { code: "DOCUMENT_NOT_FOUND", message: "The document is no longer available." } },
+        { status: 404 },
+      );
+    }
+    replacement = data;
+  }
 
   const tableName = bucket === "seller-documents" ? "supplier_documents" : "supplier_media";
   const { data: duplicate } = await auth.supabase
@@ -187,33 +244,22 @@ export async function POST(request: Request) {
 
   if (uploadError) {
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: `Upload failed: ${uploadError.message}` } },
+      { success: false, error: { code: "DOCUMENT_UPLOAD_FAILED", message: "We couldn't upload this document. Please try again." } },
       { status: 500 },
     );
   }
 
   let fileUrl: string | null = null;
-  let signedUrl: string | null = null;
-
   if (config.public) {
     const { data: publicData } = auth.supabase.storage.from(bucket).getPublicUrl(storagePath);
     fileUrl = publicData?.publicUrl || null;
-  } else {
-    const { data: signedData, error: signedError } = await auth.supabase.storage
-      .from(bucket)
-      .createSignedUrl(storagePath, 3600);
-    if (!signedError && signedData) {
-      signedUrl = signedData.signedUrl;
-    }
   }
 
   let record: Record<string, unknown> | null = null;
   let recordError: Error | null = null;
 
   if (bucket === "seller-documents") {
-    const { data, error } = await auth.supabase
-      .from("supplier_documents")
-      .insert({
+    const payload = {
         seller_profile_id: sellerProfile.id,
         company_id: sellerProfile.company_id,
         profile_id: auth.user.id,
@@ -223,14 +269,16 @@ export async function POST(request: Request) {
         bucket_name: bucket,
         mime_type: file.type,
         file_size_bytes: file.size,
-        original_filename: file.name,
+        original_filename: sanitizeFilename(file.name),
         file_fingerprint: fileFingerprint,
         created_by: auth.user.id,
         verification_status: "pending",
-        document_status: "uploaded",
-      })
-      .select("id, document_type, file_url, storage_path, bucket_name, mime_type, file_size_bytes, original_filename")
-      .single();
+        document_status: replacement ? "replaced" : "uploaded",
+        updated_at: new Date().toISOString(),
+      };
+    const { data, error } = replacement
+      ? await auth.supabase.from("supplier_documents").update(payload).eq("id", replacement.id).select("id, document_type, file_url, storage_path, bucket_name, mime_type, file_size_bytes, original_filename, verification_status").single()
+      : await auth.supabase.from("supplier_documents").insert(payload).select("id, document_type, file_url, storage_path, bucket_name, mime_type, file_size_bytes, original_filename, verification_status").single();
     record = data;
     recordError = error ? new Error(error.message) : null;
   } else {
@@ -259,14 +307,29 @@ export async function POST(request: Request) {
   if (recordError || !record) {
     await auth.supabase.storage.from(bucket).remove([storagePath]);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: recordError?.message || "Failed to track upload" } },
+      { success: false, error: { code: "DOCUMENT_UPLOAD_FAILED", message: "We couldn't save this document. Please try again." } },
       { status: 500 },
     );
   }
 
+  if (replacement?.storage_path) {
+    const { error: cleanupError } = await auth.supabase.storage.from(bucket).remove([replacement.storage_path]);
+    if (cleanupError) {
+      await logAdminAction(auth.supabase, {
+        userId: auth.user.id,
+        action: "document_storage_cleanup_failed",
+        resource: bucket,
+        resourceId: String(record.id),
+        severity: "warning",
+        details: { documentType, reason: "replacement_old_object_cleanup_failed" },
+        request,
+      });
+    }
+  }
+
   await logAdminAction(auth.supabase, {
     userId: auth.user.id,
-    action: "seller_upload_created",
+    action: replacement ? "DOCUMENT_REPLACED" : "DOCUMENT_UPLOADED",
     resource: bucket,
     resourceId: String(record.id),
     details: { bucket, storagePath, documentType: documentType || category },
@@ -282,12 +345,12 @@ export async function POST(request: Request) {
         mediaType: record.media_type,
         category: record.category,
         publicUrl: fileUrl,
-        signedUrl,
-        storagePath,
-        originalFilename: file.name,
+        signedUrl: null,
+        storagePath: bucket === "seller-documents" ? "" : storagePath,
+        originalFilename: String(record.original_filename || sanitizeFilename(file.name)),
         mimeType: file.type,
         fileSize: file.size,
-        bucketName: bucket,
+        bucketName: bucket === "seller-documents" ? "" : bucket,
       },
     },
     { status: 201 },
@@ -340,16 +403,46 @@ export async function DELETE(request: Request) {
     );
   }
 
-  await auth.supabase.storage.from(bucket).remove([record.storage_path]);
+  const { error: storageError } = await auth.supabase.storage.from(bucket).remove([record.storage_path]);
+  if (storageError) {
+    await logAdminAction(auth.supabase, {
+      userId: auth.user.id,
+      action: "document_storage_database_mismatch",
+      resource: bucket,
+      resourceId: id,
+      severity: "warning",
+      details: { reason: "storage_delete_failed" },
+      request,
+    });
+    return NextResponse.json(
+      { success: false, error: { code: "DOCUMENT_DELETE_FAILED", message: "We couldn't remove this document. Please try again." } },
+      { status: 502 },
+    );
+  }
 
-  await auth.supabase
+  const { error: databaseError } = await auth.supabase
     .from(table)
     .update({ deleted_at: new Date().toISOString(), status: "archived" })
     .eq("id", id);
+  if (databaseError) {
+    await logAdminAction(auth.supabase, {
+      userId: auth.user.id,
+      action: "document_storage_database_mismatch",
+      resource: bucket,
+      resourceId: id,
+      severity: "critical",
+      details: { reason: "database_archive_failed" },
+      request,
+    });
+    return NextResponse.json(
+      { success: false, error: { code: "DOCUMENT_DELETE_FAILED", message: "The file was removed, but its profile record needs attention. Please contact support." } },
+      { status: 502 },
+    );
+  }
 
   await logAdminAction(auth.supabase, {
     userId: auth.user.id,
-    action: "seller_upload_deleted",
+    action: "DOCUMENT_DELETED",
     resource: bucket,
     resourceId: id,
     details: { bucket, storagePath: record.storage_path },

@@ -10,6 +10,8 @@ export type UploadResult = {
   signedUrl?: string | null;
   storagePath: string;
   bucketName: string;
+  verificationStatus?: string;
+  createdAt?: string;
 };
 
 /** Safe JSON parse — never throws on empty / non-JSON bodies */
@@ -38,12 +40,14 @@ export async function uploadSellerFile(
   file: File,
   bucket: "seller-documents" | "seller-images" | "seller-videos",
   metadata: { documentType?: string; category?: string },
+  replaceDocumentId?: string,
 ): Promise<UploadResult> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("bucket", bucket);
   if (metadata.documentType) formData.append("documentType", metadata.documentType);
   if (metadata.category) formData.append("category", metadata.category);
+  if (replaceDocumentId) formData.append("replaceDocumentId", replaceDocumentId);
 
   let response: Response;
   try {

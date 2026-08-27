@@ -118,6 +118,7 @@ export async function GET() {
 
   const profileData = buildSupplierProfileDataFromDraft({
     ...draft,
+    documents: (docsResult.data ?? []).map((document) => ({ documentType: document.document_type })),
     emailVerified,
     mobileVerified,
     gstNumber: draft.gstNumber ?? company?.gst_number,

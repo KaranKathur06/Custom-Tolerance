@@ -168,6 +168,8 @@ export function validateSellerOnboardingStep(
         // India: GST required
         if (!isNonEmptyString(form.gstNumber)) addError("gstNumber", "GST number is required.");
         if (!isTruthy(form.gstVerified)) addError("gstVerified", "GST must be verified before continuing.");
+        if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.gstCertificate)) addError("gstCertificateDocumentId", "GST certificate is required.");
+        if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.panCard)) addError("panCardDocumentId", "PAN card is required.");
       } else {
         // International: verification type required
         const verificationType = String(form.verificationType ?? "");
@@ -179,6 +181,7 @@ export function validateSellerOnboardingStep(
           if (!isNonEmptyString(form.companyRegistrationNumber)) {
             addError("companyRegistrationNumber", "Company registration number is required.");
           }
+          if (!hasDocument(documents, "company_registration_certificate")) addError("companyRegistrationCertificateDocumentId", "Registration certificate is required.");
         }
       }
       break;

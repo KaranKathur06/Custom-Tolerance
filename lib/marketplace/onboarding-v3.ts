@@ -699,16 +699,27 @@ export function calculateSellerOnboardingV3Completion(
     (s) => s.phase === "registration",
   );
   const phase1Sections = phase1Steps.map((step) => {
+    const country = String(values.countryOrigin || "").toLowerCase();
+    const documentFields = step.key === "company_verification"
+      ? country === "india"
+        ? ["gstCertificate", "panCard"]
+        : values.verificationType === "Company Registration Number"
+          ? ["companyRegistration"]
+          : values.verificationType === "DUNS Number"
+            ? ["dunsCertificate"]
+            : []
+      : [];
+    const requiredFields = [...step.requiredFields, ...documentFields];
     const isValidated = validatedSteps.includes(step.key);
-    if (!isValidated && step.requiredFields.length > 0) {
+    if (!isValidated && requiredFields.length > 0) {
       return {
         key: step.key,
         label: step.title,
         percent: 0,
-        missingFields: step.requiredFields,
+        missingFields: requiredFields,
       };
     }
-    const result = sectionPercent(step.requiredFields, values);
+    const result = sectionPercent(requiredFields, values);
     return { key: step.key, label: step.title, ...result };
   });
 

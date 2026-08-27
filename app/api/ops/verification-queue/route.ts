@@ -23,13 +23,14 @@ export async function GET(request: Request) {
   const statuses = status.split(",").map((value) => value.trim()).filter(Boolean);
 
   const { data, error } = await auth.supabase
-    .from("verification_documents")
+    .from("supplier_documents")
     .select(
       `
       id,
       document_type,
-      file_url,
-      status,
+      storage_path,
+      bucket_name,
+      verification_status,
       reviewer_notes,
       reviewed_at,
       created_at,
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
       profiles:profile_id(id, full_name, email)
     `,
     )
-    .in("status", statuses)
+    .in("verification_status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(100);
@@ -51,5 +52,16 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json({ success: true, data: data ?? [] });
+  const rows = await Promise.all((data ?? []).map(async (row) => {
+    const signed = row.storage_path && row.bucket_name
+      ? await auth.supabase.storage.from(row.bucket_name).createSignedUrl(row.storage_path, 300)
+      : { data: null };
+    return {
+      ...row,
+      file_url: signed.data?.signedUrl ?? "",
+      status: row.verification_status,
+    };
+  }));
+
+  return NextResponse.json({ success: true, data: rows });
 }

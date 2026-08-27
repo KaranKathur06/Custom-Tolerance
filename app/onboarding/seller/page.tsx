@@ -366,7 +366,7 @@ export default function SellerOnboardingPage() {
       try {
         const [sessionResponse, assets] = await Promise.all([
           fetch("/api/onboarding/seller", { credentials: "include" }),
-          fetchSellerAssets(true),
+          fetchSellerAssets(false),
         ]);
         if (!sessionResponse.ok) return;
         // Safe JSON parse for session
@@ -463,7 +463,13 @@ export default function SellerOnboardingPage() {
     }));
   }, [documents, images, video]);
 
-  const valuesForCompletion = useMemo(() => form, [form]);
+  const valuesForCompletion = useMemo(() => ({
+    ...form,
+    gstCertificate: Boolean(documents[SELLER_DOCUMENT_TYPE_KEYS.gstCertificate]?.id),
+    panCard: Boolean(documents[SELLER_DOCUMENT_TYPE_KEYS.panCard]?.id),
+    companyRegistration: Boolean(documents.company_registration_certificate?.id),
+    dunsCertificate: Boolean(documents[SELLER_DOCUMENT_TYPE_KEYS.dunsCertificate]?.id),
+  }), [form, documents]);
   const completion = useMemo(() => calculateSellerOnboardingV3Completion(valuesForCompletion, validatedSteps), [valuesForCompletion, validatedSteps]);
   const gate = useMemo(() => getSellerV3HardGateStatus(valuesForCompletion), [valuesForCompletion]);
   const activeStep = SELLER_ONBOARDING_V3_STEPS[activeIndex];
