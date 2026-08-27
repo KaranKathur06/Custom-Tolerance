@@ -319,6 +319,8 @@ const initialForm: SellerForm = {
   gstVisibility: "PUBLIC",
 };
 
+const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
 export default function SellerOnboardingPage() {
   const router = useRouter();
   const { isAuthenticated, loading, profile, user } = useAuth();
@@ -483,6 +485,13 @@ export default function SellerOnboardingPage() {
   const updateField = (field: keyof SellerForm, value: unknown) => {
     const nextValue = field === "buyerServices" ? normalizeBuyerServices(value) : value;
     setForm((prev) => ({ ...prev, [field]: nextValue }));
+    if (field === "countryOrigin" || field === "gstNumber") {
+      setGstError(null);
+      if (globalErrorType === "gst_api") {
+        setGlobalError(null);
+        setGlobalErrorType("generic");
+      }
+    }
   };
 
   const updateDocument = (documentType: string, asset: SellerUploadAsset | null) => {
@@ -514,6 +523,14 @@ export default function SellerOnboardingPage() {
   };
 
   const verifyGst = async () => {
+    const gstNumber = String(form.gstNumber ?? "").trim().toUpperCase();
+    if (!GSTIN_RE.test(gstNumber)) {
+      setGstError("INVALID_GSTIN");
+      setGlobalError(null);
+      setGlobalErrorType("generic");
+      return;
+    }
+
     setVerifyingGst(true);
     setGlobalError(null);
     setGstError(null);
@@ -526,15 +543,15 @@ export default function SellerOnboardingPage() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            gstNumber: form.gstNumber,
+            gstNumber,
             legalName: form.legalBusinessName,
             state: form.state,
           }),
         });
       } catch {
         setGstError("network");
-        setGlobalErrorType("network");
-        setGlobalError("Unable to connect to server. Please check your internet connection.");
+        setGlobalErrorType("generic");
+        setGlobalError(null);
         return;
       }
 
@@ -549,19 +566,16 @@ export default function SellerOnboardingPage() {
       if (!response.ok) {
         const error = payload?.error as Record<string, unknown> | undefined;
         const errorCode = typeof error?.code === "string" ? error.code : "api";
-        const errorMessage = typeof error?.message === "string"
-          ? error.message
-          : "Unable to verify GST right now. Please try again in a few minutes.";
         setGstError(errorCode);
-        setGlobalErrorType("gst_api");
-        setGlobalError(errorMessage);
+        setGlobalErrorType("generic");
+        setGlobalError(null);
         return;
       }
 
       if (!payload) {
         setGstError("api");
-        setGlobalErrorType("gst_api");
-        setGlobalError("Unable to verify GST right now. Please try again in a few minutes.");
+        setGlobalErrorType("generic");
+        setGlobalError(null);
         return;
       }
 
@@ -580,8 +594,8 @@ export default function SellerOnboardingPage() {
       setGstError(null);
     } catch {
       setGstError("api");
-      setGlobalErrorType("gst_api");
-      setGlobalError("Unable to verify GST right now. Please try again in a few minutes.");
+      setGlobalErrorType("generic");
+      setGlobalError(null);
     } finally {
       setVerifyingGst(false);
     }
@@ -694,11 +708,12 @@ export default function SellerOnboardingPage() {
     }
   };
 
-  const saveDraft = async () => {
+  const saveDraft = async (): Promise<boolean> => {
     const ok = await save("save");
     if (ok) {
       setGlobalError(null);
     }
+    return ok;
   };
 
   const sendMobileOtp = async () => {
@@ -867,6 +882,7 @@ export default function SellerOnboardingPage() {
     onImagesChange: updateImages,
     onVideoChange: updateVideo,
     onVideoUrlChange: updateVideoUrl,
+    onBeforeUpload: saveDraft,
   };
 
   return (
@@ -885,7 +901,9 @@ export default function SellerOnboardingPage() {
       }}
       onRetry={() => {
         if (globalErrorType === "gst_api" || activeStep.key === "company_verification") {
-          void verifyGst();
+          if (GSTIN_RE.test(String(form.gstNumber ?? "").trim().toUpperCase())) {
+            void verifyGst();
+          }
           return;
         }
         void next();
@@ -893,7 +911,11 @@ export default function SellerOnboardingPage() {
       onSaveDraft={() => void saveDraft()}
       onStepClick={(stepKey) => {
         const idx = SELLER_ONBOARDING_V3_STEPS.findIndex((s) => s.key === stepKey);
-        if (idx >= 0) setActiveIndex(idx);
+        if (idx >= 0) {
+          setGlobalError(null);
+          setGlobalErrorType("generic");
+          setActiveIndex(idx);
+        }
       }}
       trustItems={[
         { label: "Company", verified: Boolean(form.gstVerified || form.companyVerificationVerified || form.verificationCertificateDocumentId) },

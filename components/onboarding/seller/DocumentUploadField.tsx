@@ -17,6 +17,7 @@ type DocumentUploadFieldProps = {
   asset?: DocumentUploadAsset | null;
   error?: string;
   onChange: (asset: DocumentUploadAsset | null) => void;
+  onBeforeUpload?: () => Promise<boolean>;
 };
 
 export function DocumentUploadField({
@@ -28,6 +29,7 @@ export function DocumentUploadField({
   asset,
   error,
   onChange,
+  onBeforeUpload,
 }: DocumentUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -41,6 +43,9 @@ export function DocumentUploadField({
     }
     setUploading(true);
     try {
+      if (onBeforeUpload && !(await onBeforeUpload())) {
+        return;
+      }
       const result = await uploadSellerFile(file, "seller-documents", { documentType });
       onChange(result);
     } catch (err) {

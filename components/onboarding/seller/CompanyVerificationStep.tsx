@@ -17,6 +17,7 @@ type CompanyVerificationStepProps = StepProps & {
   verifyingGst: boolean;
   gstError?: string | null;
   onRetryGst?: () => void;
+  onBeforeUpload?: () => Promise<boolean>;
 };
 
 const VERIFICATION_TYPES = ["DUNS Number", "Company Registration Number"] as const;
@@ -31,6 +32,7 @@ export function CompanyVerificationStep({
   verifyingGst,
   gstError,
   onRetryGst,
+  onBeforeUpload,
 }: CompanyVerificationStepProps) {
   const countryOrigin = String(form.countryOrigin ?? "");
   const isIndia = countryOrigin.toLowerCase() === "india";
@@ -210,6 +212,7 @@ export function CompanyVerificationStep({
                   asset={documents[SELLER_DOCUMENT_TYPE_KEYS.gstCertificate]}
                   error={errors.gstCertificateDocumentId}
                   onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.gstCertificate, asset)}
+                  onBeforeUpload={onBeforeUpload}
                 />
                 <DocumentUploadField
                   label="PAN Card"
@@ -220,6 +223,7 @@ export function CompanyVerificationStep({
                   asset={documents[SELLER_DOCUMENT_TYPE_KEYS.panCard]}
                   error={errors.panCardDocumentId}
                   onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.panCard, asset)}
+                  onBeforeUpload={onBeforeUpload}
                 />
                 <DocumentUploadField
                   label="Udyam (Optional)"
@@ -228,6 +232,7 @@ export function CompanyVerificationStep({
                   maxSizeMB={10}
                   asset={documents[SELLER_DOCUMENT_TYPE_KEYS.udyamCertificate]}
                   onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.udyamCertificate, asset)}
+                  onBeforeUpload={onBeforeUpload}
                 />
                 <DocumentUploadField
                   label="IEC (Optional)"
@@ -236,6 +241,7 @@ export function CompanyVerificationStep({
                   maxSizeMB={10}
                   asset={documents[SELLER_DOCUMENT_TYPE_KEYS.iecCertificate]}
                   onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.iecCertificate, asset)}
+                  onBeforeUpload={onBeforeUpload}
                 />
                 {/* Factory License — Optional for all business types */}
                 <div className="relative">
@@ -246,6 +252,7 @@ export function CompanyVerificationStep({
                     maxSizeMB={10}
                     asset={documents[SELLER_DOCUMENT_TYPE_KEYS.factoryLicense]}
                     onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.factoryLicense, asset)}
+                    onBeforeUpload={onBeforeUpload}
                   />
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
                     <ShieldPlus className="h-3.5 w-3.5" />
@@ -302,6 +309,7 @@ export function CompanyVerificationStep({
                     asset={documents[SELLER_DOCUMENT_TYPE_KEYS.dunsCertificate]}
                     error={errors.dunsCertificateDocumentId}
                     onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.dunsCertificate, asset)}
+                    onBeforeUpload={onBeforeUpload}
                   />
                 </div>
               ) : null}
@@ -330,6 +338,7 @@ export function CompanyVerificationStep({
                     asset={documents.company_registration_certificate}
                     error={errors.companyRegistrationCertificateDocumentId}
                     onChange={(asset) => onDocumentChange("company_registration_certificate", asset)}
+                    onBeforeUpload={onBeforeUpload}
                   />
                 </div>
               ) : null}
@@ -341,6 +350,7 @@ export function CompanyVerificationStep({
                 maxSizeMB={10}
                 asset={documents[SELLER_DOCUMENT_TYPE_KEYS.factoryLicense]}
                 onChange={(asset) => onDocumentChange(SELLER_DOCUMENT_TYPE_KEYS.factoryLicense, asset)}
+                onBeforeUpload={onBeforeUpload}
               />
               <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
                 <ShieldPlus className="h-3.5 w-3.5" />

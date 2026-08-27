@@ -13,6 +13,7 @@ export type StepProps = {
   onImagesChange: (category: string, images: SellerUploadAsset[]) => void;
   onVideoChange: (video: SellerUploadAsset | null) => void;
   onVideoUrlChange: (url: string) => void;
+  onBeforeUpload?: () => Promise<boolean>;
 };
 
 export type MachineRow = {
