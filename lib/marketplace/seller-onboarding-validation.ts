@@ -165,10 +165,9 @@ export function validateSellerOnboardingStep(
       if (!isNonEmptyString(form.postalCode)) addError("postalCode", "Postal code is required.");
 
       if (isIndia) {
-        // India: GST required, but actual verification is handled by admin review later.
+        // India: GST number is required, but actual verification and document approval
+        // happen through admin review after submission.
         if (!isNonEmptyString(form.gstNumber)) addError("gstNumber", "GST number is required.");
-        if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.gstCertificate)) addError("gstCertificateDocumentId", "GST certificate is required.");
-        if (!hasDocument(documents, SELLER_DOCUMENT_TYPE_KEYS.panCard)) addError("panCardDocumentId", "PAN card is required.");
       } else {
         // International: verification type required
         const verificationType = String(form.verificationType ?? "");

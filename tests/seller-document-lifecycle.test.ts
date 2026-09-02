@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateSellerOnboardingV3Completion } from "../lib/marketplace/onboarding-v3";
-import { SELLER_DOCUMENT_TYPE_KEYS, validateSellerOnboardingStep } from "../lib/marketplace/seller-onboarding-validation";
+import { getSellerV3HardGateStatus } from "../lib/marketplace/onboarding-v3";
+import { validateSellerOnboardingStep } from "../lib/marketplace/seller-onboarding-validation";
 
 const baseForm = {
   countryOrigin: "India",
@@ -11,24 +11,28 @@ const baseForm = {
   state: "Maharashtra",
   postalCode: "411001",
   gstNumber: "27ABCDE1234F1Z5",
-  gstVerified: true,
+  gstVerified: false,
 };
 
-test("seller verification requires active GST and PAN documents", () => {
+test("seller onboarding allows GST entry without upload blockers in admin-review flow", () => {
   const result = validateSellerOnboardingStep("company_verification", {
     form: baseForm,
-    documents: {
-      [SELLER_DOCUMENT_TYPE_KEYS.gstCertificate]: { id: "gst", storagePath: "active" } as never,
-    },
+    documents: {},
     images: {},
   });
 
-  assert.ok(result.fieldErrors.some((error) => error.field === "panCardDocumentId"));
+  assert.equal(result.valid, true);
+  assert.equal(result.fieldErrors.length, 0);
 });
 
-test("seller completion falls when an active verification document is deleted", () => {
-  const withDocuments = calculateSellerOnboardingV3Completion({ ...baseForm, gstCertificate: true, panCard: true }, ["company_verification"]);
-  const withoutGst = calculateSellerOnboardingV3Completion({ ...baseForm, gstCertificate: false, panCard: true }, ["company_verification"]);
+test("seller activation is not blocked by missing GST or PAN uploads while admin review is pending", () => {
+  const gate = getSellerV3HardGateStatus({
+    ...baseForm,
+    emailVerified: true,
+    mobileVerified: true,
+  });
 
-  assert.ok(withoutGst.overallPercent < withDocuments.overallPercent);
+  assert.equal(gate.canActivate, true);
+  assert.equal(gate.missingRequirements.includes("Upload GST certificate"), false);
+  assert.equal(gate.missingRequirements.includes("PAN card is required."), false);
 });

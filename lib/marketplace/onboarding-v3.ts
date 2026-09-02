@@ -840,9 +840,8 @@ export function getSellerV3HardGateStatus(values: Record<string, unknown>) {
   ];
 
   if (isIndia) {
-    requirements.push(
-      { key: "gstCertificateDocumentId", label: "Upload GST certificate" },
-    );
+    // GST is collected as a field for admin review. Sellers are not blocked from
+    // completing onboarding before a human review approves the GST details.
   } else {
     // International: verification document (DUNS or company reg) is required
     // but factory license is never required — any business type can register
