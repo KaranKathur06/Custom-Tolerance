@@ -110,6 +110,7 @@ export function CompanyVerificationStep({
           {isIndia ? (
             <>
               <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">GST Verification</h3>
+              <p className="text-xs text-slate-600">Upload your GST and PAN documents. Our team will review and approve them after submission.</p>
 
               {/* GST Number Input */}
               <div className="grid gap-4 lg:grid-cols-3">
@@ -144,7 +145,6 @@ export function CompanyVerificationStep({
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <DocumentUploadField
                   label="GST Certificate"
-                  required
                   documentType={SELLER_DOCUMENT_TYPE_KEYS.gstCertificate}
                   accept=".pdf"
                   maxSizeMB={10}
@@ -155,7 +155,6 @@ export function CompanyVerificationStep({
                 />
                 <DocumentUploadField
                   label="PAN Card"
-                  required
                   documentType={SELLER_DOCUMENT_TYPE_KEYS.panCard}
                   accept=".pdf,.jpg,.jpeg,.png"
                   maxSizeMB={10}
