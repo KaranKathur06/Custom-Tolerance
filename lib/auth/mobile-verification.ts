@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { generateOTP, getOTPExpiry, hashOTP, verifyOTPHash } from "@/lib/auth/otp";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
 import { isWhatsAppEnabled, sendWhatsAppTemplate } from "@/lib/services/whatsapp-client";
 
 export const MOBILE_OTP_LENGTH = 6;
@@ -81,12 +82,17 @@ export function secondsUntil(timestamp: string | null): number {
   return Math.max(0, Math.ceil((new Date(timestamp).getTime() - Date.now()) / 1000));
 }
 
+function getMobileVerificationClient(supabase: SupabaseClient): SupabaseClient {
+  return createSupabaseServiceRoleClient() ?? supabase;
+}
+
 export async function getMobileVerificationRecord(
   supabase: SupabaseClient,
   userId: string,
   mobile: NormalizedMobile,
 ): Promise<MobileVerificationRecord | null> {
-  const { data, error } = await supabase
+  const db = getMobileVerificationClient(supabase);
+  const { data, error } = await db
     .from("mobile_verifications")
     .select("*")
     .eq("user_id", userId)
@@ -158,7 +164,8 @@ export async function createOrUpdateMobileOtp({
     user_agent: request.headers.get("user-agent") || null,
   };
 
-  const { data, error } = await supabase
+  const db = getMobileVerificationClient(supabase);
+  const { data, error } = await db
     .from("mobile_verifications")
     .upsert(payload, { onConflict: "user_id,country_code,mobile_number" })
     .select("*")
@@ -220,7 +227,8 @@ export async function verifyMobileOtp({
         ? new Date(Date.now() + MOBILE_OTP_LOCKOUT_MINUTES * 60 * 1000).toISOString()
         : null;
 
-    await supabase
+    const db = getMobileVerificationClient(supabase);
+    await db
       .from("mobile_verifications")
       .update({ attempt_count: nextAttempts, locked_until: lockedUntil })
       .eq("id", record.id);
@@ -236,7 +244,8 @@ export async function verifyMobileOtp({
     };
   }
 
-  const { data, error } = await supabase
+  const db = getMobileVerificationClient(supabase);
+  const { data, error } = await db
     .from("mobile_verifications")
     .update({
       verified: true,
@@ -263,7 +272,8 @@ export async function resetMobileVerification({
   userId: string;
   mobile: NormalizedMobile;
 }) {
-  await supabase
+  const db = getMobileVerificationClient(supabase);
+  await db
     .from("mobile_verifications")
     .update({
       otp_hash: null,

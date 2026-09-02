@@ -273,6 +273,10 @@ export async function POST(request: Request) {
         file_fingerprint: fileFingerprint,
         created_by: auth.user.id,
         verification_status: "pending",
+        review_status: "pending",
+        reviewer_id: null,
+        reviewed_at: null,
+        review_notes: null,
         document_status: replacement ? "replaced" : "uploaded",
         updated_at: new Date().toISOString(),
       };

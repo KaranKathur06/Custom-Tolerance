@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
-import { isGstApiEnabled, lookupGstin } from "@/lib/services/gst-client";
+import { isGstApiEnabled, isGstVerificationDisabled, lookupGstin } from "@/lib/services/gst-client";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   }
 
   if (!isGstApiEnabled()) {
-    if (!isDevelopmentTrustMode()) {
+    if (!isDevelopmentTrustMode() && !isGstVerificationDisabled()) {
       return NextResponse.json(
         {
           success: false,

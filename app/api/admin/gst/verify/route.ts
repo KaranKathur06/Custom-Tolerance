@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import { protectApiRoute, logAdminAction } from "@/lib/auth/protect-route";
 import { PERMISSIONS } from "@/lib/constants/permissions";
-import { isGstApiEnabled, lookupGstin } from "@/lib/services/gst-client";
+import { isGstApiEnabled, isGstVerificationDisabled, lookupGstin } from "@/lib/services/gst-client";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   const gstState = typeof body.gst_state === "string" ? body.gst_state.trim() : "";
 
   if (!isGstApiEnabled()) {
-    if (!manual) {
+    if (!manual && !isGstVerificationDisabled()) {
       return NextResponse.json(
         {
           success: false,

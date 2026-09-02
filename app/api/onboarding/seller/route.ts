@@ -94,8 +94,18 @@ export async function POST(request: NextRequest) {
     const video = ((isNested ? values.video : undefined) ?? null) as SellerUploadAsset | null;
 
     const mobile = normalizeMobileNumber(String(form.mobileNumber ?? ""), "+91");
-    const mobileRecord = mobile ? await getMobileVerificationRecord(supabase, user.id, mobile) : null;
-    const mobileVerified = deriveMobileVerificationStatus(mobileRecord) === "verified";
+    let mobileRecord: Awaited<ReturnType<typeof getMobileVerificationRecord>> = null;
+    let mobileVerified = false;
+
+    if (mobile) {
+      try {
+        mobileRecord = await getMobileVerificationRecord(supabase, user.id, mobile);
+        mobileVerified = deriveMobileVerificationStatus(mobileRecord) === "verified";
+      } catch (error) {
+        console.warn("[seller-onboarding] mobile verification table unavailable, continuing without mobile gate:", error);
+        mobileVerified = false;
+      }
+    }
 
     const { data: existingSession } = await supabase
       .from("onboarding_sessions")

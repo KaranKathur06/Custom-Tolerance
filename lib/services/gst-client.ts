@@ -1,6 +1,7 @@
 /**
  * GST verification client — external API gated off until configured.
  * Set GST_API_KEY + NEXT_PUBLIC_ENABLE_GST_API=true to enable live lookups.
+ * For automated testing and temporary bypasses, disable the live GST auto-check.
  */
 
 export type GstLookupResult = {
@@ -18,11 +19,17 @@ export type GstLookupResult = {
 
 const GST_LOOKUP_TIMEOUT_MS = 10_000;
 
-export function isGstApiEnabled(): boolean {
+export function isGstVerificationDisabled(): boolean {
   return (
-    process.env.NEXT_PUBLIC_ENABLE_GST_API === "true" &&
-    Boolean(process.env.GST_API_KEY?.trim())
+    process.env.NODE_ENV === "test" ||
+    process.env.NEXT_PUBLIC_DISABLE_GST_AUTO_CHECK === "true"
   );
+}
+
+export function isGstApiEnabled(): boolean {
+  return !isGstVerificationDisabled() &&
+    process.env.NEXT_PUBLIC_ENABLE_GST_API === "true" &&
+    Boolean(process.env.GST_API_KEY?.trim());
 }
 
 export async function lookupGstin(gstin: string): Promise<GstLookupResult> {
