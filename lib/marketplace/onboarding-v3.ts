@@ -841,7 +841,6 @@ export function getSellerV3HardGateStatus(values: Record<string, unknown>) {
 
   if (isIndia) {
     requirements.push(
-      { key: "gstVerified", label: "Verify GST" },
       { key: "gstCertificateDocumentId", label: "Upload GST certificate" },
     );
   } else {
