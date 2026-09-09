@@ -15,6 +15,7 @@ import type { FeaturedProductRow } from "@/components/onboarding/seller/types";
 type Product = FeaturedProductRow & {
   id: string;
   createdAt?: string;
+  imageUrl?: string;
 };
 
 type Toast = { id: string; message: string; type: "success" | "error" };
@@ -43,6 +44,22 @@ function ProductCard({
         product.isVisible ? "border-slate-200" : "border-dashed border-slate-300 opacity-60"
       )}
     >
+      <div className="mb-4 aspect-[16/9] overflow-hidden rounded-lg bg-slate-100">
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={`${product.productName} product image`}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
+            <Package className="h-8 w-8" aria-hidden="true" />
+            <span className="text-xs font-medium">No product image</span>
+          </div>
+        )}
+      </div>
+
       {/* Featured badge */}
       {product.isFeatured ? (
         <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-700">
@@ -196,6 +213,11 @@ export default function FeaturedProductsPage() {
           isVisible: p.is_visible !== false && p.isVisible !== false,
           customTolerance: String(p.custom_tolerance ?? p.customTolerance ?? ""),
           createdAt: String(p.created_at ?? p.createdAt ?? ""),
+          imageUrl: (() => {
+            const images = Array.isArray(p.product_images) ? p.product_images as Array<Record<string, unknown>> : [];
+            const primary = images.find((image) => image.is_primary) ?? images[0];
+            return typeof primary?.url === "string" ? primary.url : undefined;
+          })(),
         }))
       );
     } catch {
