@@ -228,7 +228,7 @@ export function verificationEmailTemplate(
             ? `Your seller account has been verified! You can now create product listings and connect with buyers on ${BRAND.name}.`
             : `Your seller verification needs attention. ${notes || "Please review your submission and update any missing information."}`}
         </p>
-        <a href="${appUrl}/${isApproved ? "seller/dashboard" : "settings"}"
+        <a href="${appUrl}/${isApproved ? "seller" : "settings"}"
            style="display:inline-block;background:${isApproved ? "#1e3a8a" : "#f59e0b"};color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600">
           ${isApproved ? "Go to Dashboard →" : "Review Submission →"}
         </a>

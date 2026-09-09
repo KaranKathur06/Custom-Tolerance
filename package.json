@@ -9,6 +9,7 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
+    "route:smoke": "tsx scripts/route-surface-smoke.ts",
     "seed:marketplace": "npx tsx scripts/seed-marketplace.ts"
   },
   "dependencies": {

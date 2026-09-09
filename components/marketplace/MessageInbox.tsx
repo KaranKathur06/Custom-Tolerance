@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Loader2, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MessageThreadSummary, ThreadMessage } from "@/lib/marketplace/messaging";
 
 export function MessageInbox() {
+  const searchParams = useSearchParams();
+  const requestedThreadId = searchParams.get("thread");
   const [threads, setThreads] = useState<MessageThreadSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
@@ -24,10 +27,12 @@ export function MessageInbox() {
       return;
     }
     setThreads(result.data ?? []);
-    if (!selectedId && result.data?.[0]?.id) {
+    if (requestedThreadId && result.data?.some((thread: MessageThreadSummary) => thread.id === requestedThreadId)) {
+      setSelectedId(requestedThreadId);
+    } else if (!selectedId && result.data?.[0]?.id) {
       setSelectedId(result.data[0].id);
     }
-  }, [selectedId]);
+  }, [requestedThreadId, selectedId]);
 
   const loadMessages = useCallback(async (threadId: string) => {
     const response = await fetch(`/api/message-threads/${threadId}/messages`);

@@ -69,7 +69,7 @@ export async function POST(request: Request, context: RouteContext) {
       body: messageBody,
       notifyProfileId,
       notificationTitle: "New procurement message",
-      notificationHref: `/messages/${threadId}`,
+      notificationHref: `/messages?thread=${encodeURIComponent(threadId)}`,
     });
 
     return NextResponse.json({ success: true, data: message });

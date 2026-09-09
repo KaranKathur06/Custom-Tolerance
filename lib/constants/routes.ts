@@ -37,22 +37,22 @@ export const DASHBOARD_ROUTES = {
 
 // ── Admin Routes ──
 export const ADMIN_ROUTES = {
-  ROOT: '/admin',
+  ROOT: '/ops/admin',
   VERIFY: '/admin/verify',
-  USERS: '/admin/users',
-  SELLERS: '/admin/sellers',
-  LISTINGS: '/admin/listings',
-  RFQS: '/admin/rfqs',
-  BANNERS: '/admin/banners',
-  CAPABILITIES: '/admin/capabilities',
-  ANALYTICS: '/admin/analytics',
-  REVENUE: '/admin/revenue',
-  MEDIA: '/admin/media',
-  LOGS: '/admin/logs',
-  NOTIFICATIONS: '/admin/notifications',
-  CMS: '/admin/cms',
-  SETTINGS: '/admin/settings',
-  SECURITY: '/admin/security',
+  USERS: '/ops/admin/users',
+  SELLERS: '/ops/admin/users?role=seller',
+  LISTINGS: '/ops/admin/listings',
+  RFQS: '/ops/crm/pipeline',
+  BANNERS: '/api/admin/banners',
+  CAPABILITIES: '/api/admin/capabilities',
+  ANALYTICS: '/api/admin/analytics',
+  REVENUE: '/ops/admin/finance',
+  MEDIA: '/ops/admin/cms',
+  LOGS: '/ops/admin/audit',
+  NOTIFICATIONS: '/notifications',
+  CMS: '/ops/admin/cms',
+  SETTINGS: '/ops/admin/settings',
+  SECURITY: '/ops/admin/security',
 } as const;
 
 // ── Ops Routes ──
@@ -68,11 +68,11 @@ export const OPS_ROUTES = {
 
 // ── Settings Routes ──
 export const SETTINGS_ROUTES = {
-  PROFILE: '/settings/profile',
-  SECURITY: '/settings/security',
-  NOTIFICATIONS: '/settings/notifications',
-  PRIVACY: '/settings/privacy',
-  BILLING: '/settings/billing',
+  PROFILE: '/settings?tab=profile',
+  SECURITY: '/settings?tab=security',
+  NOTIFICATIONS: '/settings?tab=notifications',
+  PRIVACY: '/settings?tab=privacy',
+  BILLING: '/settings?tab=billing',
 } as const;
 
 // ── Seller Settings Routes ──

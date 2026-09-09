@@ -23,15 +23,17 @@ export async function GET(request: Request) {
   const stage = searchParams.get('stage');
   const assignedTo = searchParams.get('assigned_to');
   const source = searchParams.get('source');
-  const sort = searchParams.get('sort') || 'created_at';
+  const requestedSort = searchParams.get('sort') || 'created_at';
+  const sort = ['created_at', 'updated_at', 'stage', 'deal_value'].includes(requestedSort)
+    ? requestedSort
+    : 'created_at';
   const order = searchParams.get('order') || 'desc';
   const search = searchParams.get('search');
 
   // Build query
   let query = auth.supabase
     .from('leads')
-    .select('*, lead_activities(count)', { count: 'exact' })
-    .is('deleted_at', null);
+    .select('*', { count: 'exact' });
 
   if (stage) query = query.eq('stage', stage);
   if (assignedTo) query = query.eq('assigned_to', assignedTo);

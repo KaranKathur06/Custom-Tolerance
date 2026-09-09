@@ -12,9 +12,9 @@ export class CRMProjectionService {
       // In production, these should be materialized views updated by the Outbox Worker
       // For now, doing live aggregations
       const [buyers, sellers, leads] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'BUYER'),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'SELLER'),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).in('status', ['NEW', 'CONTACTED', 'QUALIFIED']),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'buyer'),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).in('role', ['seller', 'manufacturer', 'distributor']),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).in('stage', ['NEW', 'CONTACTED', 'QUALIFIED']),
       ]);
 
       return {
@@ -40,21 +40,17 @@ export class CRMProjectionService {
     try {
       let query = supabase
         .from('lead_activities')
-        .select(`
-          *,
-          assigned:user_id(full_name),
-          lead:lead_id(company_name, contact_name)
-        `, { count: 'exact' });
+        .select('id, lead_id, user_id, type, content, created_at', { count: 'exact' });
 
       if (filters?.status) {
-        query = query.eq('status', filters.status);
+        query = query.eq('type', filters.status);
       }
       if (filters?.assigned_to) {
-        query = query.eq('assigned_to', filters.assigned_to);
+        query = query.eq('user_id', filters.assigned_to);
       }
 
       const { data, count, error } = await query
-        .order('due_date', { ascending: true })
+        .order('created_at', { ascending: false })
         .range((page - 1) * limit, page * limit - 1);
 
       if (error) {
@@ -62,7 +58,23 @@ export class CRMProjectionService {
         return { data: [], count: 0 };
       }
 
-      return { data, count };
+      const userIds = [...new Set((data ?? []).map((activity) => activity.user_id).filter(Boolean))];
+      const { data: profiles } = userIds.length
+        ? await supabase.from('profiles').select('id, full_name, email').in('id', userIds)
+        : { data: [] as { id: string; full_name: string | null; email: string | null }[] };
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+
+      return {
+        data: (data ?? []).map((activity) => ({
+          ...activity,
+          title: activity.content || activity.type || 'CRM activity',
+          status: 'OPEN',
+          priority: 'LOW',
+          due_date: null,
+          assigned: profileById.get(activity.user_id) ?? null,
+        })),
+        count,
+      };
     } catch {
       return { data: [], count: 0 };
     }
@@ -106,7 +118,7 @@ export class CRMProjectionService {
             dueIn: 'TBD'
           };
 
-          const stage = stages.find(s => s.key === lead.status);
+          const stage = stages.find(s => s.key === lead.stage);
           if (stage) {
             stage.leads.push(mappedLead);
           }
@@ -131,8 +143,8 @@ export class CRMProjectionService {
       // In a real system, the Outbox worker updates a `crm_pipeline_projections` table.
       // For now we'll do raw aggregations.
       const [newLeads, qualifiedLeads, rfqs, quotes, orders] = await Promise.all([
-        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'NEW'),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'QUALIFIED'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('stage', 'NEW'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('stage', 'QUALIFIED'),
         supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('status', 'SUBMITTED'),
         supabase.from('quotes').select('id', { count: 'exact', head: true }).in('status', ['DRAFT', 'SENT']),
         supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'COMPLETED'),
@@ -162,13 +174,10 @@ export class CRMProjectionService {
     try {
       let query = supabase
         .from('profiles')
-        .select(`
-          *,
-          company:companies(name, industry)
-        `, { count: 'exact' });
+        .select('id, email, full_name, role, company_name, created_at', { count: 'exact' });
 
       if (role !== 'ALL') {
-        query = query.eq('role', role);
+        query = query.eq('role', role === 'BUYER' ? 'buyer' : 'seller');
       }
 
       const { data, count, error } = await query
@@ -180,7 +189,13 @@ export class CRMProjectionService {
         return { data: [], count: 0 };
       }
 
-      return { data, count };
+      return {
+        data: (data ?? []).map((profile) => ({
+          ...profile,
+          company: profile.company_name ? { name: profile.company_name } : null,
+        })),
+        count,
+      };
     } catch {
       return { data: [], count: 0 };
     }

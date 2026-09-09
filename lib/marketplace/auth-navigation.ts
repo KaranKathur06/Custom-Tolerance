@@ -31,7 +31,7 @@ export const sharedAuthenticatedNavItems: MarketplaceNavItem[] = [
   },
   {
     label: "Membership",
-    href: "/membership",
+    href: "/pricing",
     requiresAuthenticated: true,
   },
 ];
@@ -104,20 +104,14 @@ export const buyerNavItems: MarketplaceNavItem[] = [
 
 export const supplierSuccessNavItems: MarketplaceNavItem[] = [
   {
-    label: "Supplier Operations",
-    href: "/ops/suppliers",
+    label: "Supplier Verification",
+    href: "/ops/admin/verification",
     roles: ["supplier_success", "admin"],
     requiresAuthenticated: true,
   },
   {
     label: "Verification Queue",
-    href: "/ops/verification",
-    roles: ["supplier_success", "admin"],
-    requiresAuthenticated: true,
-  },
-  {
-    label: "Onboarding Reviews",
-    href: "/ops/onboarding",
+    href: "/ops/admin/verification",
     roles: ["supplier_success", "admin"],
     requiresAuthenticated: true,
   },
@@ -141,7 +135,7 @@ export function getDashboardHref(role: MarketplaceRole | null | undefined) {
     case "support_agent":
       return "/ops";
     case "supplier_success":
-      return "/ops/verification";
+      return "/ops/admin/verification";
     case "both":
     default:
       return "/dashboard";
@@ -154,7 +148,7 @@ export function getAuthenticatedNavItems(role: MarketplaceRole | null | undefine
     return [
       {
         label: "Verification Queue",
-        href: "/ops/verification",
+        href: "/ops/admin/verification",
         requiresAuthenticated: true,
       },
       ...sharedAuthenticatedNavItems.filter((item) => item.label !== "Dashboard"),
@@ -192,7 +186,7 @@ export function getOnboardingHref(role: MarketplaceRole | null | undefined) {
     case "supplier_success":
     case "support_agent":
     case "moderator":
-      return "/ops/suppliers";
+      return "/ops/admin/verification";
     case "admin":
     case "super_admin":
     case "finance":

@@ -87,7 +87,7 @@ export default function SellerMembershipPage() {
                 Current Plan
               </Button>
             ) : (
-              <Link href="/membership" className="mt-6 block">
+              <Link href="/pricing" className="mt-6 block">
                 <Button
                   className={`w-full ${
                     plan.highlighted

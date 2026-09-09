@@ -13,6 +13,9 @@ import { canResumeProductDraft } from "@/lib/services/product-draft-service";
 
 type ProductData = Partial<Phase1Data> & Partial<Phase2Data> & Partial<Phase3Data>;
 
+const AUTOSAVE_DEBOUNCE_MS = 500;
+const ERROR_COOLDOWN_MS = 5000;
+
 function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   const router = useRouter();
   const [draftId, setDraftId] = useState<string | null>(existingDraftId || null);
@@ -26,6 +29,11 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   // A ref to store the latest data so the background autosave can access it
   const dataRef = useRef<ProductData>({});
   const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  
+  // Debounce timer for autosave — prevents rapid-fire requests on every keystroke
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Error cooldown — after a save failure, suppress autosave for a few seconds
+  const errorCooldownUntilRef = useRef<number>(0);
   
   // Track active phase to trigger render for Review tab only
   const [reviewTrigger, setReviewTrigger] = useState(0);
@@ -257,11 +265,15 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
         }
 
         setLastSaved(new Date());
+        setDraftError(false);
+        setDraftErrorMessage(null);
         return true;
       } catch (err) {
         console.error("Autosave failed", err);
         setDraftError(true);
         setDraftErrorMessage(err instanceof Error ? err.message : "Unable to save this product draft.");
+        // Set error cooldown to prevent rapid-fire retries
+        errorCooldownUntilRef.current = Date.now() + ERROR_COOLDOWN_MS;
         return false;
       } finally {
         setIsSaving(false);
@@ -278,7 +290,20 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     if (activePhase === 4) {
       setReviewTrigger(prev => prev + 1);
     }
-    triggerAutosave(dataRef.current);
+
+    // Debounce autosave — don't fire on every keystroke
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // If in error cooldown, delay until cooldown expires
+    const now = Date.now();
+    const cooldownRemaining = Math.max(0, errorCooldownUntilRef.current - now);
+    const delay = Math.max(AUTOSAVE_DEBOUNCE_MS, cooldownRemaining);
+
+    debounceTimerRef.current = setTimeout(() => {
+      triggerAutosave(dataRef.current);
+    }, delay);
   }, [triggerAutosave, activePhase]);
 
   const saveDraft = async () => {
@@ -342,7 +367,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
             {isSaving ? (
               <><Loader2 className="h-4 w-4 animate-spin text-blue-500" /> <span className="text-blue-600">Saving...</span></>
             ) : draftError ? (
-              <><AlertCircle className="h-4 w-4 text-amber-500" /> <span className="text-amber-600">Connection issues — changes will sync when you are back online.</span></>
+              <><AlertCircle className="h-4 w-4 text-red-500" /> <span className="text-red-600">Save failed — use Retry below or your changes are safe on this page.</span></>
             ) : lastSaved ? (
               <><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Saved {lastSaved.toLocaleTimeString()}</>
             ) : draftId ? (

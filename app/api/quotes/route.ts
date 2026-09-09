@@ -269,7 +269,11 @@ export async function POST(request: Request) {
           body: (body.message as string)?.trim() || summary,
           notifyProfileId: buyer?.profile_id ?? null,
           notificationTitle: `New quote on ${rfq.title}`,
-          notificationHref: rfq.slug ? `/rfq/${rfq.slug}` : `/messages/${threadId}`,
+          notificationHref: rfq.slug
+            ? `/rfq/${rfq.slug}`
+            : threadId
+              ? `/messages?thread=${encodeURIComponent(threadId)}`
+              : "/messages",
         });
 
         if (buyer?.profile_id) {

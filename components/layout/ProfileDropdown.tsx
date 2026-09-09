@@ -138,10 +138,10 @@ export function ProfileDropdown({
                         <DropdownLink href={homePath} icon={<LayoutDashboard />}>
                             Dashboard
                         </DropdownLink>
-                        <DropdownLink href="/account/profile" icon={<UserRound />}>
+                        <DropdownLink href="/settings?tab=profile" icon={<UserRound />}>
                             Profile
                         </DropdownLink>
-                        <DropdownLink href="/account/settings" icon={<Settings />}>
+                        <DropdownLink href="/settings" icon={<Settings />}>
                             Settings
                         </DropdownLink>
                     </div>

@@ -113,7 +113,7 @@ export async function sendThreadMessage(
         title: input.notificationTitle ?? "New message",
         body: trimmed.slice(0, 140),
         type: "message",
-        href: input.notificationHref ?? `/messages/${input.threadId}`,
+        href: input.notificationHref ?? `/messages?thread=${encodeURIComponent(input.threadId)}`,
       }),
     );
   }

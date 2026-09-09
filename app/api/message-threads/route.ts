@@ -121,7 +121,7 @@ export async function POST(request: Request) {
         body: initialMessage,
         notifyProfileId: seller?.profile_id ?? notifyId,
         notificationTitle: "New inquiry message",
-        notificationHref: `/messages/${threadId}`,
+        notificationHref: `/messages?thread=${encodeURIComponent(threadId)}`,
       });
     }
 
