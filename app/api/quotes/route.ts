@@ -131,6 +131,7 @@ export async function POST(request: Request) {
     emailVerified: Boolean(auth.user.email_confirmed_at) || Boolean(company?.email_verified),
     mobileVerified: Boolean(company?.phone_verified),
     requiredDocumentsUploaded: sellerV3Context.requiredDocumentsUploaded && sellerV3Context.bankVerified,
+    adminVerified: sellerV3Context.sellerProfile?.admin_verified === true,
     developmentTrustMode,
   });
 

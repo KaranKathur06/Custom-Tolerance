@@ -31,7 +31,7 @@ export async function getSellerV3ActivationContext(supabase: SupabaseClient, use
   const { data: sellerProfile } = await supabase
     .from("seller_profiles")
     .select(
-      "id, company_id, onboarding_status, profile_completion_percent, trust_level, companies(country_id)",
+      "id, company_id, onboarding_status, profile_completion_percent, trust_level, admin_verified, companies(country_id)",
     )
     .eq("profile_id", userId)
     .maybeSingle();

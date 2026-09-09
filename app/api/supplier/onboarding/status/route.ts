@@ -54,7 +54,7 @@ export async function GET() {
 
   const sellerResult = await supabase
     .from("seller_profiles")
-    .select("id, onboarding_status, profile_completion_percent, verification_status, submitted_at, approved_at, change_request_notes, review_notes")
+    .select("id, onboarding_status, profile_completion_percent, verification_status, admin_verified, submitted_at, approved_at, change_request_notes, review_notes")
     .eq("profile_id", user.id)
     .maybeSingle();
 
@@ -142,6 +142,7 @@ export async function GET() {
     emailVerified,
     mobileVerified,
     requiredDocumentsUploaded,
+    adminVerified: seller.admin_verified === true,
     developmentTrustMode,
   });
 
@@ -175,6 +176,8 @@ export async function GET() {
     success: true,
     data: {
       onboardingStatus,
+      adminVerified: seller.admin_verified === true,
+      verificationStatus: seller.admin_verified ? "approved" : seller.verification_status,
       profileCompletionPercent: completion.overallPercent,
       completionSections: completion.sections,
       remainingItems: remaining,

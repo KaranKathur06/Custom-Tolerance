@@ -203,12 +203,6 @@ export async function PATCH(req: NextRequest) {
   if (body.dimWidth !== undefined) patch.dim_width = Number(body.dimWidth) || null;
   if (body.dimHeight !== undefined) patch.dim_height = Number(body.dimHeight) || null;
   if (body.dimUnit !== undefined) patch.dim_unit = body.dimUnit;
-  if (body.weightValue !== undefined) patch.weight_value = Number(body.weightValue) || null;
-  if (body.weightUnit !== undefined) patch.weight_unit = body.weightUnit;
-  if (body.dimLength !== undefined) patch.dim_length = Number(body.dimLength) || null;
-  if (body.dimWidth !== undefined) patch.dim_width = Number(body.dimWidth) || null;
-  if (body.dimHeight !== undefined) patch.dim_height = Number(body.dimHeight) || null;
-  if (body.dimUnit !== undefined) patch.dim_unit = body.dimUnit;
   if (body.shippingType !== undefined) patch.shipping_type = body.shippingType;
   if (body.primaryPackaging !== undefined) patch.primary_packaging = body.primaryPackaging;
   if (body.secondaryPackaging !== undefined) patch.secondary_packaging = body.secondaryPackaging;
@@ -250,15 +244,16 @@ export async function PATCH(req: NextRequest) {
   
   const handleRelation = async (table: string, field: string, items: any[]) => {
     if (!items) return;
+    const uniqueItems = Array.from(new Set(items.filter((item) => typeof item === "string" && item.trim())));
     const { error: deleteError } = await supabase
       .from(table)
       .delete()
       .eq("seller_product_id", productId);
-    if (deleteError) throw new Error(`${table} delete failed: ${deleteError.message}`);
-    if (items.length > 0) {
-      const inserts = items.map(item => ({ seller_product_id: productId, [field]: item }));
+    if (deleteError) throw new Error(`${table}: ${deleteError.message}`);
+    if (uniqueItems.length > 0) {
+      const inserts = uniqueItems.map(item => ({ seller_product_id: productId, [field]: item }));
       const { error: insertError } = await supabase.from(table).insert(inserts);
-      if (insertError) throw new Error(`${table} insert failed: ${insertError.message}`);
+      if (insertError) throw new Error(`${table}: ${insertError.message}`);
     }
   };
 
@@ -275,7 +270,7 @@ export async function PATCH(req: NextRequest) {
     console.error("[seller/products PATCH] relation update failed:", relationError);
     return NextResponse.json(
       { error: relationError instanceof Error ? relationError.message : "Related product data failed to save" },
-      { status: 500 },
+      { status: 503 },
     );
   }
 
@@ -286,7 +281,7 @@ export async function PATCH(req: NextRequest) {
       .delete()
       .eq("seller_product_id", productId);
     if (imageDeleteError) {
-      return NextResponse.json({ error: imageDeleteError.message }, { status: 500 });
+      return NextResponse.json({ error: `product_images: ${imageDeleteError.message}` }, { status: 503 });
     }
     if (body.images.length > 0) {
       const inserts = body.images.map((img: any, idx: number) => ({
@@ -298,7 +293,7 @@ export async function PATCH(req: NextRequest) {
       }));
       const { error: imageInsertError } = await supabase.from("product_images").insert(inserts);
       if (imageInsertError) {
-        return NextResponse.json({ error: imageInsertError.message }, { status: 500 });
+        return NextResponse.json({ error: `product_images: ${imageInsertError.message}` }, { status: 503 });
       }
     }
   }

@@ -160,11 +160,12 @@ export async function PATCH(request: Request) {
       const sellerUpdate = await auth.supabase
         .from('seller_profiles')
         .update({
-          verification_status: verificationStatus,
-          review_status: verificationStatus,
+          verification_status: verificationStatus === 'verified' ? 'approved' : 'rejected',
+          review_status: verificationStatus === 'verified' ? 'approved' : 'rejected',
           onboarding_status: verificationStatus === 'verified' ? 'APPROVED' : 'REJECTED',
           approved_at: verificationStatus === 'verified' ? timestamp : null,
           rejected_at: verificationStatus === 'rejected' ? timestamp : null,
+          admin_verified: verificationStatus === 'verified',
           updated_at: timestamp,
         })
         .eq('id', sellerProfile.id);
@@ -175,19 +176,23 @@ export async function PATCH(request: Request) {
       if (sellerProfile.company_id) {
         const companyUpdate = await auth.supabase
           .from('companies')
-          .update({ verification_status: verificationStatus, updated_at: timestamp })
+          .update({
+            verification_status: verificationStatus === 'verified' ? 'approved' : 'rejected',
+            is_verified: verificationStatus === 'verified',
+            updated_at: timestamp,
+          })
           .eq('id', sellerProfile.company_id);
         if (companyUpdate.error) {
           return NextResponse.json({ success: false, error: { code: 'PARTIAL_UPDATE', message: 'Seller verification was updated, but the company status could not be synchronized. Retry the action.' } }, { status: 503 });
         }
+      }
 
-        const supplierUpdate = await auth.supabase
-          .from('suppliers')
-          .update({ verification_status: verificationStatus })
-          .eq('seller_profile_id', sellerProfile.id);
-        if (supplierUpdate.error) {
-          return NextResponse.json({ success: false, error: { code: 'PARTIAL_UPDATE', message: 'Seller verification was updated, but marketplace visibility could not be synchronized. Retry the action.' } }, { status: 503 });
-        }
+      const supplierUpdate = await auth.supabase
+        .from('suppliers')
+        .update({ verification_status: verificationStatus === 'verified' ? 'approved' : 'rejected' })
+        .eq('seller_profile_id', sellerProfile.id);
+      if (supplierUpdate.error) {
+        return NextResponse.json({ success: false, error: { code: 'PARTIAL_UPDATE', message: 'User verification was updated, but marketplace visibility could not be synchronized. Retry the action.' } }, { status: 503 });
       }
     }
 

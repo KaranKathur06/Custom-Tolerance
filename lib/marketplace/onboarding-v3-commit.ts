@@ -333,6 +333,13 @@ export async function commitSellerOnboardingV3(
     ...payload,
     documents: buildDocumentRecords(payload),
     factoryPhotos: buildFactoryPhotoRecords(payload),
+    // Map v3 form field names → legacy commit expected names for location
+    countryId:
+      draftString(payload, "countryOrigin") ??
+      draftString(payload, "countryId"),
+    stateId:
+      draftString(payload, "state") ?? draftString(payload, "stateId"),
+    cityId: draftString(payload, "city") ?? draftString(payload, "cityId"),
     companyName:
       draftString(payload, "companyName") ??
       draftString(payload, "legalBusinessName"),

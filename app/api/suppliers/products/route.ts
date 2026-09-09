@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     emailVerified: Boolean(auth.user.email_confirmed_at) || Boolean(company?.email_verified),
     mobileVerified: Boolean(company?.phone_verified),
     requiredDocumentsUploaded: sellerContext.requiredDocumentsUploaded && sellerContext.bankVerified,
+    adminVerified: sellerProfile.admin_verified === true,
     developmentTrustMode,
   });
 

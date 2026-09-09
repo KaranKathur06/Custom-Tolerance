@@ -66,27 +66,29 @@ const SELLER_PROFILE_FIELDS: Record<string, string> = {
   certifications: 'Certifications',
   accepts_rfqs: 'Accepts RFQs',
   response_time_hours: 'Response time (hours)',
-  company_id: 'Company',
+  seller_types: 'Seller types',
+  business_nature: 'Business nature',
+  industries_served: 'Industries served',
+  capabilities: 'Capabilities',
+  total_employees: 'Total employees',
+  address_line_1: 'Registered address',
+  postal_code: 'Postal code',
 };
 
 // ── Buyer company fields (shared business attributes only) ──────────────────
 const BUYER_COMPANY_FIELDS: Record<string, string> = {
   name: 'Company name',
   slug: 'Company slug',
-  owner_id: 'Owner',
   gst_number: 'GST number',
   pan_number: 'PAN number',
   business_type: 'Business type',
   website: 'Website',
   linkedin_url: 'LinkedIn URL',
-  company_size: 'Company size',
   country_id: 'Country',
   state_id: 'State',
   city_id: 'City',
-  description: 'Company description',
   company_description: 'Company description',
   year_established: 'Established year',
-  employee_count: 'Employee count',
   number_of_employees: 'Number of employees',
 };
 
@@ -95,6 +97,7 @@ const SELLER_COMPANY_FIELDS: Record<string, string> = {
   ...BUYER_COMPANY_FIELDS,
   legal_business_name: 'Legal business name',
   full_address: 'Business address',
+  factory_address: 'Factory address',
 };
 
 // ── Manufacturing & Capabilities (seller-only, from companies + seller_profiles) ─

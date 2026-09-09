@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   const { data: sellerProfile } = await auth.supabase
     .from("seller_profiles")
-    .select("id, profile_completion_percent, trust_level, verification_status, company_id")
+    .select("id, profile_completion_percent, trust_level, verification_status, admin_verified, company_id")
     .eq("profile_id", auth.user.id)
     .maybeSingle();
 
@@ -147,7 +147,7 @@ export async function GET(request: Request) {
       leadFeedCount,
       profileHealth: sellerProfile.profile_completion_percent ?? 0,
       trustLevel: sellerProfile.trust_level ?? 0,
-      verificationStatus: sellerProfile.verification_status,
+      verificationStatus: sellerProfile.admin_verified ? "approved" : sellerProfile.verification_status,
       unreadNotifications: notificationsRes.count ?? 0,
       products: productCounts,
     },

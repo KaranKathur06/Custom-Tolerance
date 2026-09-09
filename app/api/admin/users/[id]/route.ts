@@ -82,7 +82,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     ? auth.supabase.from('companies').select('id, owner_id, name, slug, gst_number, pan_number, business_type, website, linkedin_url, company_size, years_in_business, country_id, state_id, city_id, description, company_description, year_established, employee_count, number_of_employees, legal_business_name, full_address, factory_address, annual_production_capacity, export_capability, response_rate, avg_response_hours, completion_rate, iso_certified').eq('id', context.sellerProfile!.company_id).maybeSingle()
     : null;
   const sellerExtendedQuery = hasSeller
-    ? auth.supabase.from('seller_profiles').select('id, production_capacity, certifications, accepts_rfqs, response_time_hours, onboarding_status, review_status, submitted_at, approved_at').eq('id', context.sellerProfile!.id).maybeSingle()
+    ? auth.supabase.from('seller_profiles').select('id, production_capacity, certifications, accepts_rfqs, response_time_hours, onboarding_status, review_status, submitted_at, approved_at, seller_types, business_nature, industries_served, capabilities, total_employees, address_line_1, address_line_2, postal_code, factory_address_line_1, factory_address_line_2, factory_postal_code, website, linkedin_url, whatsapp, video_urls, buyer_services, supplier_interests, years_in_business').eq('id', context.sellerProfile!.id).maybeSingle()
     : null;
   const sellerListingCountQuery = hasSeller
     ? auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile!.id)

@@ -16,6 +16,7 @@ export type SupplierMarketplaceGateInput = {
   emailVerified: boolean;
   mobileVerified: boolean;
   requiredDocumentsUploaded: boolean;
+  adminVerified?: boolean;
 
   /**
    * Development-only override
@@ -102,6 +103,15 @@ export function evaluateSupplierMarketplaceGate(
   input: SupplierMarketplaceGateInput,
 ): SupplierMarketplaceGateResult {
   const actionLabel = ACTION_LABELS[input.action];
+
+  if (input.adminVerified) {
+    return {
+      allowed: true,
+      hardBlocked: false,
+      message: "",
+      missingRequirements: softMissingItemsForAction(input, input.action),
+    };
+  }
 
   if (input.developmentTrustMode) {
     return {

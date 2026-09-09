@@ -25,6 +25,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   
   // A ref to store the latest data so the background autosave can access it
   const dataRef = useRef<ProductData>({});
+  const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   
   // Track active phase to trigger render for Review tab only
   const [reviewTrigger, setReviewTrigger] = useState(0);
@@ -174,9 +175,10 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     const idToUse = targetDraftId || draftId;
     if (!idToUse) return false;
 
-    setIsSaving(true);
-    setDraftError(false);
-    try {
+    const saveOperation = async (): Promise<boolean> => {
+      setIsSaving(true);
+      setDraftError(false);
+      try {
       // Complete mapping to backend schema
       // This bridges the rich frontend UI fields to the existing schema
       const payload: any = {};
@@ -243,24 +245,32 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       if (dataToSave.secondaryPackaging !== undefined) payload.secondaryPackaging = dataToSave.secondaryPackaging;
       if (dataToSave.packagingNotes !== undefined) payload.packagingNotes = dataToSave.packagingNotes;
 
-      const res = await fetch(`/api/dashboard/seller/products?id=${idToUse}`, {
+        const res = await fetch(`/api/dashboard/seller/products?id=${idToUse}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
+        });
 
-      if (!res.ok) throw new Error("Autosave failed");
+        if (!res.ok) {
+          const responseBody = await res.json().catch(() => null) as { error?: string } | null;
+          throw new Error(responseBody?.error || `Autosave failed (${res.status})`);
+        }
 
-      setLastSaved(new Date());
-      return true;
-    } catch (err) {
-      console.error("Autosave failed", err);
-      setDraftError(true);
-      setDraftErrorMessage(err instanceof Error ? err.message : "Unable to save this product draft.");
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
+        setLastSaved(new Date());
+        return true;
+      } catch (err) {
+        console.error("Autosave failed", err);
+        setDraftError(true);
+        setDraftErrorMessage(err instanceof Error ? err.message : "Unable to save this product draft.");
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    const queuedSave = saveQueueRef.current.then(saveOperation, saveOperation);
+    saveQueueRef.current = queuedSave.catch(() => false);
+    return queuedSave;
   }, [draftId]);
 
   const handleDataChange = useCallback((newData: ProductData) => {
@@ -313,8 +323,16 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
           
           {draftError && (
             <div className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 p-4 rounded-md">
-              <span className="font-semibold block mb-1">Onboarding Incomplete</span>
-              {draftErrorMessage || "Unable to initialize draft in background. Your changes may not save."}
+              <span className="font-semibold block mb-1">Draft save needs attention</span>
+              <span>{draftErrorMessage || "Unable to save this product draft. Your changes are still on this page."}</span>
+              <button
+                type="button"
+                onClick={() => void saveDraft()}
+                disabled={isSaving || !draftId}
+                className="mt-3 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                Retry save
+              </button>
             </div>
           )}
         </div>
