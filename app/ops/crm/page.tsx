@@ -6,13 +6,15 @@ import {
   ArrowRight, Phone, Mail, Calendar,
 } from 'lucide-react';
 import Link from 'next/link';
+import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 
 export default async function CRMCommandCenter() {
   // Fetch projection data for the CRM preview dashboard
-  const kpis = await CRMProjectionService.getKPIs();
+  const supabase = createSupabaseServerClient();
+  const kpis = await CRMProjectionService.getKPIs(supabase ?? undefined);
   const pipeline = await CRMProjectionService.getPipeline();
 
-  const recentLeads = await CRMProjectionService.getCustomers('BUYER', 1, 5);
+  const recentLeads = await CRMProjectionService.getCustomers('BUYER', 1, 5, supabase ?? undefined);
   const tasksRes = await CRMProjectionService.getTasks(1, 5, { status: 'TODO' });
 
   return (

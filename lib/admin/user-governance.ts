@@ -181,7 +181,9 @@ export async function listUserGovernanceContexts(
       admin: ['admin', 'ADMIN'],
       super_admin: ['super_admin', 'SUPER_ADMIN', 'superadmin', 'SUPERADMIN'],
     };
-    query = query.in('role', roleAliases[role] ?? [role]);
+    const aliases = roleAliases[role] ?? [role];
+    const encodedAliases = aliases.join(',');
+    query = query.or(`role.in.(${encodedAliases}),auth_role.in.(${encodedAliases})`);
   }
   if (options.status && ['normal', 'suspended', 'banned'].includes(options.status)) query = query.eq('enforcement_status', options.status);
   if (options.search) {

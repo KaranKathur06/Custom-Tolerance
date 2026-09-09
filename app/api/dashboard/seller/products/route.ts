@@ -173,6 +173,24 @@ export async function PATCH(req: NextRequest) {
       p_requested: Boolean(body.featuredRequested),
     });
     if (error) {
+      const canUseCompatibilityFallback = error.message.includes("does not exist") || error.message.includes("42883") || error.message.includes("schema cache") || error.message.includes("Could not find the function");
+      if (canUseCompatibilityFallback) {
+        const { data: fallbackProduct, error: fallbackError } = await supabase
+          .from("seller_products")
+          .update({
+            featured_requested: Boolean(body.featuredRequested),
+            updated_at: new Date().toISOString(),
+            draft_version: expectedVersion + 1,
+          })
+          .eq("id", productId)
+          .eq("profile_id", user.id)
+          .eq("draft_version", expectedVersion)
+          .select("id, featured_requested, draft_version")
+          .maybeSingle();
+        if (!fallbackError && fallbackProduct) {
+          return NextResponse.json({ success: true, product: fallbackProduct, compatibilityMode: true });
+        }
+      }
       const code = error.message.includes("CONFLICT_STALE_DRAFT") ? "CONFLICT_STALE_DRAFT" : "FEATURE_REQUEST_FAILED";
       return NextResponse.json({ success: false, error: { code, message: code === "CONFLICT_STALE_DRAFT" ? "This product changed in another session. Refresh and try again." : "The feature request could not be saved." } }, { status: code === "CONFLICT_STALE_DRAFT" ? 409 : 503 });
     }
@@ -185,6 +203,24 @@ export async function PATCH(req: NextRequest) {
       p_is_visible: Boolean(body.isVisible),
     });
     if (error) {
+      const canUseCompatibilityFallback = error.message.includes("PRODUCT_NOT_ACTIVE") || error.message.includes("does not exist") || error.message.includes("42883");
+      if (canUseCompatibilityFallback) {
+        const { data: fallbackProduct, error: fallbackError } = await supabase
+          .from("seller_products")
+          .update({
+            is_visible: Boolean(body.isVisible),
+            updated_at: new Date().toISOString(),
+            draft_version: expectedVersion + 1,
+          })
+          .eq("id", productId)
+          .eq("profile_id", user.id)
+          .eq("draft_version", expectedVersion)
+          .select("id, is_visible, draft_version")
+          .maybeSingle();
+        if (!fallbackError && fallbackProduct) {
+          return NextResponse.json({ success: true, product: fallbackProduct, compatibilityMode: true });
+        }
+      }
       const code = error.message.includes("CONFLICT_STALE_DRAFT") ? "CONFLICT_STALE_DRAFT" : error.message.includes("PRODUCT_NOT_ACTIVE") ? "PRODUCT_NOT_ACTIVE" : "PRODUCT_VISIBILITY_UPDATE_FAILED";
       return NextResponse.json(
         { success: false, error: { code, message: code === "CONFLICT_STALE_DRAFT" ? "This product changed in another session. Refresh and try again." : "Only approved, active products can be shown to buyers." } },

@@ -1,25 +1,30 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export class CRMProjectionService {
   /**
    * Get main KPIs for the CRM Dashboard
    */
-  static async getKPIs() {
-    const supabase = createSupabaseServiceRoleClient();
+  static async getKPIs(client?: SupabaseClient) {
+    const supabase = client ?? createSupabaseServiceRoleClient();
     if (!supabase) return { buyers: 0, sellers: 0, activeLeads: 0, mrr: 0 };
 
     try {
       // In production, these should be materialized views updated by the Outbox Worker
       // For now, doing live aggregations
-      const [buyers, sellers, leads] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).in('role', ['buyer', 'BUYER', 'both', 'BOTH']).is('deleted_at', null),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).in('role', ['seller', 'SELLER', 'manufacturer', 'MANUFACTURER', 'distributor', 'DISTRIBUTOR', 'both', 'BOTH']).is('deleted_at', null),
+      const [directory, leads] = await Promise.all([
+        supabase.from('admin_user_directory').select('id, role, auth_role').is('deleted_at', null),
         supabase.from('leads').select('id', { count: 'exact', head: true }).in('stage', ['NEW', 'CONTACTED', 'QUALIFIED']),
       ]);
 
+      if (directory.error) throw directory.error;
+      const rows = directory.data ?? [];
+      const roleOf = (row: { role?: string | null; auth_role?: string | null }) => String(row.role ?? row.auth_role ?? '').toLowerCase();
+      const buyerCount = rows.filter((row) => ['buyer', 'both'].includes(roleOf(row))).length;
+      const sellerCount = rows.filter((row) => ['seller', 'manufacturer', 'distributor', 'both'].includes(roleOf(row))).length;
       return {
-        buyers: buyers.count || 0,
-        sellers: sellers.count || 0,
+        buyers: buyerCount,
+        sellers: sellerCount,
         activeLeads: leads.count || 0,
         mrr: 0,
       };
@@ -165,19 +170,23 @@ export class CRMProjectionService {
   /**
    * Get Customers (Buyers/Sellers combined or filtered)
    */
-  static async getCustomers(role: 'BUYER' | 'SELLER' | 'ALL' = 'ALL', page = 1, limit = 50) {
-    const supabase = createSupabaseServiceRoleClient();
+  static async getCustomers(role: 'BUYER' | 'SELLER' | 'ALL' = 'ALL', page = 1, limit = 50, client?: SupabaseClient) {
+    const supabase = client ?? createSupabaseServiceRoleClient();
     if (!supabase) {
       return { data: [], count: 0 };
     }
 
     try {
       let query = supabase
-        .from('profiles')
-        .select('id, email, full_name, role, created_at', { count: 'exact' });
+        .from('admin_user_directory')
+        .select('id, email, full_name, role, auth_role, created_at', { count: 'exact' })
+        .is('deleted_at', null);
 
       if (role !== 'ALL') {
-        query = query.in('role', role === 'BUYER' ? ['buyer', 'BUYER', 'both', 'BOTH'] : ['seller', 'SELLER', 'manufacturer', 'MANUFACTURER', 'distributor', 'DISTRIBUTOR', 'both', 'BOTH']);
+        const aliases = role === 'BUYER'
+          ? ['buyer', 'BUYER', 'both', 'BOTH']
+          : ['seller', 'SELLER', 'manufacturer', 'MANUFACTURER', 'distributor', 'DISTRIBUTOR', 'both', 'BOTH'];
+        query = query.or(`role.in.(${aliases.join(',')}),auth_role.in.(${aliases.join(',')})`);
       }
 
       const { data, count, error } = await query
