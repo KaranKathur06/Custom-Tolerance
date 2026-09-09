@@ -145,9 +145,41 @@ export async function POST(request: Request) {
     .eq("profile_id", auth.user.id)
     .maybeSingle();
 
+  // If seller_profiles doesn't exist, initialize it now (eager initialization pattern)
+  let finalSellerProfileId = sellerProfile?.id;
   if (sellerProfileError || !sellerProfile) {
+    try {
+      const { data: initialized, error: initError } = await auth.supabase
+        .from("seller_profiles")
+        .insert({
+          profile_id: auth.user.id,
+          company_id: null,
+          onboarding_status: "REGISTERED",
+          verification_status: "pending",
+          profile_completion_percent: 0,
+          created_by: auth.user.id,
+        })
+        .select("id, company_id")
+        .single();
+
+      if (initError || !initialized) {
+        return NextResponse.json(
+          { success: false, error: { code: "SELLER_PROFILE_INIT_FAILED", message: "Unable to initialize seller profile. Please try again." } },
+          { status: 409 },
+        );
+      }
+      finalSellerProfileId = initialized.id;
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: { code: "SELLER_PROFILE_INIT_FAILED", message: "Unable to initialize seller profile. Please try again." } },
+        { status: 409 },
+      );
+    }
+  }
+
+  if (!finalSellerProfileId) {
     return NextResponse.json(
-      { success: false, error: { code: "SELLER_PROFILE_REQUIRED", message: "Complete your seller profile before uploading files." } },
+      { success: false, error: { code: "SELLER_PROFILE_REQUIRED", message: "Failed to initialize seller profile. Please refresh and try again." } },
       { status: 409 },
     );
   }
@@ -195,7 +227,7 @@ export async function POST(request: Request) {
       .from("supplier_documents")
       .select("id, storage_path")
       .eq("id", replaceDocumentId)
-      .eq("seller_profile_id", sellerProfile.id)
+      .eq("seller_profile_id", finalSellerProfileId)
       .is("deleted_at", null)
       .maybeSingle();
     if (!data) {
@@ -212,7 +244,7 @@ export async function POST(request: Request) {
     .from(tableName)
     .select("id, seller_profile_id")
     .eq("file_fingerprint", fileFingerprint)
-    .neq("seller_profile_id", sellerProfile.id)
+    .neq("seller_profile_id", finalSellerProfileId)
     .is("deleted_at", null)
     .limit(1)
     .maybeSingle();
@@ -258,10 +290,17 @@ export async function POST(request: Request) {
   let record: Record<string, unknown> | null = null;
   let recordError: Error | null = null;
 
+  // Get current seller_profile to retrieve company_id
+  const { data: currentProfile } = await auth.supabase
+    .from("seller_profiles")
+    .select("company_id")
+    .eq("id", finalSellerProfileId)
+    .maybeSingle();
+
   if (bucket === "seller-documents") {
     const payload = {
-        seller_profile_id: sellerProfile.id,
-        company_id: sellerProfile.company_id,
+        seller_profile_id: finalSellerProfileId,
+        company_id: currentProfile?.company_id || null,
         profile_id: auth.user.id,
         document_type: documentType || "unknown",
         file_url: fileUrl || storagePath,
@@ -289,8 +328,8 @@ export async function POST(request: Request) {
     const { data, error } = await auth.supabase
       .from("supplier_media")
       .insert({
-        seller_profile_id: sellerProfile.id,
-        company_id: sellerProfile.company_id,
+        seller_profile_id: finalSellerProfileId,
+        company_id: currentProfile?.company_id || null,
         media_type: bucket === "seller-videos" ? "video" : "image",
         category: category || "general",
         file_url: fileUrl || storagePath,

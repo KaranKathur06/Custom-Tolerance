@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Upload, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MediaPreviewModal, type MediaPreview } from "@/components/ui/media-preview-modal";
 import { cn } from "@/lib/utils";
 import { uploadSellerFile, deleteSellerUpload, type UploadResult } from "@/lib/marketplace/seller-upload-client";
 
@@ -28,6 +29,7 @@ export function SingleImageUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<MediaPreview | null>(null);
 
   const handleFile = async (file: File) => {
     setLocalError(null);
@@ -64,7 +66,9 @@ export function SingleImageUploadField({
       {asset ? (
         <div className="flex items-center gap-2">
           {previewUrl ? (
-            <img src={previewUrl} alt={asset.originalFilename} className="h-10 w-10 rounded object-cover" />
+            <button type="button" className="rounded" onClick={() => previewUrl && setPreview({ url: previewUrl, name: asset.originalFilename, mimeType: asset.mimeType })} aria-label={`Preview ${asset.originalFilename}`}>
+              <img src={previewUrl} alt={asset.originalFilename} className="h-10 w-10 rounded object-cover" />
+            </button>
           ) : (
             <div className="flex h-10 w-10 items-center justify-center rounded bg-slate-100 text-xs text-slate-500">IMG</div>
           )}
@@ -107,6 +111,7 @@ export function SingleImageUploadField({
           <span>{error || localError}</span>
         </div>
       ) : null}
+      <MediaPreviewModal media={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }

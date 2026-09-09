@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Upload, X, Eye, AlertCircle, CheckCircle2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MediaPreviewModal, type MediaPreview } from "@/components/ui/media-preview-modal";
 import { cn } from "@/lib/utils";
 import { uploadSellerFile, deleteSellerUpload, type UploadResult } from "@/lib/marketplace/seller-upload-client";
 
@@ -32,6 +33,7 @@ export function ImageUploadGrid({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<MediaPreview | null>(null);
 
   const handleFiles = async (files: FileList | null) => {
     setLocalError(null);
@@ -116,10 +118,8 @@ export function ImageUploadGrid({
                 <p className="truncate text-xs text-white">{image.originalFilename}</p>
                 <div className="flex gap-1">
                   {(image.publicUrl || image.signedUrl) ? (
-                    <Button type="button" variant="ghost" size="sm" asChild className="h-6 px-1.5 text-white hover:bg-white/20">
-                      <a href={image.publicUrl || image.signedUrl || undefined} target="_blank" rel="noreferrer">
-                        <Eye className="h-3 w-3" />
-                      </a>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-white hover:bg-white/20" onClick={() => setPreview({ url: image.publicUrl || image.signedUrl || "", name: image.originalFilename, mimeType: image.mimeType })}>
+                      <Eye className="h-3 w-3" />
                     </Button>
                   ) : null}
                   <Button
@@ -171,6 +171,7 @@ export function ImageUploadGrid({
           <span>{error || localError}</span>
         </div>
       ) : null}
+      <MediaPreviewModal media={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }

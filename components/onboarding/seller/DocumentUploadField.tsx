@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Download, Eye, FileText, Loader2, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MediaPreviewModal, type MediaPreview } from "@/components/ui/media-preview-modal";
 import { cn } from "@/lib/utils";
 import { deleteSellerUpload, type UploadResult, uploadSellerFile } from "@/lib/marketplace/seller-upload-client";
 
@@ -25,6 +26,7 @@ export function DocumentUploadField({ label, required, documentType, accept, max
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [viewing, setViewing] = useState(false);
+  const [preview, setPreview] = useState<MediaPreview | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -62,17 +64,40 @@ export function DocumentUploadField({ label, required, documentType, accept, max
     }
   };
 
-  const openSecureDocument = async (download: boolean) => {
+  const fetchSecureDocument = async () => {
     if (!asset) return;
     setViewing(true);
     setLocalError(null);
     try {
-      const response = await fetch(`/api/onboarding/seller/documents/${encodeURIComponent(asset.id)}/${download ? "download" : "view"}`, { credentials: "include" });
+      const response = await fetch(`/api/onboarding/seller/documents/${encodeURIComponent(asset.id)}/view`, { credentials: "include" });
       const payload = await response.json() as { success?: boolean; url?: string; error?: { message?: string } };
       if (!response.ok || !payload.success || !payload.url) throw new Error(payload.error?.message || "This document is no longer available. Please upload it again.");
-      window.open(payload.url, "_blank", "noopener,noreferrer");
+      setPreview({ url: payload.url, name: asset.originalFilename, mimeType: asset.mimeType });
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "We couldn't open this document. Please try again.");
+    } finally {
+      setViewing(false);
+    }
+  };
+
+  const downloadSecureDocument = async () => {
+    if (!asset) return;
+    setViewing(true);
+    setLocalError(null);
+    try {
+      const response = await fetch(`/api/onboarding/seller/documents/${encodeURIComponent(asset.id)}/download`, { credentials: "include" });
+      const payload = await response.json() as { success?: boolean; url?: string; fileName?: string; error?: { message?: string } };
+      if (!response.ok || !payload.success || !payload.url) throw new Error(payload.error?.message || "This document is no longer available. Please upload it again.");
+      const fileResponse = await fetch(payload.url);
+      if (!fileResponse.ok) throw new Error("The document download is no longer available.");
+      const blobUrl = URL.createObjectURL(await fileResponse.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = payload.fileName || asset.originalFilename || "document";
+      link.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : "We couldn't download this document. Please try again.");
     } finally {
       setViewing(false);
     }
@@ -99,8 +124,8 @@ export function DocumentUploadField({ label, required, documentType, accept, max
         <div className="rounded-md border border-emerald-200 bg-white p-3">
           <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-emerald-50"><FileText className="h-5 w-5 text-emerald-600" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-slate-900" title={asset.originalFilename}>{asset.originalFilename}</p><p className="text-xs text-slate-500">{displaySize}{asset.createdAt ? ` · ${new Date(asset.createdAt).toLocaleDateString()}` : ""}</p></div></div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => void openSecureDocument(false)} disabled={viewing || deleting}>{viewing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Eye className="mr-1.5 h-4 w-4" />}View</Button>
-            <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => void openSecureDocument(true)} disabled={viewing || deleting}><Download className="mr-1.5 h-4 w-4" />Download</Button>
+            <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => void fetchSecureDocument()} disabled={viewing || deleting}>{viewing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Eye className="mr-1.5 h-4 w-4" />}View</Button>
+            <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => void downloadSecureDocument()} disabled={viewing || deleting}><Download className="mr-1.5 h-4 w-4" />Download</Button>
             <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => inputRef.current?.click()} disabled={uploading || deleting}><RefreshCw className="mr-1.5 h-4 w-4" />Replace</Button>
             <Button type="button" variant="ghost" size="sm" className="h-8 text-red-600 hover:text-red-700" onClick={() => setConfirmDelete(true)} disabled={uploading || deleting}>{deleting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}Delete</Button>
           </div>
@@ -109,6 +134,7 @@ export function DocumentUploadField({ label, required, documentType, accept, max
         </div>
       )}
       {(error || localError) ? <div className="mt-2 flex items-start gap-1.5 text-xs text-red-600" role="alert"><AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{error || localError}</span></div> : null}
+      <MediaPreviewModal media={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }

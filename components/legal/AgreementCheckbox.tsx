@@ -1,7 +1,9 @@
 "use client";
 
 import { ExternalLink, CheckCircle2, FileText } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { MediaPreviewModal, type MediaPreview } from "@/components/ui/media-preview-modal";
 
 type AgreementCheckboxProps = {
   /** Label shown on the checkbox, e.g. "Buyer Agreement" */
@@ -40,9 +42,10 @@ export function AgreementCheckbox({
   description,
 }: AgreementCheckboxProps) {
   const hasViewed = Boolean(viewedAt);
+  const [preview, setPreview] = useState<MediaPreview | null>(null);
 
   const handleOpenDocument = () => {
-    window.open(href, "_blank", "noopener,noreferrer");
+    setPreview({ url: href, name: label, mimeType: "application/pdf" });
     if (!hasViewed) {
       onView();
     }
@@ -109,6 +112,7 @@ export function AgreementCheckbox({
             : "Please open and read the document above to enable this checkbox"}
         </span>
       </label>
+      <MediaPreviewModal media={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }

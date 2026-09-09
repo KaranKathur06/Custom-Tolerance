@@ -1,4 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { Award, BadgeCheck, Download, FileWarning } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MediaPreviewModal, type MediaPreview } from "@/components/ui/media-preview-modal";
 import type { SupplierCertificationDetail } from "@/lib/marketplace/supplier-profile-extended";
 
 type SupplierCertificationsDisplayProps = {
@@ -30,6 +35,8 @@ function isVerified(cert: SupplierCertificationDetail): boolean {
 export function SupplierCertificationsDisplay({
   certifications,
 }: SupplierCertificationsDisplayProps) {
+  const [preview, setPreview] = useState<MediaPreview | null>(null);
+
   if (!certifications.length) {
     return (
       <p className="text-sm text-slate-500">
@@ -91,19 +98,20 @@ export function SupplierCertificationsDisplay({
             </div>
 
             {cert.document_url ? (
-              <a
-                href={cert.document_url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => setPreview({ url: cert.document_url as string, name: cert.name, mimeType: "application/pdf" })}
                 className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
               >
                 <Download className="h-4 w-4" />
-                Download certificate
-              </a>
+                View certificate
+              </Button>
             ) : null}
           </div>
         );
       })}
+      <MediaPreviewModal media={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }

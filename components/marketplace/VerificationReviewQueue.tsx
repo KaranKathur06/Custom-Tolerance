@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, FileBadge2 } from "lucide-react";
+import { Eye, FileBadge2 } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { MediaPreviewModal, type MediaPreview } from "@/components/ui/media-preview-modal";
 import {
   getVerificationStatusLabel,
   getVerificationStatusTone,
@@ -25,6 +28,8 @@ const toneClasses = {
 };
 
 export function VerificationReviewQueue({ items }: VerificationReviewQueueProps) {
+  const [preview, setPreview] = useState<MediaPreview | null>(null);
+
   return (
     <section className="rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
@@ -63,15 +68,16 @@ export function VerificationReviewQueue({ items }: VerificationReviewQueueProps)
                   {item.reviewedAt ? `Reviewed ${new Date(item.reviewedAt).toLocaleDateString()}` : "Awaiting review"}
                 </div>
 
-                <Link className="inline-flex items-center gap-1 text-sm font-medium text-zinc-900 hover:text-amber-700" href={item.fileUrl} target="_blank">
+                <Button type="button" variant="link" className="inline-flex h-auto gap-1 p-0 text-sm font-medium text-zinc-900 hover:text-amber-700" onClick={() => setPreview({ url: item.fileUrl, name: item.documentType, mimeType: "application/pdf" })}>
                   Open document
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                </Link>
+                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
               </div>
             </div>
           );
         })}
       </div>
+      <MediaPreviewModal media={preview} onClose={() => setPreview(null)} />
     </section>
   );
 }

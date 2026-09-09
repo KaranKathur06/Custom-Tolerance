@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data: existingSession } = await supabase
+    const { data: existingSession, error: existingSessionError } = await supabase
       .from("onboarding_sessions")
       .select("id, validated_steps")
       .eq("user_id", user.id)
@@ -115,7 +115,17 @@ export async function POST(request: NextRequest) {
       .eq("flow_key", SELLER_ONBOARDING_V3_FLOW_KEY)
       .eq("flow_version", ONBOARDING_V3_FLOW_VERSION)
       .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
+
+    if (existingSessionError) {
+      console.error("[seller-onboarding] session lookup failed:", existingSessionError.message);
+      return NextResponse.json(
+        { error: "SESSION_LOOKUP_FAILED", message: "We couldn't load your onboarding draft. Please refresh and try again." },
+        { status: 503 },
+      );
+    }
 
     const existingValidatedSteps = Array.isArray(existingSession?.validated_steps)
       ? (existingSession.validated_steps as string[])
@@ -220,20 +230,27 @@ export async function POST(request: NextRequest) {
           submitForReview: action === "submit",
         });
       } catch (err) {
-        if (action === "submit") {
-          console.error("[seller-onboarding] commit failed:", err);
+        console.error("[seller-onboarding] profile sync failed after draft save:", err);
+        if (action === "submit" && isFinalSubmit) {
           return NextResponse.json(
             {
               error: "COMMIT_FAILED",
-              message: "Something went wrong while saving your onboarding. Your information has not been lost. Please try again.",
+              message: "Your onboarding draft was saved, but final profile activation could not be completed. Please try again.",
             },
-            { status: 400 },
+            { status: 503 },
           );
         }
       }
     }
 
-    return NextResponse.json({ success: true, session: saved, completion, gate, result });
+    return NextResponse.json({
+      success: true,
+      session: saved,
+      completion,
+      gate,
+      result,
+      syncPending: hasCompanyIdentity && !result,
+    });
   } catch (err) {
     console.error("[seller-onboarding] unexpected error:", err);
     return NextResponse.json(

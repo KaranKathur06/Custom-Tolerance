@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Upload, X, Eye, AlertCircle, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MediaPreviewModal, type MediaPreview } from "@/components/ui/media-preview-modal";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { uploadSellerFile, deleteSellerUpload, type UploadResult } from "@/lib/marketplace/seller-upload-client";
@@ -38,6 +39,7 @@ export function VideoUploadField({
   const [uploading, setUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<MediaPreview | null>(null);
 
   const handleFile = async (file: File) => {
     setLocalError(null);
@@ -119,10 +121,8 @@ export function VideoUploadField({
           </div>
           <div className="flex items-center gap-1">
             {previewUrl ? (
-              <Button type="button" variant="ghost" size="sm" asChild className="h-8 px-2">
-                <a href={previewUrl} target="_blank" rel="noreferrer">
-                  <Eye className="h-4 w-4" />
-                </a>
+              <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => setPreview({ url: previewUrl, name: video.originalFilename, mimeType: video.mimeType })} aria-label="Preview video">
+                <Eye className="h-4 w-4" />
               </Button>
             ) : null}
             <Button
@@ -155,6 +155,7 @@ export function VideoUploadField({
           <span>{error || localError || urlError}</span>
         </div>
       ) : null}
+      <MediaPreviewModal media={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }
