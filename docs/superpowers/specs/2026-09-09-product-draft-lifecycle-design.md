@@ -35,21 +35,23 @@ Image selection
 
 ### Canonical product representation
 
-Introduce a server-side product read model that composes `seller_products`, `product_images`, `product_materials`, `product_grades`, capabilities, industries, payment terms, and Incoterms. It owns filtering empty values and domain formatting boundaries. The review page and public product page must consume this model, not phase-local state.
+Introduce a server-side product read model that composes `seller_products`, `product_images`, `product_materials`, `product_grades`, capabilities, industries, payment terms, and Incoterms. Its contract has explicitly ordered media (`id`, signed/public URL according to projection, path, MIME, size, sort order, primary state), string-array relations, commercial/technical scalar fields, and omission semantics for empty optional values. The seller-review projection includes only the seller's editable draft; the public projection is derived from the same internal model but is available only after the established approved/active state and excludes operational, seller-private, and verification fields. Neither page reads phase-local state.
 
 ### Draft writes and concurrency
 
-Draft writes are PATCH operations only: omitted fields remain unchanged. Add a monotonically changing draft version to `seller_products`. The client sends `expectedVersion`; the server performs a conditional update. A mismatch returns a typed `409 CONFLICT_STALE_DRAFT`; the client reloads the current DTO and preserves unsaved edits for reconciliation. A pending debounced save must flush before phase navigation or publish.
+Draft writes are PATCH operations only: omitted fields remain unchanged. Add a monotonically changing draft version to `seller_products`. Every aggregate mutation is made through one transaction-capable RPC: it locks/checks the parent product version and editable status, applies the scalar patch plus supplied relation/media changes, and increments the version exactly once. A mismatch returns a typed `409 CONFLICT_STALE_DRAFT`; the client reloads the current DTO and preserves unsaved edits for reconciliation. A pending debounced save must flush before phase navigation or publish. Direct relation replacement from independent client requests is removed.
 
 ### Media lifecycle
 
-Use the existing `product_images` table rather than a parallel media system. Extend it only where justified for MIME type, byte size, timestamps, soft-delete status, and a primary/order invariant. The upload route authenticates the seller, verifies ownership and editability, checks bucket availability, validates MIME/size/count, uploads to a seller/product-scoped path, then creates the metadata record. If metadata persistence fails, remove the uploaded object. Delete/reorder operations verify ownership, update primary/order deterministically, and remove the backing object when safe.
+Use the existing `product_images` table rather than a parallel media system. Extend it only where justified for MIME type, byte size, timestamps, soft-delete status, durable storage-operation state, and a primary/order invariant. Enforce a maximum of three non-deleted images, a partial unique primary-image index, and unique active display order per product. All upload, delete, and reorder mutations run through the versioned aggregate RPC; a deletion of the primary deterministically promotes the lowest remaining order.
 
-The `product-images` bucket is public only for buyer-visible listing images; seller verification and other private documents remain in their existing private namespaces. The migration creates or repairs the bucket, applies 5 MB JPEG/PNG/WEBP restrictions, and restricts storage operations to the owner namespace. Server-side credentials, when used, remain server-only.
+The upload route authenticates the seller, verifies ownership and editability, checks bucket availability, validates the declared type plus magic bytes/image decode, rejects unsafe dimensions/pixel counts, strips unneeded metadata, and checks the server-side count. It uploads to a seller/product-scoped path, then creates the metadata record. If metadata persistence fails it removes the object; failures or timeouts enter a durable pending/deletion state for an authenticated reconciliation worker. That worker retries failed object deletes and identifies orphan paths. Media integrity means an owned, non-deleted metadata record whose expected object exists in the permitted namespace.
+
+Draft images remain private and are delivered to their owner through signed URLs. Publication creates a buyer-visible representation only after approval, or serves it through a publication-gated signed URL policy; a draft object is never publicly retrievable. Seller verification and other private documents remain in their existing private namespaces. The migration audits the existing bucket before changing configuration and never blindly flips an existing bucket's public flag or policies. It adds only compatible 5 MB JPEG/PNG/WEBP restrictions and owner-namespace policies. Server-side credentials, when used, remain server-only.
 
 ### Validation and publishing
 
-Each phase validates its own required fields before navigation. Final publication flushes outstanding draft writes, re-reads the canonical persisted product, checks ownership, required fields, media integrity, and seller/listing state server-side, then transitions the existing draft into its established moderation state. It never creates a duplicate product.
+Each phase validates its own required fields before navigation. Final publication flushes outstanding draft writes, then invokes one transactional, idempotent publish RPC. It checks the expected version, locks the product, verifies ownership, required fields, media integrity, and seller/listing state; atomically transitions the existing draft to the established pending-moderation state; and creates at most one pending approval record through a unique constraint. Repeated requests return the same pending state. It never creates a duplicate product.
 
 ### Display rules
 
@@ -63,11 +65,11 @@ Dedicated formatters handle tolerance, lead time, quantity, currency, dimensions
 
 ## Migration discipline
 
-Inspect the linked development project before schema work. Apply only additive, idempotent changes needed for draft versioning and product media metadata/constraints. Reuse existing tables, indexes, and the existing `product-images` bucket migration; do not reset data or create duplicate material/media structures.
+Inspect the linked development project before schema work. Apply only additive, idempotent changes needed for draft versioning and product media metadata/constraints. The version migration backfills existing rows with `1`, sets a default, then applies `NOT NULL`; indexes/partial unique constraints are added before the write path switches. Bucket configuration, policies, and existing object paths are audited before any compatible repair. Each migration has pre- and post-deployment verification queries and a rollback plan that removes only new code paths/constraints, never product data. Reuse existing tables and migrations; do not reset data or create duplicate material/media structures.
 
 ## Verification
 
-Automated coverage will include draft persistence across phases, version conflicts, media validation/count/ownership, cleanup compensation, primary-image fallback, publish gating, and canonical review/public parity. Manual QA will validate navigation, refresh, reopen, uploads, delete/reorder, preview, and moderation transition. Finish with lint, typecheck, tests, and production build.
+Automated coverage will include draft persistence across phases, version conflicts across scalar/relation/media mutations, media signature/pixel/count/ownership validation, cleanup compensation and reconciliation, primary-image fallback, idempotent publish gating, and canonical review/public parity. Manual QA will validate navigation, refresh, reopen, uploads, delete/reorder, preview, and moderation transition. Finish with lint, typecheck, tests, and production build.
 
 ## Risks and mitigations
 
