@@ -14,7 +14,7 @@ Adopt `public.seller_products` as the current transactional authority for the pr
 
 ## Canonical state model
 
-`approval_status` is the product lifecycle authority:
+`lifecycle_status` is the product lifecycle authority; `approval_status` is the corresponding moderation-decision projection:
 
 ```text
 draft -> pending_review -> approved -> active
@@ -23,11 +23,12 @@ draft -> pending_review -> approved -> active
   +------ rejected          paused    archived
 ```
 
-The additive schema introduces `lifecycle_status text not null default 'draft'` with a check constraint for `draft | pending_review | active | paused | rejected | archived`. `approval_status` remains the immutable moderation-decision projection during the compatibility period: `draft -> draft`, `pending_review -> pending_review`, `approved + active/paused/archived -> approved`, and `rejected -> rejected`. The write RPC alone sets both fields, enforcing these valid combinations: draft/draft, pending_review/pending_review, approved/active, approved/paused, approved/archived, and rejected/rejected. `is_published` is derived as true only for approved/active, rather than an independently writable lifecycle flag.
+The additive schema introduces `lifecycle_status text not null default 'draft'` with a check constraint for `draft | pending_review | active | paused | rejected | archived`. `approval_status` remains the immutable moderation-decision projection during the compatibility period: `draft -> draft`, `pending_review -> pending_review`, `approved + active/paused/archived -> approved`, and `rejected -> rejected`. A database CHECK/trigger—not RPC behavior alone—enforces the valid pairs (draft/draft, pending_review/pending_review, approved/active, approved/paused, approved/archived, rejected/rejected) and `is_published = (approval_status = 'approved' AND lifecycle_status = 'active')`.
 
 | Concern | Authority | Meaning |
 | --- | --- | --- |
-| Product lifecycle | `approval_status` / canonical lifecycle projection | Seller editability and moderation stage |
+| Product lifecycle | `lifecycle_status` | Seller editability and publication stage |
+| Moderation decision | `approval_status` | Approval decision associated with the lifecycle |
 | Seller visibility preference | `is_visible` | Buyer publication opt-in; never approval |
 | Featured merchandising | admin-controlled `is_featured` | Optional curated ranking signal |
 | Moderation history | `product_approvals` | Submitted/reviewed decisions and reasons |
@@ -39,7 +40,7 @@ The additive schema introduces `lifecycle_status text not null default 'draft'` 
 | Transition | Actor | Preconditions | Result |
 | --- | --- | --- | --- |
 | Create/update draft | owning seller | draft/rejected, expected version | atomic product aggregate write |
-| Submit | owning eligible seller | complete draft, expected version | `pending_review` plus one pending approval |
+| Submit/resubmit | owning eligible seller | complete draft or rejected product, expected version | atomically moves to `pending_review`, expires/supersedes prior decision, and creates one current pending approval |
 | Approve | authorized admin | pending approval | approved/active, visible only if eligibility permits |
 | Reject/request changes | authorized admin | pending approval, reason required | rejected, editable, reason and audit event |
 | Pause/archive | owning seller or authorized admin | lifecycle-specific policy | no marketplace eligibility |
@@ -47,6 +48,8 @@ The additive schema introduces `lifecycle_status text not null default 'draft'` 
 | Set featured | authorized admin | approved/active and eligible | updates merchandising flag and audit event |
 
 Every attempted invalid transition returns a stable typed error. `409` is used for an expected-version conflict only; lifecycle policy failures return typed business errors with a suitable `422`/`403`/`404` response.
+
+Pending approvals expire after their configured deadline. A scheduled or transactional expiry path marks the approval `expired`, records an audit event, and moves the product from `pending_review` to `draft` with a seller-visible explanation. The pending uniqueness index applies only to current `pending` approvals. Seller cancellation follows the same draft transition. A rejected product may be resubmitted directly; that operation creates a new pending approval while preserving previous approvals as immutable history.
 
 ## Canonical eligibility
 
@@ -107,7 +110,7 @@ All lifecycle mutations run as server-owned transactions/RPCs and append an immu
 
 ## Acceptance tests
 
-Automate the requested create, edit, submit, queue, approve, reject, visibility, featured, ownership, stale-version, document access, cache, and refresh matrix. In addition, test that: a pending product is visible to its seller and administrators but not buyers; a rejected product is editable; a seller cannot alter another seller's product or document; and an admin review action is atomic and auditable. Final gates are lint, TypeScript check, route-surface smoke tests, targeted integration tests, and a production build.
+Automate the requested create, edit, submit, queue, approve, reject, visibility, featured, ownership, stale-version, document access, cache, and refresh matrix. Include expiry, cancellation, and rejected-product resubmission under the current-pending uniqueness invariant. In addition, test that: a pending product is visible to its seller and administrators but not buyers; a rejected product is editable; a seller cannot alter another seller's product or document; and an admin review action is atomic and auditable. Final gates are lint, TypeScript check, route-surface smoke tests, targeted integration tests, and a production build.
 
 ## Rollout and rollback
 
