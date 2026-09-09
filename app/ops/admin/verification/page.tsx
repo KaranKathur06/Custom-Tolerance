@@ -46,7 +46,7 @@ export default function VerificationQueuePage() {
     setLoading(true);
     try {
       const [docResponse, supplierResponse] = await Promise.all([
-        fetch("/api/ops/verification-queue?status=pending,in_review", { credentials: "include" }),
+        fetch("/api/ops/verification-queue?status=all", { credentials: "include" }),
         fetch("/api/ops/supplier-review", { credentials: "include" }),
       ]);
 
@@ -188,23 +188,12 @@ export default function VerificationQueuePage() {
             <div key={item.id} className="ops-panel">
               <div className="ops-panel-body space-y-3">
                 <VerificationReviewQueue items={[item]} />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    disabled={actingId === item.id}
-                    onClick={() => void review(item.id, "approve")}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={actingId === item.id}
-                    onClick={() => void review(item.id, "reject")}
-                  >
-                    Reject
-                  </Button>
-                </div>
+                {item.status === "pending" || item.status === "in_review" ? (
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={actingId === item.id} onClick={() => void review(item.id, "approve")}>Approve</Button>
+                    <Button size="sm" variant="outline" disabled={actingId === item.id} onClick={() => void review(item.id, "reject")}>Reject</Button>
+                  </div>
+                ) : null}
               </div>
             </div>
           ))}

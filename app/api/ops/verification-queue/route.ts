@@ -18,11 +18,11 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status") ?? "pending,in_review";
+  const status = searchParams.get("status") ?? "all";
 
   const statuses = status.split(",").map((value) => value.trim()).filter(Boolean);
 
-  const { data, error } = await auth.supabase
+  let query = auth.supabase
     .from("supplier_documents")
     .select(
       `
@@ -40,10 +40,13 @@ export async function GET(request: Request) {
       profiles:profile_id(id, full_name, email)
     `,
     )
-    .in("verification_status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(100);
+  if (statuses.length > 0 && !statuses.includes("all")) {
+    query = query.in("verification_status", statuses);
+  }
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json(

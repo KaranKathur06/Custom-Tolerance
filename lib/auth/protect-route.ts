@@ -110,7 +110,7 @@ export async function protectApiRoute(
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('user_id', user.id)
+    .eq('id', user.id)
     .maybeSingle();
 
   const rawRole = profile?.role ?? 'buyer';

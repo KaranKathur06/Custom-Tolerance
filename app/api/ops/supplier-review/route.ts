@@ -35,7 +35,7 @@ export async function GET(request: Request) {
         trust_score, total_score
       )
     `)
-    .in("onboarding_status", ["PROFILE_SUBMITTED", "UNDER_REVIEW", "CHANGES_REQUESTED"])
+    .in("onboarding_status", ["PROFILE_SUBMITTED", "UNDER_REVIEW", "CHANGES_REQUESTED", "APPROVED", "REJECTED", "SUSPENDED"])
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .limit(100);
 

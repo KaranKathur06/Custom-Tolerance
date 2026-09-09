@@ -55,6 +55,7 @@ export default function ListingsPage() {
   const [rows, setRows] = useState<ListingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -126,6 +127,30 @@ export default function ListingsPage() {
   useEffect(() => {
     void fetchListings();
   }, [fetchListings]);
+
+  const reviewListing = async (approvalId: string, action: 'approve' | 'reject') => {
+    const rejectionReason = action === 'reject' ? window.prompt('Reason for rejection')?.trim() : undefined;
+    if (action === 'reject' && !rejectionReason) return;
+
+    setActingId(approvalId);
+    try {
+      const response = await fetch('/api/admin/products/approvals', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approval_id: approvalId, action, rejection_reason: rejectionReason }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error?.message ?? payload?.error ?? 'Moderation action failed');
+      }
+      await fetchListings();
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : 'Moderation action failed');
+    } finally {
+      setActingId(null);
+    }
+  };
 
   const filtered = useMemo(() => rows, [rows]);
 
@@ -236,6 +261,8 @@ export default function ListingsPage() {
                 {listing.status === 'pending' || listing.status === 'Pending' ? (
                   <>
                     <button
+                      onClick={() => void reviewListing(listing.id, 'approve')}
+                      disabled={actingId === listing.id}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -255,6 +282,8 @@ export default function ListingsPage() {
                     </button>
 
                     <button
+                      onClick={() => void reviewListing(listing.id, 'reject')}
+                      disabled={actingId === listing.id}
                       style={{
                         display: 'flex',
                         alignItems: 'center',

@@ -65,6 +65,7 @@ type Confirmation = {
 const roles = [
   'Buyer',
   'Seller',
+  'Buyer & Seller',
   'Moderator',
   'Support Agent',
   'Supplier Success',
@@ -191,7 +192,14 @@ export default function UsersPage() {
       users.filter((user) => {
         const needle = `${user.name} ${user.email} ${user.company}`.toLowerCase();
         if (search && !needle.includes(search.toLowerCase())) return false;
-        if (roleFilter !== 'all' && user.role.toLowerCase() !== roleFilter.toLowerCase()) return false;
+        if (roleFilter !== 'all') {
+          const selectedRole = roleFilter.toLowerCase();
+          const userRole = user.role.toLowerCase();
+          const isCombinedRole = userRole === 'buyer & seller';
+          const matchesRole = userRole === selectedRole
+            || (isCombinedRole && (selectedRole === 'buyer' || selectedRole === 'seller'));
+          if (!matchesRole) return false;
+        }
         if (statusFilter !== 'all' && user.status !== statusFilter) return false;
         return true;
       }),

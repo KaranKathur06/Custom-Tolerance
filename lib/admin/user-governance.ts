@@ -164,7 +164,25 @@ export async function listUserGovernanceContexts(
     .from('admin_user_directory')
     .select('id, email, full_name, phone, role, auth_role, avatar_url, verification_status, created_at, last_login, enforcement_status, profile_status, deleted_at', { count: 'exact' });
 
-  if (options.role) query = query.eq('role', normalizeStoredRole(options.role));
+  if (options.role) {
+    const requestedRole = options.role.trim().toLowerCase().replaceAll(' ', '_');
+    const role = requestedRole === 'buyer_&_seller' || requestedRole === 'buyer_and_seller'
+      ? 'both'
+      : normalizeStoredRole(options.role);
+    const roleAliases: Record<string, string[]> = {
+      buyer: ['buyer', 'BUYER', 'both', 'BOTH'],
+      seller: ['seller', 'SELLER', 'manufacturer', 'MANUFACTURER', 'distributor', 'DISTRIBUTOR', 'both', 'BOTH'],
+      both: ['both', 'BOTH'],
+      moderator: ['moderator', 'MODERATOR'],
+      support_agent: ['support_agent', 'SUPPORT_AGENT'],
+      supplier_success: ['supplier_success', 'SUPPLIER_SUCCESS'],
+      finance: ['finance', 'FINANCE'],
+      marketing: ['marketing', 'MARKETING'],
+      admin: ['admin', 'ADMIN'],
+      super_admin: ['super_admin', 'SUPER_ADMIN', 'superadmin', 'SUPERADMIN'],
+    };
+    query = query.in('role', roleAliases[role] ?? [role]);
+  }
   if (options.status && ['normal', 'suspended', 'banned'].includes(options.status)) query = query.eq('enforcement_status', options.status);
   if (options.search) {
     const search = options.search.replaceAll(',', ' ');
