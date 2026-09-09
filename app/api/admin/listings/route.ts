@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { protectApiRoute } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
-import { listingStatusForQueue, normalizeUserRole, type ListingQueue } from '@/lib/admin/governance-contracts';
+import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role-client';
+import { listingStatusForQueue, type ListingQueue } from '@/lib/admin/governance-contracts';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,8 @@ export async function GET(request: Request) {
   const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
   const startedAt = Date.now();
   try {
-    let approvalQuery = auth.supabase
+    const database = createSupabaseServiceRoleClient() || auth.supabase;
+    let approvalQuery = database
       .from('product_approvals')
       .select('id, seller_product_id, status, created_at, reviewed_at, rejection_reason, reviewed_by', { count: 'exact' })
       .order('created_at', { ascending: false });
@@ -37,7 +39,7 @@ export async function GET(request: Request) {
     if (approvalError) throw approvalError;
 
     const productIds = [...new Set((approvals || []).map((row) => row.seller_product_id).filter(Boolean))];
-    let productQuery = auth.supabase
+    let productQuery = database
       .from('seller_products')
       .select('id, product_name, capability, materials, moq, lead_time, profile_id, approval_status, lifecycle_status, is_published, is_visible, created_at, updated_at');
     if (productIds.length) productQuery = productQuery.in('id', productIds);
@@ -47,7 +49,7 @@ export async function GET(request: Request) {
     const productById = new Map((products || []).map((product) => [product.id, product]));
     const profileIds = [...new Set((products || []).map((product) => product.profile_id).filter(Boolean))];
     const { data: profiles, error: profileError } = profileIds.length
-      ? await auth.supabase.from('profiles').select('id, full_name, email').in('id', profileIds)
+      ? await database.from('profiles').select('id, full_name, email').in('id', profileIds)
       : { data: [], error: null };
     if (profileError) throw profileError;
     const profileById = new Map((profiles || []).map((profile) => [profile.id, profile]));
