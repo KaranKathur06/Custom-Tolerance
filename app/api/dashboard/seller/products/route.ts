@@ -146,7 +146,7 @@ export async function PATCH(req: NextRequest) {
   const body = (await req.json()) as Record<string, any>;
   const { data: existingProduct, error: existingProductError } = await supabase
     .from("seller_products")
-    .select("id, approval_status, lifecycle_status, is_published, draft_version")
+    .select("id, approval_status, lifecycle_status, is_published, featured_requested, draft_version")
     .eq("id", productId)
     .eq("profile_id", user.id)
     .maybeSingle();
@@ -162,9 +162,21 @@ export async function PATCH(req: NextRequest) {
   const expectedVersion = Number(body.expectedVersion ?? existingProduct.draft_version ?? 1);
   if (body.isFeatured !== undefined) {
     return NextResponse.json(
-      { success: false, error: { code: "FEATURED_REQUIRES_ADMIN", message: "Featured placement is managed by marketplace administrators." } },
-      { status: 403 },
+      { success: false, error: { code: "FEATURED_REQUIRES_ADMIN", message: "Use the feature request action; final placement is managed by marketplace administrators." } },
+      { status: 422 },
     );
+  }
+  if (body.featuredRequested !== undefined) {
+    const { data, error } = await supabase.rpc("request_seller_product_feature", {
+      p_product_id: productId,
+      p_expected_version: expectedVersion,
+      p_requested: Boolean(body.featuredRequested),
+    });
+    if (error) {
+      const code = error.message.includes("CONFLICT_STALE_DRAFT") ? "CONFLICT_STALE_DRAFT" : "FEATURE_REQUEST_FAILED";
+      return NextResponse.json({ success: false, error: { code, message: code === "CONFLICT_STALE_DRAFT" ? "This product changed in another session. Refresh and try again." : "The feature request could not be saved." } }, { status: code === "CONFLICT_STALE_DRAFT" ? 409 : 503 });
+    }
+    return NextResponse.json({ success: true, product: Array.isArray(data) ? data[0] : data });
   }
   if (body.isVisible !== undefined) {
     const { data, error } = await supabase.rpc("set_seller_product_visibility", {

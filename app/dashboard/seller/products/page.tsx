@@ -18,6 +18,7 @@ type Product = FeaturedProductRow & {
   imageUrl?: string;
   approvalStatus?: string;
   lifecycleStatus?: string;
+  featuredRequested?: boolean;
   draftVersion: number;
 };
 
@@ -40,8 +41,13 @@ function ProductCard({
   onToggleFeatured: () => void;
   onToggleVisible: () => void;
 }) {
-  const canToggleVisibility = product.approvalStatus === "approved" && product.lifecycleStatus === "active";
+  const canToggleVisibility = product.lifecycleStatus !== "archived";
   const status = formatProductStatus(product);
+  const visibilityLabel = product.isVisible
+    ? canToggleVisibility && product.approvalStatus === "approved" && product.lifecycleStatus === "active"
+      ? "Visible"
+      : "Ready"
+    : "Hidden";
   return (
     <div
       className={cn(
@@ -134,17 +140,31 @@ function ProductCard({
       <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
         <button
           type="button"
+          onClick={onToggleFeatured}
+          className={cn(
+            "flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors",
+            product.featuredRequested
+              ? "border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+              : "border-slate-200 text-slate-500 hover:border-yellow-200 hover:bg-yellow-50 hover:text-yellow-700",
+          )}
+          title={product.featuredRequested ? "Cancel feature request" : "Request featured placement"}
+        >
+          <Star className="h-3.5 w-3.5" />
+          {product.featuredRequested ? "Requested" : "Feature"}
+        </button>
+        <button
+          type="button"
           onClick={onToggleVisible}
           disabled={!canToggleVisibility}
           className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50"
-          title={canToggleVisibility ? (product.isVisible ? "Hide from buyers" : "Show to buyers") : "Submit the product and wait for approval before changing buyer visibility."}
+          title={canToggleVisibility ? (product.isVisible ? "Hide from buyers" : "Mark ready for buyer visibility after approval") : "Archived products cannot be made visible."}
         >
           {product.isVisible ? (
             <Eye className="h-3.5 w-3.5" />
           ) : (
             <EyeOff className="h-3.5 w-3.5 text-slate-400" />
           )}
-          {product.isVisible ? "Visible" : "Hidden"}
+          {visibilityLabel}
         </button>
 
         <div className="ml-auto flex items-center gap-1">
@@ -201,6 +221,7 @@ export default function FeaturedProductsPage() {
           moq: String(p.moq ?? ""),
           leadTime: String(p.lead_time ?? p.leadTime ?? ""),
           isFeatured: Boolean(p.is_featured ?? p.isFeatured),
+          featuredRequested: Boolean(p.featured_requested ?? p.featuredRequested),
           isVisible: p.is_visible === true || p.isVisible === true,
           approvalStatus: String(p.approval_status ?? "draft"),
           lifecycleStatus: String(p.lifecycle_status ?? p.approval_status ?? "draft"),
@@ -248,7 +269,7 @@ export default function FeaturedProductsPage() {
   };
 
   // ── Toggle helpers ──────────────────────────────────────────────────────────
-  const toggleField = async (id: string, field: "isFeatured" | "isVisible", current: boolean) => {
+  const toggleField = async (id: string, field: "featuredRequested" | "isVisible", current: boolean) => {
     const product = products.find((item) => item.id === id);
     if (!product) return;
     // Optimistic update
@@ -341,7 +362,7 @@ export default function FeaturedProductsPage() {
               onEdit={() => router.push(`/dashboard/seller/products/${product.id}`)}
               onDelete={() => void handleDelete(product.id)}
               onToggleFeatured={() =>
-                void toggleField(product.id, "isFeatured", Boolean(product.isFeatured))
+                void toggleField(product.id, "featuredRequested", Boolean(product.featuredRequested))
               }
               onToggleVisible={() =>
                 void toggleField(product.id, "isVisible", product.isVisible !== false)
