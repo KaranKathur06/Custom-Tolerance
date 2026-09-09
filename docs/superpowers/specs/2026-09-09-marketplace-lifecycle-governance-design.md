@@ -23,7 +23,7 @@ draft -> pending_review -> approved -> active
   +------ rejected          paused    archived
 ```
 
-The physical schema may continue to represent `active`, `paused`, and `archived` with compatible fields while the additive migration introduces the explicit lifecycle value where required. There must be only one mapping from stored fields to this model.
+The additive schema introduces `lifecycle_status text not null default 'draft'` with a check constraint for `draft | pending_review | active | paused | rejected | archived`. `approval_status` remains the immutable moderation-decision projection during the compatibility period: `draft -> draft`, `pending_review -> pending_review`, `approved + active/paused/archived -> approved`, and `rejected -> rejected`. The write RPC alone sets both fields, enforcing these valid combinations: draft/draft, pending_review/pending_review, approved/active, approved/paused, approved/archived, and rejected/rejected. `is_published` is derived as true only for approved/active, rather than an independently writable lifecycle flag.
 
 | Concern | Authority | Meaning |
 | --- | --- | --- |
@@ -59,13 +59,13 @@ It requires all of the following:
 3. Seller profile is active and publicly visible.
 4. Seller satisfies the verification rule configured for marketplace publication.
 
-This projection is the exclusive public source for marketplace search, categories, featured products, supplier storefront catalogs, related products, and product-detail public reads. Seller and admin views deliberately do not use it, so ineligible products remain traceable with an explicit reason.
+This projection is the exclusive public source for marketplace search, categories, featured products, supplier storefront catalogs, related products, and product-detail public reads. Seller and admin views deliberately do not use it, so ineligible products remain traceable with an explicit reason. Before switching readers, inventory every public product/listing endpoint, page, and RPC. The `listing_id` bridge is retained as a compatibility projection only until every legacy `listings` reader has moved to the canonical product projection; it is never a second lifecycle authority.
 
 ## API and UI design
 
 ### Seller
 
-- Versioned draft PATCH uses the aggregate RPC, returns the canonical seller product DTO and incremented version, and never writes relations independently.
+- Versioned draft PATCH uses the aggregate RPC, returns the canonical seller product DTO and incremented version, and never writes relations independently. Direct authenticated DML on lifecycle columns and approval records is revoked; tightly scoped RPCs/server routes are the only mutation path.
 - Submission is idempotent and returns the pending approval record.
 - Visibility is a separate, typed action. Disabled controls explain the blocking condition; they do not issue a failing PATCH.
 - Featured is not exposed as a seller capability until an explicit membership rule exists. The seller UI presents its request state or a clear explanation.
@@ -73,7 +73,7 @@ This projection is the exclusive public source for marketplace search, categorie
 
 ### Admin
 
-- Replace the Admin Listings page data source with `product_approvals` joined to the canonical product/seller/verification projection. Keep `listings` operational only for its real RFQ/quote purpose until a separately planned migration proves it can be retired.
+- Replace the Admin Listings page data source with `product_approvals` joined to the canonical product/seller/verification projection. Legacy `listings` remains a compatibility projection for the endpoint/page inventory above until it can be retired; it is not used as the approval queue or a write authority.
 - Provide a listing review workspace with product data and media, seller identity/verification summary, approval history, actions, required rejection reason, and immutable audit events.
 - Make 2FA a real server-side enrollment and session-enforcement flow, including recovery codes, or remove the dead-end UI gate only if security review proves it is not an active security control. Never use a UI-only bypass.
 
@@ -87,7 +87,7 @@ Build a product-first public supplier profile from the public eligibility projec
 
 ## Consistency, caching, and audit
 
-All lifecycle mutations run as server-owned transactions/RPCs and append an immutable event: actor, action, subject type/id, metadata, timestamp. Mutation completion invalidates the seller dashboard, admin queues, marketplace, supplier profile, product detail, featured/search projections, and any relevant server cache tags. Cache invalidation is targeted; public caching is not globally disabled.
+All lifecycle mutations run as server-owned transactions/RPCs and append an immutable event: actor, action, subject type/id, metadata, timestamp. This is a dedicated append-only audit ledger, not the mutable `product_events` projection: authenticated roles have no update/delete grants; only controlled transaction/RPC code may insert; retention is explicit. Mutation completion invalidates the seller dashboard, admin queues, marketplace, supplier profile, product detail, featured/search projections, and any relevant server cache tags. Cache invalidation is targeted; public caching is not globally disabled.
 
 ## Migration and data repair
 
@@ -100,6 +100,7 @@ All lifecycle mutations run as server-owned transactions/RPCs and append an immu
 ## Security and reliability
 
 - All product/document mutations validate authenticated user -> seller profile -> owned record; public identifiers alone are never authorization.
+- Define one tested `is_authorized_operator(auth.uid(), permission)` server/database predicate using the canonical identity key and the permitted admin/super-admin roles. Admin moderation, RLS, RPCs, and signed document access use this one predicate; no route or policy may compare a different profile key.
 - Admin moderation and signed document access enforce role/permission checks on the server. Service-role credentials remain server-only.
 - RLS remains enabled for exposed Supabase tables; policies are audited against the canonical access model. Views use security-invoker behavior or remain in an unexposed schema.
 - Structured logs record typed error codes and request correlation IDs, but not sensitive document data. Instrument mutation success/error rate and queue age.
@@ -111,4 +112,3 @@ Automate the requested create, edit, submit, queue, approve, reject, visibility,
 ## Rollout and rollback
 
 Deploy additive database migration first, then the server write/read services, then UI consumers behind a compatible release. Observe queue counts, 409/error codes, eligibility deltas, and audit writes. Roll back code consumers before removing any new additive database object; no rollback deletes marketplace records or storage objects.
-
