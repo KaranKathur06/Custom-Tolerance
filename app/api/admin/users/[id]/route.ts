@@ -40,15 +40,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       requestId: request.headers.get('x-request-id') ?? null,
     });
   }
-    const quoteMetrics = role === 'buyer' || role === 'both'
-      ? context.buyerProfile?.id
-        ? auth.supabase.from('quotes').select('id, rfqs!inner(buyer_profile_id)', { count: 'exact', head: true }).eq('rfqs.buyer_profile_id', context.buyerProfile.id).is('deleted_at', null)
-        : Promise.resolve({ count: null })
-      : role === 'seller'
-        ? context.sellerProfile?.id
-          ? auth.supabase.from('quotes').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile.id).is('deleted_at', null)
-          : Promise.resolve({ count: null })
-        : Promise.resolve({ count: null });
+
+  // ── Shared queries (role-independent) ─────────────────────────────────────
   const settingsResult = auth.supabase.from('user_settings').select('category, key, value').eq('user_id', params.id);
   const verificationHistory = auth.supabase
     .from('admin_audit_logs')
@@ -58,49 +51,105 @@ export async function GET(request: Request, { params }: RouteParams) {
     .order('created_at', { ascending: false })
     .limit(20);
 
-  const roleData = role === 'both' && context.buyerProfile?.id && context.sellerProfile?.id
-    ? await Promise.all([
-      auth.supabase.from('companies').select('id, owner_id, name, slug, gst_number, pan_number, business_type, website, linkedin_url, company_size, country_id, state_id, city_id, description, company_description, year_established, employee_count, number_of_employees').eq('id', context.buyerProfile.company_id).maybeSingle(),
-      auth.supabase.from('buyer_preferences').select('company_type, contact_designation, business_email, mobile_number, company_website, annual_procurement_budget, order_frequency, procurement_methods, import_experience, preferred_incoterms, preferred_payment_terms, procurement_team_size, company_description, email_verified, mobile_verified, completion_percent').eq('buyer_profile_id', context.buyerProfile.id).maybeSingle(),
-      auth.supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('buyer_profile_id', context.buyerProfile.id),
-      auth.supabase.from('companies').select('id, owner_id, name, slug, gst_number, pan_number, business_type, website, linkedin_url, company_size, years_in_business, country_id, state_id, city_id, description, company_description, year_established, employee_count, number_of_employees, legal_business_name, full_address, factory_address, annual_production_capacity, export_capability, response_rate, avg_response_hours, completion_rate, iso_certified').eq('id', context.sellerProfile.company_id).maybeSingle(),
-      auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile.id),
-    ])
-    : role === 'buyer' && context.buyerProfile?.id
-    ? await Promise.all([
-      auth.supabase.from('companies').select('id, owner_id, name, slug, gst_number, pan_number, business_type, website, linkedin_url, company_size, country_id, state_id, city_id, description, company_description, year_established, employee_count, number_of_employees').eq('id', context.buyerProfile.company_id).maybeSingle(),
-      auth.supabase.from('buyer_preferences').select('company_type, contact_designation, business_email, mobile_number, company_website, annual_procurement_budget, order_frequency, procurement_methods, import_experience, preferred_incoterms, preferred_payment_terms, procurement_team_size, company_description, email_verified, mobile_verified, completion_percent').eq('buyer_profile_id', context.buyerProfile.id).maybeSingle(),
-      auth.supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('buyer_profile_id', context.buyerProfile.id),
-    ])
-    : role === 'seller' && context.sellerProfile?.id
-      ? await Promise.all([
-        auth.supabase.from('companies').select('id, owner_id, name, slug, gst_number, pan_number, business_type, website, linkedin_url, company_size, years_in_business, country_id, state_id, city_id, description, company_description, year_established, employee_count, number_of_employees, legal_business_name, full_address, factory_address, annual_production_capacity, export_capability, response_rate, avg_response_hours, completion_rate, iso_certified').eq('id', context.sellerProfile.company_id).maybeSingle(),
-        auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile.id),
-      ])
-      : null;
-  const quoteMetricResult = await quoteMetrics;
+  // ── Role-conditional buyer queries ────────────────────────────────────────
+  const hasBuyer = (role === 'buyer' || role === 'both') && context.buyerProfile?.id;
+  const buyerCompanyQuery = hasBuyer && context.buyerProfile!.company_id
+    ? auth.supabase.from('companies').select('id, owner_id, name, slug, gst_number, pan_number, business_type, website, linkedin_url, company_size, country_id, state_id, city_id, description, company_description, year_established, employee_count, number_of_employees').eq('id', context.buyerProfile!.company_id).maybeSingle()
+    : null;
+  const buyerPrefsQuery = hasBuyer
+    ? auth.supabase.from('buyer_preferences').select('company_type, contact_designation, business_email, mobile_number, company_website, annual_procurement_budget, order_frequency, procurement_methods, import_experience, preferred_incoterms, preferred_payment_terms, procurement_team_size, company_description, email_verified, mobile_verified, completion_percent').eq('buyer_profile_id', context.buyerProfile!.id).maybeSingle()
+    : null;
+  const buyerRfqCountQuery = hasBuyer
+    ? auth.supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('buyer_profile_id', context.buyerProfile!.id)
+    : null;
+  const buyerQuoteCountQuery = hasBuyer
+    ? auth.supabase.from('quotes').select('id, rfqs!inner(buyer_profile_id)', { count: 'exact', head: true }).eq('rfqs.buyer_profile_id', context.buyerProfile!.id).is('deleted_at', null)
+    : null;
+  // Buyer supplementary data — industries, categories, import countries
+  const buyerIndustriesQuery = hasBuyer
+    ? auth.supabase.from('buyer_industries').select('industry_name').eq('buyer_profile_id', context.buyerProfile!.id)
+    : null;
+  const buyerCategoriesQuery = hasBuyer
+    ? auth.supabase.from('buyer_category_interests').select('category_name').eq('buyer_profile_id', context.buyerProfile!.id)
+    : null;
+  const buyerImportCountriesQuery = hasBuyer
+    ? auth.supabase.from('buyer_import_countries').select('country_name').eq('buyer_profile_id', context.buyerProfile!.id)
+    : null;
 
-  // Get recent audit logs for this user
-  const { data: recentLogs } = await auth.supabase
-    .from('admin_audit_logs')
-    .select('id, action, resource, details, created_at')
-    .eq('resource_id', params.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
+  // ── Role-conditional seller queries ───────────────────────────────────────
+  const hasSeller = (role === 'seller' || role === 'both') && context.sellerProfile?.id;
+  const sellerCompanyQuery = hasSeller && context.sellerProfile!.company_id
+    ? auth.supabase.from('companies').select('id, owner_id, name, slug, gst_number, pan_number, business_type, website, linkedin_url, company_size, years_in_business, country_id, state_id, city_id, description, company_description, year_established, employee_count, number_of_employees, legal_business_name, full_address, factory_address, annual_production_capacity, export_capability, response_rate, avg_response_hours, completion_rate, iso_certified').eq('id', context.sellerProfile!.company_id).maybeSingle()
+    : null;
+  const sellerExtendedQuery = hasSeller
+    ? auth.supabase.from('seller_profiles').select('id, production_capacity, certifications, accepts_rfqs, response_time_hours, onboarding_status, review_status, submitted_at, approved_at').eq('id', context.sellerProfile!.id).maybeSingle()
+    : null;
+  const sellerListingCountQuery = hasSeller
+    ? auth.supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile!.id)
+    : null;
+  const sellerQuoteCountQuery = hasSeller
+    ? auth.supabase.from('quotes').select('id', { count: 'exact', head: true }).eq('seller_profile_id', context.sellerProfile!.id).is('deleted_at', null)
+    : null;
 
-  const activeProfile = role === 'seller' ? context.sellerProfile : role === 'buyer' || role === 'both' ? context.buyerProfile : null;
-  const activeCompany = roleData?.[0]?.data ?? null;
-  const preferences = role === 'buyer' || role === 'both' ? roleData?.[1]?.data ?? null : null;
-  const secondaryProfile = role === 'both' ? context.sellerProfile : null;
-  const secondaryCompany = role === 'both' ? roleData?.[3]?.data ?? null : null;
-  const metricCount = role === 'buyer' ? roleData?.[2]?.count : role === 'seller' ? roleData?.[1]?.count : null;
-    const metrics = role === 'buyer'
-        ? { rfqs: metricCount ?? null, quotesReceived: quoteMetricResult.count ?? null, orders: null }
-      : role === 'seller'
-          ? { listings: metricCount ?? null, rfqsReceived: quoteMetricResult.count ?? null, orders: null }
-        : role === 'both'
-            ? { rfqs: roleData?.[2]?.count ?? null, listings: roleData?.[4]?.count ?? null, quotesReceived: quoteMetricResult.count ?? null, orders: null }
-          : {};
+  // ── Execute all queries in parallel ───────────────────────────────────────
+  const [
+    buyerCompanyResult,
+    buyerPrefsResult,
+    buyerRfqCountResult,
+    buyerQuoteCountResult,
+    buyerIndustriesResult,
+    buyerCategoriesResult,
+    buyerImportCountriesResult,
+    sellerCompanyResult,
+    sellerExtendedResult,
+    sellerListingCountResult,
+    sellerQuoteCountResult,
+    recentLogsResult,
+  ] = await Promise.all([
+    buyerCompanyQuery,
+    buyerPrefsQuery,
+    buyerRfqCountQuery,
+    buyerQuoteCountQuery,
+    buyerIndustriesQuery,
+    buyerCategoriesQuery,
+    buyerImportCountriesQuery,
+    sellerCompanyQuery,
+    sellerExtendedQuery,
+    sellerListingCountQuery,
+    sellerQuoteCountQuery,
+    auth.supabase
+      .from('admin_audit_logs')
+      .select('id, action, resource, details, created_at')
+      .eq('resource_id', params.id)
+      .order('created_at', { ascending: false })
+      .limit(10),
+  ]);
+
+  // ── Assemble role-specific dossier ────────────────────────────────────────
+  const buyerMetrics = hasBuyer ? {
+    profileCompletion: (context.buyerProfile as Record<string, unknown>)?.profile_completion_percent ?? null,
+    rfqs: buyerRfqCountResult?.count ?? null,
+    quotesReceived: buyerQuoteCountResult?.count ?? null,
+  } : null;
+
+  const sellerMetrics = hasSeller ? {
+    profileCompletion: (context.sellerProfile as Record<string, unknown>)?.profile_completion_percent ?? null,
+    listings: sellerListingCountResult?.count ?? null,
+    quotesSubmitted: sellerQuoteCountResult?.count ?? null,
+  } : null;
+
+  // For buyer or both, primary profile is buyer
+  // For seller, primary profile is seller
+  const activeProfile = role === 'seller' ? context.sellerProfile : (hasBuyer ? context.buyerProfile : null);
+  const activeCompany = role === 'seller' ? sellerCompanyResult?.data ?? null : buyerCompanyResult?.data ?? null;
+
+  const metrics = role === 'buyer' && buyerMetrics
+    ? buyerMetrics
+    : role === 'seller' && sellerMetrics
+      ? sellerMetrics
+      : role === 'both'
+        ? { ...(buyerMetrics ?? {}), ...(sellerMetrics ?? {}) }
+        : {};
 
   return NextResponse.json({
     success: true,
@@ -117,20 +166,26 @@ export async function GET(request: Request, { params }: RouteParams) {
         profileType: role,
         profile: activeProfile,
         company: activeCompany,
-        preferences,
-        secondaryProfile,
-        secondaryCompany,
+        preferences: buyerPrefsResult?.data ?? null,
+        sellerExtended: sellerExtendedResult?.data ?? null,
+        buyerIndustries: (buyerIndustriesResult?.data ?? []).map((r: { industry_name: string }) => r.industry_name),
+        buyerCategories: (buyerCategoriesResult?.data ?? []).map((r: { category_name: string }) => r.category_name),
+        buyerImportCountries: (buyerImportCountriesResult?.data ?? []).map((r: { country_name: string }) => r.country_name),
+        secondaryProfile: role === 'both' ? context.sellerProfile : null,
+        secondaryCompany: role === 'both' ? sellerCompanyResult?.data ?? null : null,
+        secondarySellerExtended: role === 'both' ? sellerExtendedResult?.data ?? null : null,
         metrics: {
           ...metrics,
-          profileCompletion: activeProfile?.profile_completion_percent ?? null,
+          profileCompletion: (activeProfile as Record<string, unknown> | null)?.profile_completion_percent ?? null,
         },
       },
       settings: (await settingsResult).data || [],
       verificationHistory: (await verificationHistory).data || [],
-      recentActivity: recentLogs || [],
+      recentActivity: recentLogsResult.data || [],
     },
   });
 }
+
 
 export async function PUT(request: Request, { params }: RouteParams) {
   const auth = await protectApiRoute(request, {

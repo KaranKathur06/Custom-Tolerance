@@ -14,6 +14,7 @@ import {
   GripVertical,
   AlertCircle,
   ImageIcon,
+  Minus,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -246,11 +247,13 @@ export function GroupedMultiSelect({
   onChange,
   groups,
   placeholder = "Select options...",
+  enableGroupSelectAll = false,
 }: {
   value: string[];
   onChange: (val: string[]) => void;
   groups: GroupedOption[];
   placeholder?: string;
+  enableGroupSelectAll?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -269,6 +272,16 @@ export function GroupedMultiSelect({
 
   const toggle = (id: string) => {
     onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
+  };
+
+  const toggleGroup = (group: GroupedOption) => {
+    const groupIds = group.items.map((item) => item.id);
+    const allSelected = groupIds.every((id) => value.includes(id));
+    onChange(
+      allSelected
+        ? value.filter((id) => !groupIds.includes(id))
+        : [...value, ...groupIds.filter((id) => !value.includes(id))],
+    );
   };
 
   const allItems = groups.flatMap((g) => g.items);
@@ -335,8 +348,40 @@ export function GroupedMultiSelect({
           <div className="max-h-72 overflow-y-auto py-1">
             {filteredGroups.map((group) => (
               <div key={group.group}>
-                <div className="sticky top-0 bg-slate-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                  {group.group}
+                <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{group.group}</span>
+                  {enableGroupSelectAll ? (() => {
+                    const sourceGroup = groups.find((item) => item.group === group.group) ?? group;
+                    const groupIds = sourceGroup.items.map((item) => item.id);
+                    const selectedCount = groupIds.filter((id) => value.includes(id)).length;
+                    const allSelected = groupIds.length > 0 && selectedCount === groupIds.length;
+                    const partiallySelected = selectedCount > 0 && !allSelected;
+                    return (
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={partiallySelected ? "mixed" : allSelected}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleGroup(sourceGroup);
+                        }}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded px-1.5 py-1 text-[11px] font-semibold normal-case tracking-normal transition-colors",
+                          allSelected || partiallySelected
+                            ? "text-blue-700 hover:bg-blue-100"
+                            : "text-slate-500 hover:bg-slate-200 hover:text-slate-700",
+                        )}
+                      >
+                        <span className={cn(
+                          "flex h-3.5 w-3.5 items-center justify-center rounded border",
+                          allSelected || partiallySelected ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 bg-white",
+                        )}>
+                          {allSelected ? <Check className="h-2.5 w-2.5" /> : partiallySelected ? <Minus className="h-2.5 w-2.5" /> : null}
+                        </span>
+                        All
+                      </button>
+                    );
+                  })() : null}
                 </div>
                 {group.items.map((item) => {
                   const selected = value.includes(item.id);

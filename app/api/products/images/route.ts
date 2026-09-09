@@ -73,8 +73,12 @@ export async function POST(req: NextRequest) {
   if (uploadError) {
     console.error("[image upload]", uploadError.message);
     return NextResponse.json(
-      { error: uploadError.message || "Upload failed" },
-      { status: 500 }
+      {
+        error: uploadError.message.toLowerCase().includes("bucket")
+          ? "Product image storage is not configured. Please contact support."
+          : "Product image upload failed. Please try again.",
+      },
+      { status: 503 }
     );
   }
 

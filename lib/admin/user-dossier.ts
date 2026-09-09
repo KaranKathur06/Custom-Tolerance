@@ -14,9 +14,17 @@ export type AdminUserDossier = {
   profile: Record<string, unknown> | null;
   company: Record<string, unknown> | null;
   preferences?: Record<string, unknown> | null;
+  sellerExtended?: Record<string, unknown> | null;
+  buyerIndustries?: string[];
+  buyerCategories?: string[];
+  buyerImportCountries?: string[];
+  secondaryProfile?: Record<string, unknown> | null;
+  secondaryCompany?: Record<string, unknown> | null;
+  secondarySellerExtended?: Record<string, unknown> | null;
   metrics: Record<string, number | string | null>;
 };
 
+// ── Buyer profile fields (from buyer_profiles table) ────────────────────────
 const BUYER_PROFILE_FIELDS: Record<string, string> = {
   primary_procurement_category_id: 'Primary procurement category',
   procurement_category_id: 'Primary procurement category',
@@ -27,6 +35,7 @@ const BUYER_PROFILE_FIELDS: Record<string, string> = {
   company_id: 'Company',
 };
 
+// ── Buyer preferences fields (from buyer_preferences table) ─────────────────
 export const BUYER_PREFERENCE_FIELDS: Record<string, string> = {
   company_type: 'Business type',
   contact_designation: 'Contact designation',
@@ -46,14 +55,21 @@ export const BUYER_PREFERENCE_FIELDS: Record<string, string> = {
   completion_percent: 'Profile completion',
 };
 
+// ── Seller profile fields (from seller_profiles table) ──────────────────────
 const SELLER_PROFILE_FIELDS: Record<string, string> = {
   profile_completion_percent: 'Profile completion',
   verification_status: 'Verification status',
   trust_level: 'Trust level',
   onboarding_status: 'Onboarding status',
+  review_status: 'Review status',
+  production_capacity: 'Production capacity',
+  certifications: 'Certifications',
+  accepts_rfqs: 'Accepts RFQs',
+  response_time_hours: 'Response time (hours)',
   company_id: 'Company',
 };
 
+// ── Buyer company fields (shared business attributes only) ──────────────────
 const BUYER_COMPANY_FIELDS: Record<string, string> = {
   name: 'Company name',
   slug: 'Company slug',
@@ -74,17 +90,28 @@ const BUYER_COMPANY_FIELDS: Record<string, string> = {
   number_of_employees: 'Number of employees',
 };
 
+// ── Seller company fields (shared + seller legal identity) ──────────────────
 const SELLER_COMPANY_FIELDS: Record<string, string> = {
   ...BUYER_COMPANY_FIELDS,
   legal_business_name: 'Legal business name',
   full_address: 'Business address',
-  factory_address: 'Factory address',
+};
+
+// ── Manufacturing & Capabilities (seller-only, from companies + seller_profiles) ─
+const SELLER_MANUFACTURING_FIELDS: Record<string, string> = {
   annual_production_capacity: 'Annual production capacity',
   export_capability: 'Export capability',
+  factory_address: 'Factory address',
+  iso_certified: 'ISO certified',
+  production_capacity: 'Production capacity',
+  certifications: 'Certifications',
+};
+
+// ── Seller Performance (seller-only operational metrics from companies) ──────
+const SELLER_PERFORMANCE_FIELDS: Record<string, string> = {
   response_rate: 'Response rate',
   avg_response_hours: 'Average response hours',
   completion_rate: 'Completion rate',
-  iso_certified: 'ISO certified',
 };
 
 export function dossierRole(role: GovernanceRole): AdminDossierRole {
@@ -107,8 +134,45 @@ export function selectDossierFields(
     .map(([key, label]) => ({ key, label, value: record[key] }));
 }
 
+/**
+ * Select manufacturing/capability fields from a merged record
+ * of company + seller_profiles data.
+ */
+export function selectSellerManufacturingFields(
+  company: Record<string, unknown> | null,
+  sellerProfile: Record<string, unknown> | null,
+): DossierField[] {
+  const merged: Record<string, unknown> = { ...company, ...sellerProfile };
+  return Object.entries(SELLER_MANUFACTURING_FIELDS)
+    .filter(([key]) => key in merged)
+    .map(([key, label]) => ({ key, label, value: merged[key] }));
+}
+
+/**
+ * Select seller performance fields from the companies table.
+ */
+export function selectSellerPerformanceFields(
+  company: Record<string, unknown> | null,
+): DossierField[] {
+  if (!company) return [];
+  return Object.entries(SELLER_PERFORMANCE_FIELDS)
+    .filter(([key]) => key in company)
+    .map(([key, label]) => ({ key, label, value: company[key] }));
+}
+
+/**
+ * Normalize a dossier value for display.
+ *
+ * - undefined → '—' (field was not queried / not applicable)
+ * - null / empty string → 'Not provided' (field exists but no value)
+ * - boolean → 'Yes' / 'No'
+ * - array → comma-joined or 'Not provided' if empty
+ * - object → JSON stringified
+ */
 export function normalizeDossierValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return 'Not provided';
+  if (value === undefined) return '—';
+  if (value === null || value === '') return 'Not provided';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (Array.isArray(value)) return value.length ? value.join(', ') : 'Not provided';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);

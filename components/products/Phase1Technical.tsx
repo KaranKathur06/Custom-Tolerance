@@ -199,6 +199,7 @@ export function Phase1Technical({
               onChange={(val) => updateField("capabilities", val)}
               groups={capabilityGroups}
               placeholder="Select capabilities..."
+              enableGroupSelectAll
             />
           </FormField>
 
