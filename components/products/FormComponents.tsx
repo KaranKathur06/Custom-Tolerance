@@ -197,7 +197,10 @@ export function TagInput({
             setShowSuggestions(true);
           }}
           onKeyDown={handleKeyDown}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          onBlur={() => {
+            if (inputVal.trim()) addTag(inputVal);
+            setShowSuggestions(false);
+          }}
           placeholder={value.length === 0 ? placeholder : "Add more..."}
           className="flex-1 min-w-[120px] bg-transparent text-sm placeholder:text-slate-400 focus:outline-none"
         />
