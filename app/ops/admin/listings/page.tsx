@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, Eye, Clock, XCircle } from 'lucide-react';
 
 type ListingRow = {
   id: string;
+  approvalId: string;
   title: string;
   seller: string;
   metalType: string;
@@ -65,7 +66,7 @@ export default function ListingsPage() {
       const status = tab === 'pending' ? 'pending' : 'all';
 
       const res = await fetch(
-        `/api/admin/listings/pending?page=${page}&limit=${limit}&status=${encodeURIComponent(status)}`,
+        `/api/admin/listings?page=${page}&pageSize=${limit}&queue=${encodeURIComponent(status)}`,
         { credentials: 'include' },
       );
 
@@ -75,16 +76,12 @@ export default function ListingsPage() {
       }
 
       const mapped: ListingRow[] = (payload.data ?? []).map((l: any) => {
-        const sellerName =
-          l?.companies?.[0]?.name ??
-          l?.seller_profiles?.[0]?.company_name ??
-          l?.seller_profiles?.company_name ??
-          '-';
+        const sellerName = l?.seller?.name ?? '-';
 
-        const metalType = l?.metal_type ?? l?.metalType ?? '-';
+        const metalType = l?.product?.capability ?? l?.metal_type ?? l?.metalType ?? '-';
 
-        const priceMin = l?.price_min ?? l?.priceMin ?? null;
-        const priceMax = l?.price_max ?? l?.priceMax ?? null;
+        const priceMin = l?.product?.price_min ?? l?.price_min ?? l?.priceMin ?? null;
+        const priceMax = l?.product?.price_max ?? l?.price_max ?? l?.priceMax ?? null;
         const unit = l?.price_unit ?? l?.unit ?? '/MT';
 
         const price =
@@ -92,11 +89,11 @@ export default function ListingsPage() {
             ? `${formatMoneyINR(priceMin ?? priceMax)}${unit ? ` ${unit}` : ''}`
             : '-';
 
-        const qty = l?.quantity_available ?? l?.quantity ?? null;
-        const quantity = qty != null ? `${qty} MT` : l?.moq ? `${l.moq} MT` : '-';
+        const qty = l?.product?.quantity_available ?? l?.quantity_available ?? l?.quantity ?? null;
+        const quantity = qty != null ? `${qty} MT` : l?.product?.moq ? `${l.product.moq} MT` : '-';
 
         // Canonical submitted time from listing creation timestamp
-        const submitted = formatApproxTimeAgo(l?.created_at ?? l?.submitted_at ?? null);
+        const submitted = formatApproxTimeAgo(l?.createdAt ?? l?.created_at ?? l?.submitted_at ?? null);
 
         // riskScore was previously mocked; keep UI stable but do not invent values
         // If backend later provides risk metrics, we can wire it here.
@@ -104,12 +101,13 @@ export default function ListingsPage() {
 
         return {
           id: String(l?.id ?? ''),
+          approvalId: String(l?.approvalId ?? ''),
           title: String(l?.title ?? ''),
           seller: String(sellerName),
           metalType: String(metalType),
           price: String(price),
           quantity: String(quantity),
-          status: String(l?.moderation_status ?? l?.status ?? ''),
+          status: String(l?.moderationStatus ?? l?.moderation_status ?? l?.status ?? ''),
           submitted,
           riskScore,
         };
@@ -258,10 +256,10 @@ export default function ListingsPage() {
               </div>
 
               <div style={{ display: 'flex', gap: 6 }}>
-                {listing.status === 'pending' || listing.status === 'Pending' ? (
+                {listing.status === 'PENDING_REVIEW' || listing.status === 'pending' || listing.status === 'Pending' ? (
                   <>
                     <button
-                      onClick={() => void reviewListing(listing.id, 'approve')}
+                      onClick={() => void reviewListing(listing.approvalId, 'approve')}
                       disabled={actingId === listing.id}
                       style={{
                         display: 'flex',
@@ -282,7 +280,7 @@ export default function ListingsPage() {
                     </button>
 
                     <button
-                      onClick={() => void reviewListing(listing.id, 'reject')}
+                      onClick={() => void reviewListing(listing.approvalId, 'reject')}
                       disabled={actingId === listing.id}
                       style={{
                         display: 'flex',

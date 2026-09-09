@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Ban,
   Bell,
@@ -62,23 +62,15 @@ type Confirmation = {
   run: () => void;
 };
 
-const roles = [
-  'Buyer',
-  'Seller',
-  'Buyer & Seller',
-  'Moderator',
-  'Support Agent',
-  'Supplier Success',
-  'Finance',
-  'Marketing',
-  'Admin',
-  'Super Admin',
-];
-
 const roleOptions = [
   { label: 'All roles', value: 'all' },
-  ...roles.map((role) => ({ label: role, value: role })),
+  { label: 'Buyer', value: 'BUYER' },
+  { label: 'Seller', value: 'SELLER' },
+  { label: 'Admin', value: 'ADMIN' },
+  { label: 'Super Admin', value: 'SUPER_ADMIN' },
 ];
+
+const roles = roleOptions.slice(1).map((option) => option.value);
 
 const statusOptions = [
   { label: 'All status', value: 'all' },
@@ -100,10 +92,17 @@ export default function UsersPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    setRoleFilter(searchParams.get('role') || 'all');
+    setStatusFilter(searchParams.get('status') || 'all');
+    setPage(Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10)));
+  }, [searchParams]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -115,6 +114,8 @@ export default function UsersPage() {
       if (roleFilter !== 'all') params.set('role', roleFilter);
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (search.trim()) params.set('search', search.trim());
+
+      router.replace(`/ops/admin/users?${params.toString()}`, { scroll: false });
 
       const res = await fetch(`/api/admin/users?${params.toString()}`, { credentials: 'include' });
       const payload = await res.json().catch(() => null);
@@ -157,7 +158,7 @@ export default function UsersPage() {
             id: u.id,
             name,
             email: email || 'No email available',
-            role: u.role.toLowerCase().replaceAll('_', ' '),
+            role: u.role,
             status: displayStatus,
             kyc: displayKyc,
             company,
@@ -187,24 +188,7 @@ export default function UsersPage() {
     }
   }, [page, totalPages]);
 
-  const filtered = useMemo(
-    () =>
-      users.filter((user) => {
-        const needle = `${user.name} ${user.email} ${user.company}`.toLowerCase();
-        if (search && !needle.includes(search.toLowerCase())) return false;
-        if (roleFilter !== 'all') {
-          const selectedRole = roleFilter.toLowerCase();
-          const userRole = user.role.toLowerCase();
-          const isCombinedRole = userRole === 'buyer & seller';
-          const matchesRole = userRole === selectedRole
-            || (isCombinedRole && (selectedRole === 'buyer' || selectedRole === 'seller'));
-          if (!matchesRole) return false;
-        }
-        if (statusFilter !== 'all' && user.status !== statusFilter) return false;
-        return true;
-      }),
-    [roleFilter, search, statusFilter, users],
-  );
+  const filtered = users;
 
   const pageButtons = useMemo(() => {
     const pages: Array<number | 'ellipsis'> = [];
@@ -550,8 +534,8 @@ export default function UsersPage() {
                     setRoleModalUser(null);
                   }}
                 >
-                  <strong>{role}</strong>
-                  <span>{role === 'Superadmin' ? 'All permissions' : role === 'Admin' ? 'Assigned admin permissions' : 'Scoped workspace access'}</span>
+                  <strong>{role.replaceAll('_', ' ')}</strong>
+                  <span>{role === 'SUPER_ADMIN' ? 'All permissions' : role === 'ADMIN' ? 'Assigned admin permissions' : 'Scoped workspace access'}</span>
                 </button>
               ))}
             </div>

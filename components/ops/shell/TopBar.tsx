@@ -21,6 +21,11 @@ export function TopBar() {
   const commandRef = useRef<HTMLDivElement>(null);
   const searchResults = useMemo(() => searchOpsRoutes(searchQuery), [searchQuery]);
 
+  function closeSearch() {
+    setSearchQuery('');
+    setCommandPaletteOpen(false);
+  }
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
@@ -60,24 +65,40 @@ export function TopBar() {
         <ModeSwitch />
       </div>
 
-      <div className="ops-topbar-center">
-        <button className="ops-search-trigger" onClick={() => setCommandPaletteOpen(true)}>
+      <div className="ops-topbar-center" ref={commandRef}>
+        <button
+          className="ops-search-trigger"
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={commandPaletteOpen}
+          onClick={() => setCommandPaletteOpen(true)}
+        >
           <Search className="w-4 h-4" />
           <span>Search users, listings, RFQs, payments...</span>
           <kbd className="ops-kbd"><Command className="w-3 h-3" />K</kbd>
         </button>
         {commandPaletteOpen && (
-          <div className="ops-command-overlay">
-            <div className="ops-command-panel" ref={commandRef}>
+          <div className="ops-command-overlay" role="presentation" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeSearch();
+          }}>
+            <div className="ops-command-panel" role="dialog" aria-modal="true" aria-label="Operations search">
+              <div className="ops-command-heading">
+                <div>
+                  <strong>Search Operations</strong>
+                  <span>Find a workspace, queue, or operational workflow</span>
+                </div>
+                <button type="button" className="ops-command-close" onClick={closeSearch} aria-label="Close search">×</button>
+              </div>
               <div className="ops-command-input">
                 <Search className="w-4 h-4" />
                 <input
                   autoFocus
+                  type="search"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search users, suppliers, RFQs, listings, invoices, audit logs..."
                 />
-                <kbd>Esc</kbd>
+                  <kbd>Esc</kbd>
               </div>
               <div className="ops-command-results">
                 {searchResults.map((result) => (

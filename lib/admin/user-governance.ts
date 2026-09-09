@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeStoredRole } from '@/lib/auth/rbac';
+import { normalizeUserRole, roleDatabaseValues } from '@/lib/admin/governance-contracts';
 
 export type AccountStatus = 'active' | 'deleted';
 export type EnforcementStatus = 'normal' | 'suspended' | 'banned';
@@ -161,29 +162,14 @@ export async function listUserGovernanceContexts(
   options: { page: number; limit: number; role?: string | null; status?: string | null; search?: string | null },
 ) {
   let query = supabase
-    .from('admin_user_directory')
-    .select('id, email, full_name, phone, role, auth_role, avatar_url, verification_status, created_at, last_login, enforcement_status, profile_status, deleted_at', { count: 'exact' });
+    .from('profiles')
+    .select('id, email, full_name, phone, role, avatar_url, verification_status, created_at, updated_at, enforcement_status, profile_status, deleted_at', { count: 'exact' });
 
   if (options.role) {
     const requestedRole = options.role.trim().toLowerCase().replaceAll(' ', '_');
-    const role = requestedRole === 'buyer_&_seller' || requestedRole === 'buyer_and_seller'
-      ? 'both'
-      : normalizeStoredRole(options.role);
-    const roleAliases: Record<string, string[]> = {
-      buyer: ['buyer', 'BUYER', 'both', 'BOTH'],
-      seller: ['seller', 'SELLER', 'manufacturer', 'MANUFACTURER', 'distributor', 'DISTRIBUTOR', 'both', 'BOTH'],
-      both: ['both', 'BOTH'],
-      moderator: ['moderator', 'MODERATOR'],
-      support_agent: ['support_agent', 'SUPPORT_AGENT'],
-      supplier_success: ['supplier_success', 'SUPPLIER_SUCCESS'],
-      finance: ['finance', 'FINANCE'],
-      marketing: ['marketing', 'MARKETING'],
-      admin: ['admin', 'ADMIN'],
-      super_admin: ['super_admin', 'SUPER_ADMIN', 'superadmin', 'SUPERADMIN'],
-    };
-    const aliases = roleAliases[role] ?? [role];
-    const encodedAliases = aliases.join(',');
-    query = query.or(`role.in.(${encodedAliases}),auth_role.in.(${encodedAliases})`);
+    const role = requestedRole === 'buyer_&_seller' || requestedRole === 'buyer_and_seller' ? null : normalizeUserRole(options.role);
+    if (!role) throw new Error('INVALID_ROLE_FILTER');
+    query = query.in('role', roleDatabaseValues(role));
   }
   if (options.status && ['normal', 'suspended', 'banned'].includes(options.status)) query = query.eq('enforcement_status', options.status);
   if (options.search) {
@@ -198,8 +184,8 @@ export async function listUserGovernanceContexts(
   if (error) throw error;
 
   const directoryRows = (data ?? []) as Array<{
-    id: string; email: string | null; full_name: string | null; phone: string | null; role: string | null; auth_role: string | null;
-    avatar_url: string | null; verification_status: string; created_at: string; last_login: string | null;
+    id: string; email: string | null; full_name: string | null; phone: string | null; role: string | null;
+    avatar_url: string | null; verification_status: string; created_at: string; updated_at: string;
     enforcement_status: EnforcementStatus; profile_status: ProfileStatus | null; deleted_at: string | null;
   }>;
   const contexts = await Promise.all(directoryRows.map(async (directoryUser) => {
@@ -208,12 +194,12 @@ export async function listUserGovernanceContexts(
       email: directoryUser.email,
       full_name: directoryUser.full_name,
       phone: directoryUser.phone,
-      role: directoryUser.role ?? directoryUser.auth_role ?? 'unknown',
+      role: directoryUser.role ?? 'unknown',
       profile_status: directoryUser.profile_status ?? 'incomplete',
       verification_status: directoryUser.verification_status,
       avatar_url: directoryUser.avatar_url,
       created_at: directoryUser.created_at,
-      updated_at: directoryUser.created_at,
+      updated_at: directoryUser.updated_at,
       deleted_at: directoryUser.deleted_at,
       enforcement_status: directoryUser.enforcement_status,
       suspended_at: null,
@@ -230,7 +216,7 @@ export async function listUserGovernanceContexts(
     return toGovernanceContext(profile, {
       buyer: (buyerResult.data as Record<string, unknown> | null) ?? null,
       seller: (sellerResult.data as Record<string, unknown> | null) ?? null,
-      lastLoginAt: directoryUser.last_login,
+      lastLoginAt: null,
     });
   }));
 

@@ -667,6 +667,47 @@ body:has(.ops-shell) main.min-h-screen {
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.72);
 }
 
+.ops-command-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--ops-border);
+}
+
+.ops-command-heading strong {
+  display: block;
+  color: var(--ops-text);
+  font-size: 15px;
+}
+
+.ops-command-heading span {
+  display: block;
+  margin-top: 4px;
+  color: var(--ops-text-muted);
+  font-size: 12px;
+}
+
+.ops-command-close {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ops-border);
+  border-radius: 7px;
+  background: var(--ops-surface-2);
+  color: var(--ops-text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ops-command-close:hover,
+.ops-command-close:focus-visible {
+  border-color: var(--ops-accent-admin);
+  color: var(--ops-text);
+  outline: none;
+}
+
 .ops-command-input {
   display: flex;
   align-items: center;
@@ -674,6 +715,7 @@ body:has(.ops-shell) main.min-h-screen {
   min-height: 58px;
   padding: 0 16px;
   border-bottom: 1px solid var(--ops-border);
+  background: #0b0b0b;
 }
 
 .ops-command-input svg {
@@ -688,6 +730,17 @@ body:has(.ops-shell) main.min-h-screen {
   color: var(--ops-text);
   font-size: 14px;
   outline: none;
+  min-height: 34px;
+  caret-color: var(--ops-accent-admin);
+}
+
+.ops-command-input input::placeholder {
+  color: #8f8f98;
+}
+
+.ops-command-input input:focus-visible {
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.28);
+  border-radius: 5px;
 }
 
 .ops-command-input kbd {
@@ -751,6 +804,28 @@ body:has(.ops-shell) main.min-h-screen {
 
 .ops-command-empty {
   padding: 18px;
+}
+
+@media (max-width: 720px) {
+  .ops-topbar-center {
+    max-width: none;
+  }
+
+  .ops-search-trigger span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ops-command-overlay {
+    padding: 16px;
+    align-items: flex-start;
+  }
+
+  .ops-command-panel {
+    width: 100%;
+    max-height: calc(100vh - 32px);
+  }
 }
 
 /* ── Page Grid Layouts ── */

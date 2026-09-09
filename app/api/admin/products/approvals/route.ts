@@ -154,7 +154,7 @@ export async function PATCH(request: NextRequest) {
       ? await supabase
           .from("profiles")
           .select("email, full_name")
-          .eq("user_id", product.profile_id)
+          .eq("id", product.profile_id)
           .maybeSingle()
       : { data: null };
 

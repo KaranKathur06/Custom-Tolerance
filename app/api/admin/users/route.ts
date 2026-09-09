@@ -14,6 +14,7 @@ import { sendEmail } from '@/lib/services/email';
 import { displayRole, getUserGovernanceContext, listUserGovernanceContexts } from '@/lib/admin/user-governance';
 import { ROLE_LEVELS } from '@/lib/constants/roles';
 import { normalizeStoredRole } from '@/lib/auth/rbac';
+import { normalizeUserRole } from '@/lib/admin/governance-contracts';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,10 @@ export async function GET(request: Request) {
   try {
     result = await listUserGovernanceContexts(auth.supabase, { page, limit, role, status: status === 'Active' ? 'normal' : status?.toLowerCase(), search });
   } catch (error) {
+    if (error instanceof Error && error.message === 'INVALID_ROLE_FILTER') {
+      return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Unsupported role filter.' } }, { status: 400 });
+    }
+    console.error('ADMIN_USERS_QUERY_FAILED', { adminUserId: auth.user.id, role, status, search, error: error instanceof Error ? error.message : 'Unknown error' });
     return NextResponse.json(
       { success: false, error: { code: 'SERVER_ERROR', message: error instanceof Error ? error.message : 'Could not load users' } },
       { status: 500 },
@@ -52,7 +57,7 @@ export async function GET(request: Request) {
     full_name: context.user.fullName,
     email: context.user.email,
     phone: context.user.phone,
-    role: displayRole(context.role),
+    role: normalizeUserRole(context.role) ?? context.role.toUpperCase(),
     avatar_url: context.user.avatarUrl,
     account_status: context.accountStatus,
     enforcement_status: context.enforcementStatus,

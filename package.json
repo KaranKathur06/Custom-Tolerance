@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "route:smoke": "tsx scripts/route-surface-smoke.ts",
-    "seed:marketplace": "npx tsx scripts/seed-marketplace.ts"
+    "seed:marketplace": "npx tsx scripts/seed-marketplace.ts",
+    "diagnose:governance": "tsx scripts/diagnose-governance.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
