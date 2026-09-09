@@ -40,7 +40,7 @@ The additive schema introduces `lifecycle_status text not null default 'draft'` 
 | Transition | Actor | Preconditions | Result |
 | --- | --- | --- | --- |
 | Create/update draft | owning seller | draft/rejected, expected version | atomic product aggregate write |
-| Submit/resubmit | owning eligible seller | complete draft or rejected product, expected version | atomically moves to `pending_review`, expires/supersedes prior decision, and creates one current pending approval |
+| Submit/resubmit | owning eligible seller | complete draft or rejected product, expected version | atomically moves to `pending_review` and creates one current pending approval; historical decisions remain unchanged |
 | Approve | authorized admin | pending approval | approved/active, visible only if eligibility permits |
 | Reject/request changes | authorized admin | pending approval, reason required | rejected, editable, reason and audit event |
 | Pause/archive | owning seller or authorized admin | lifecycle-specific policy | no marketplace eligibility |
@@ -49,7 +49,7 @@ The additive schema introduces `lifecycle_status text not null default 'draft'` 
 
 Every attempted invalid transition returns a stable typed error. `409` is used for an expected-version conflict only; lifecycle policy failures return typed business errors with a suitable `422`/`403`/`404` response.
 
-Pending approvals expire after their configured deadline. A scheduled or transactional expiry path marks the approval `expired`, records an audit event, and moves the product from `pending_review` to `draft` with a seller-visible explanation. The pending uniqueness index applies only to current `pending` approvals. Seller cancellation follows the same draft transition. A rejected product may be resubmitted directly; that operation creates a new pending approval while preserving previous approvals as immutable history.
+Pending approvals expire after their configured deadline. A scheduled or transactional expiry path may change only a current pending approval to `expired`, records an audit event, and moves the product from `pending_review` to `draft` with a seller-visible explanation. The pending uniqueness index applies only to current `pending` approvals. Seller cancellation follows the same draft transition. A rejected product may be resubmitted directly; that operation creates a new pending approval while preserving previous rejected/approved decisions as immutable history.
 
 ## Canonical eligibility
 
@@ -94,11 +94,12 @@ All lifecycle mutations run as server-owned transactions/RPCs and append an immu
 
 ## Migration and data repair
 
-1. Run a read-only reconciliation report first: orphan product/media/approval rows, invalid state combinations, absent moderation records, unlinked verification documents, and malformed numeric values.
-2. Add only idempotent constraints/functions/indexes needed for the canonical write path. Preserve backward-compatible readers during deployment.
-3. Ship the server lifecycle service and canonical read models.
-4. Switch seller, admin, marketplace, and supplier-profile consumers.
-5. Produce a separate, logged, reversible repair plan for existing bad rows; never auto-delete or auto-publish data.
+1. Run a read-only reconciliation report first: orphan product/media/approval rows, invalid state combinations, absent moderation records, unlinked verification documents, malformed numeric values, and every legacy lifecycle function/route/RPC.
+2. Add `lifecycle_status` as nullable and do not validate the pair/publication invariant initially. Deterministically backfill existing products: approved+published becomes approved/active; approved+not-published becomes approved/paused; draft becomes draft/draft; pending-review becomes pending-review/pending-review; rejected becomes rejected/rejected. Quarantine and report every row that does not map unambiguously; do not guess or alter it automatically.
+3. Replace or remove legacy lifecycle writers before enforcement. In particular, revoke authenticated execution of `publish_product_to_marketplace(uuid)` and any equivalent privileged RPC, then route compatible callers to the audited canonical transition RPC. The inventory is a deployment gate.
+4. Validate the backfill, then add the CHECK/trigger, derived-publication invariant, indexes, and constrained grants. Preserve backward-compatible readers during the consumer cutover.
+5. Ship the server lifecycle service and canonical read models, then switch seller, admin, marketplace, and supplier-profile consumers.
+6. Produce a separate, logged, reversible repair plan for quarantined rows; never auto-delete or auto-publish data.
 
 ## Security and reliability
 
