@@ -212,9 +212,8 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       
       if (dataToSave.materials !== undefined) payload.materials = dataToSave.materials;
       if (dataToSave.tolerance !== undefined) payload.tolerance = dataToSave.tolerance;
-      if (dataToSave.images !== undefined) {
-        payload.images = dataToSave.images;
-      }
+      // Media has its own server-owned lifecycle. Never replace persisted media
+      // from autosave, which would lose ordering and metadata.
       if (dataToSave.industries !== undefined) payload.industries = dataToSave.industries;
       if (dataToSave.grades !== undefined) payload.grades = dataToSave.grades;
       if (dataToSave.specification !== undefined) payload.specification = dataToSave.specification;
@@ -435,7 +434,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
 
       {/* Workspace Area */}
       {activePhase === 1 && (
-        <Phase1Technical initialData={dataRef.current} onChange={handleDataChange} />
+        <Phase1Technical initialData={dataRef.current} onChange={handleDataChange} productId={draftId} />
       )}
       {activePhase === 2 && (
         <Phase2Commercial initialData={dataRef.current} onChange={handleDataChange} />

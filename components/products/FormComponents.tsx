@@ -609,6 +609,7 @@ export function RadioGroup({
 // ImageUploadItem — single image slot with state
 // ─────────────────────────────────────────────────────────────
 export type UploadedImage = {
+  id?: string;
   url: string;
   path: string;
   isPrimary: boolean;
@@ -691,13 +692,16 @@ export function ImageUploader({
         }
 
         const data = await res.json();
+        const media = data.media;
+        if (!data.success || !media) throw new Error("Upload failed");
 
         setUploading((prev) => ({ ...prev, [localId]: 100 }));
 
         const newImage: UploadedImage = {
-          url: data.url,
-          path: data.path,
-          isPrimary: images.length === 0, // first image is primary
+          id: media.id,
+          url: media.url,
+          path: media.storagePath,
+          isPrimary: media.isPrimary,
           localId,
         };
 
@@ -782,7 +786,7 @@ export function ImageUploader({
       fetch("/api/products/images", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: img.path }),
+        body: JSON.stringify({ path: img.path, productId }),
       }).catch(console.error);
     }
   };

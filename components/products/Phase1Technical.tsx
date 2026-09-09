@@ -39,9 +39,11 @@ export type Phase1Data = {
 export function Phase1Technical({
   initialData,
   onChange,
+  productId,
 }: {
   initialData: Partial<Phase1Data>;
   onChange: (data: Partial<Phase1Data>) => void;
+  productId?: string | null;
 }) {
   const {
     capabilityGroups,
@@ -112,6 +114,7 @@ export function Phase1Technical({
             images={data.images || []}
             onChange={(images) => updateField("images", images)}
             maxImages={3}
+            productId={productId}
           />
         </FormField>
       </section>

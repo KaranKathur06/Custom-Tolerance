@@ -7,6 +7,7 @@ import { Phase3Data } from "./Phase3Packaging";
 import { CheckCircle2, AlertCircle, Rocket } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { UploadedImage } from "./FormComponents";
+import { formatLeadTime, formatQuantity, formatTolerance } from "@/lib/products/display";
 
 type AllData = Partial<Phase1Data> & Partial<Phase2Data> & Partial<Phase3Data>;
 
@@ -138,15 +139,15 @@ export function Phase4Review({
                 </div>
                 <div>
                   <span className="block text-slate-500 mb-1 text-xs uppercase tracking-wider font-semibold">Tolerance</span>
-                  <span className="font-medium text-slate-900">{data.tolerance ? data.tolerance.replace(/_/g, ' ') : "—"}</span>
+                  <span className="font-medium text-slate-900">{formatTolerance(data.tolerance) || "—"}</span>
                 </div>
                 <div>
                   <span className="block text-slate-500 mb-1 text-xs uppercase tracking-wider font-semibold">MOQ</span>
-                  <span className="font-medium text-slate-900">{data.moq ? `${data.moq} ${data.productionCapacityUnit}` : "—"}</span>
+                  <span className="font-medium text-slate-900">{formatQuantity(data.moq, data.productionCapacityUnit) || "—"}</span>
                 </div>
                 <div>
                   <span className="block text-slate-500 mb-1 text-xs uppercase tracking-wider font-semibold">Lead Time</span>
-                  <span className="font-medium text-slate-900">{data.leadTime ? data.leadTime.replace(/_/g, ' ') : "—"}</span>
+                  <span className="font-medium text-slate-900">{formatLeadTime(data.leadTime) || "—"}</span>
                 </div>
               </div>
 
