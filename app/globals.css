@@ -84,6 +84,92 @@
    ═══════════════════════════════════════════════ */
 
 @layer components {
+  .product-select {
+    position: relative;
+    width: 100%;
+  }
+  .product-select .enterprise-select-trigger {
+    width: 100%;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 1px solid rgb(203 213 225);
+    border-radius: 0.5rem;
+    background: white;
+    color: rgb(15 23 42);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    text-align: left;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .product-select .enterprise-select-trigger:hover,
+  .product-select .enterprise-select-trigger[aria-expanded="true"] {
+    border-color: rgb(37 99 235);
+    box-shadow: 0 0 0 2px rgb(219 234 254);
+  }
+  .product-select .enterprise-select-trigger svg {
+    flex-shrink: 0;
+    color: rgb(100 116 139);
+  }
+  .product-select .enterprise-select-menu {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    z-index: 40;
+    width: 100%;
+    min-width: 15rem;
+    overflow: hidden;
+    border: 1px solid rgb(226 232 240);
+    border-radius: 0.5rem;
+    background: white;
+    box-shadow: 0 12px 28px rgb(15 23 42 / 0.16);
+  }
+  .product-select .enterprise-select-options {
+    max-height: 16rem;
+    overflow-y: auto;
+    padding: 0.25rem;
+  }
+  .product-select .enterprise-select-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: rgb(51 65 85);
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+  }
+  .product-select .enterprise-select-option:hover,
+  .product-select .enterprise-select-option.selected {
+    background: rgb(239 246 255);
+    color: rgb(30 64 175);
+  }
+  .product-select .enterprise-select-option strong {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+  .product-select .enterprise-select-option small {
+    display: block;
+    margin-top: 0.125rem;
+    color: rgb(100 116 139);
+    font-size: 0.75rem;
+  }
+  .product-select .enterprise-select-option svg {
+    flex-shrink: 0;
+    color: rgb(37 99 235);
+  }
+  .product-select .enterprise-select-empty {
+    padding: 0.75rem;
+    color: rgb(100 116 139);
+    font-size: 0.875rem;
+  }
+
   /* ─── Premium Card ─── */
   .ct-card {
     @apply relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm;

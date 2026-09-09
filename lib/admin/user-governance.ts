@@ -98,7 +98,7 @@ function toGovernanceContext(profile: ProfileRow, related: { buyer: Record<strin
     accountStatus: profile.deleted_at ? 'deleted' : 'active',
     enforcementStatus,
     profileStatus: profile.profile_status,
-    verificationStatus: profile.verification_status,
+    verificationStatus: profile.verification_status === 'approved' ? 'verified' : profile.verification_status,
     buyerProfile: related.buyer,
     sellerProfile: related.seller,
   };
@@ -136,7 +136,7 @@ export async function getUserGovernanceContext(
       accountStatus: directoryUser.deleted_at ? 'deleted' : 'active',
       enforcementStatus: directoryUser.enforcement_status ?? 'normal',
       profileStatus: directoryUser.profile_status ?? 'incomplete',
-      verificationStatus: directoryUser.verification_status ?? 'pending',
+      verificationStatus: (directoryUser.verification_status === 'approved' ? 'verified' : directoryUser.verification_status) ?? 'pending',
       buyerProfile: null,
       sellerProfile: null,
     };

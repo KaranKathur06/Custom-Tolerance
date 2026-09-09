@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { EnterpriseSelect } from "@/components/ui/EnterpriseSelect";
 import {
   Check,
   ChevronDown,
@@ -101,34 +102,22 @@ export function FormSelect({
 }: {
   value: string;
   onChange: (val: string) => void;
-  options: { id: string; name: string }[];
+  options: { id: string; name: string; description?: string }[];
   placeholder?: string;
   className?: string;
 }) {
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "flex h-10 w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all",
-          !value && "text-slate-400",
-          className
-        )}
-      >
-        <option value="" disabled>
-          {placeholder}
-        </option>
-        {options.map((opt) => (
-          <option key={opt.id} value={opt.id}>
-            {opt.name}
-          </option>
-        ))}
-      </select>
-      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-        <ChevronDown className="h-4 w-4" />
-      </div>
-    </div>
+    <EnterpriseSelect
+      value={value}
+      onValueChange={onChange}
+      options={options.map((option) => ({
+        label: option.name,
+        value: option.id,
+        description: option.description,
+      }))}
+      placeholder={placeholder}
+      className={cn("product-select", className)}
+    />
   );
 }
 

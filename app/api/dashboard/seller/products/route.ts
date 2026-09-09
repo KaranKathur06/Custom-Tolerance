@@ -24,47 +24,68 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: sellerProfile } = await supabase
+  const { data: sellerProfile, error: sellerProfileError } = await supabase
     .from("seller_profiles")
     .select("id")
     .eq("profile_id", user.id)
-    .single();
+    .maybeSingle();
+
+  if (sellerProfileError) {
+    console.error("[seller/products] seller profile lookup failed:", sellerProfileError.message);
+    return NextResponse.json({ error: "Unable to resolve seller profile" }, { status: 503 });
+  }
 
   if (!sellerProfile) {
     return NextResponse.json({ products: [] });
   }
 
-  const { data: products, error } = await supabase
+  const { data: baseProducts, error } = await supabase
     .from("seller_products")
-    .select(
-      `
-      id, product_name, price_type, currency, price_unit, min_price, max_price,
-      approval_notes,
-      description, country_of_origin, third_party_inspection, free_sample, sample_shipping_cost,
-      delivery_terms, weight_value, weight_unit, dim_length, dim_width, dim_height, dim_unit,
-      shipping_type, primary_packaging, secondary_packaging, packaging_notes,
-      quality_certificate, brand_marking, brand_marking_other, dies_and_tools,
-      estimated_tool_cost, tool_ownership, tool_lead_time, specification,
-      monthly_capacity, production_capacity_unit, moq, lead_time,
-      is_visible, is_featured, is_published, published_at, listing_id, approval_status,
-      created_at, updated_at,
-      product_approvals(id, status, created_at, rejection_reason, notes),
-      product_images(url, storage_path, is_primary),
-      product_capabilities(capability_id),
-      product_industries(industry_id),
-      product_materials(material_name),
-      product_grades(grade_name),
-      product_payment_terms(payment_term_id),
-      product_incoterms(incoterm_id)
-      `
-    )
+    .select("*")
     .eq("seller_profile_id", sellerProfile.id)
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[seller/products]", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[seller/products] base product query failed:", error.message);
+    return NextResponse.json({ error: "Unable to load seller products" }, { status: 503 });
   }
+
+  const productIds = (baseProducts ?? []).map((product) => product.id);
+  const relationResults = productIds.length === 0 ? [] : await Promise.all([
+    supabase.from("product_approvals").select("id, seller_product_id, status, created_at, rejection_reason, notes").in("seller_product_id", productIds),
+    supabase.from("product_images").select("seller_product_id, url, storage_path, is_primary").in("seller_product_id", productIds).order("display_order", { ascending: true }),
+    supabase.from("product_capabilities").select("seller_product_id, capability_id").in("seller_product_id", productIds),
+    supabase.from("product_industries").select("seller_product_id, industry_id").in("seller_product_id", productIds),
+    supabase.from("product_materials").select("seller_product_id, material_name").in("seller_product_id", productIds),
+    supabase.from("product_grades").select("seller_product_id, grade_name").in("seller_product_id", productIds),
+    supabase.from("product_payment_terms").select("seller_product_id, payment_term_id").in("seller_product_id", productIds),
+    supabase.from("product_incoterms").select("seller_product_id, incoterm_id").in("seller_product_id", productIds),
+  ]);
+  const relationNames = ["product_approvals", "product_images", "product_capabilities", "product_industries", "product_materials", "product_grades", "product_payment_terms", "product_incoterms"];
+  relationResults.forEach((result, index) => {
+    if (result.error) console.warn(`[seller/products] optional relation ${relationNames[index]} unavailable:`, result.error.message);
+  });
+  const relationByProduct = (index: number) => {
+    const grouped = new Map<string, unknown[]>();
+    for (const row of relationResults[index]?.data ?? []) {
+      const productId = String((row as { seller_product_id?: string }).seller_product_id ?? "");
+      if (!productId) continue;
+      grouped.set(productId, [...(grouped.get(productId) ?? []), row]);
+    }
+    return grouped;
+  };
+  const groupedRelations = relationResults.map((_, index) => relationByProduct(index));
+  const products = (baseProducts ?? []).map((product) => ({
+    ...product,
+    product_approvals: groupedRelations[0]?.get(product.id) ?? [],
+    product_images: groupedRelations[1]?.get(product.id) ?? [],
+    product_capabilities: groupedRelations[2]?.get(product.id) ?? [],
+    product_industries: groupedRelations[3]?.get(product.id) ?? [],
+    product_materials: groupedRelations[4]?.get(product.id) ?? [],
+    product_grades: groupedRelations[5]?.get(product.id) ?? [],
+    product_payment_terms: groupedRelations[6]?.get(product.id) ?? [],
+    product_incoterms: groupedRelations[7]?.get(product.id) ?? [],
+  }));
 
   return NextResponse.json({ 
     products: products ?? [],
@@ -176,6 +197,12 @@ export async function PATCH(req: NextRequest) {
   if (body.freeSample !== undefined) patch.free_sample = body.freeSample === 'yes';
   if (body.sampleShippingCost !== undefined) patch.sample_shipping_cost = body.sampleShippingCost;
   if (body.deliveryTerms !== undefined) patch.delivery_terms = body.deliveryTerms;
+  if (body.weightValue !== undefined) patch.weight_value = Number(body.weightValue) || null;
+  if (body.weightUnit !== undefined) patch.weight_unit = body.weightUnit;
+  if (body.dimLength !== undefined) patch.dim_length = Number(body.dimLength) || null;
+  if (body.dimWidth !== undefined) patch.dim_width = Number(body.dimWidth) || null;
+  if (body.dimHeight !== undefined) patch.dim_height = Number(body.dimHeight) || null;
+  if (body.dimUnit !== undefined) patch.dim_unit = body.dimUnit;
   if (body.weightValue !== undefined) patch.weight_value = Number(body.weightValue) || null;
   if (body.weightUnit !== undefined) patch.weight_unit = body.weightUnit;
   if (body.dimLength !== undefined) patch.dim_length = Number(body.dimLength) || null;

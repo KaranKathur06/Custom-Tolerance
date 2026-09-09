@@ -26,7 +26,7 @@ function phaseOneComplete(draft: ProductDraftPhaseState): boolean {
   return (
     hasValue(draft.productName) &&
     hasValue(draft.priceType) &&
-    hasValue(draft.minPrice) &&
+    (draft.priceType === "ask_for_price" || hasValue(draft.minPrice)) &&
     hasValue(draft.currency) &&
     hasValue(draft.capabilities) &&
     hasValue(draft.materials) &&

@@ -146,7 +146,7 @@ export default function UsersPage() {
             : u.enforcement_status === 'banned'
               ? 'Banned'
               : 'Active';
-          const displayKyc: UserRow['kyc'] = verificationStatus === 'verified'
+          const displayKyc: UserRow['kyc'] = (verificationStatus === 'verified' || verificationStatus === 'approved')
             ? 'Verified'
             : verificationStatus === 'rejected'
               ? 'Rejected'

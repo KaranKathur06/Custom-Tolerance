@@ -170,9 +170,9 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     return () => { isMounted = false; };
   }, [draftId, existingDraftId]);
 
-  const triggerAutosave = useCallback(async (dataToSave: ProductData, targetDraftId?: string) => {
+  const triggerAutosave = useCallback(async (dataToSave: ProductData, targetDraftId?: string): Promise<boolean> => {
     const idToUse = targetDraftId || draftId;
-    if (!idToUse) return;
+    if (!idToUse) return false;
 
     setIsSaving(true);
     setDraftError(false);
@@ -186,12 +186,12 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       
       // Handle pricing
       if (dataToSave.priceType !== undefined) {
-         if (dataToSave.priceType === "ask_for_price") {
-           payload.estimatedPrice = null;
-         } else {
-           payload.estimatedPrice = Number(dataToSave.minPrice) || null;
-         }
+        payload.priceType = dataToSave.priceType;
+        payload.minPrice = dataToSave.priceType === "ask_for_price" ? null : Number(dataToSave.minPrice) || null;
+        payload.maxPrice = dataToSave.priceType === "price_range" ? Number(dataToSave.maxPrice) || null : null;
       }
+      if (dataToSave.currency !== undefined) payload.currency = dataToSave.currency;
+      if (dataToSave.priceUnit !== undefined) payload.priceUnit = dataToSave.priceUnit;
       
       // Combine properties for the current schema
       if (dataToSave.capabilities !== undefined) {
@@ -205,6 +205,16 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       if (dataToSave.images !== undefined) {
         payload.images = dataToSave.images;
       }
+      if (dataToSave.industries !== undefined) payload.industries = dataToSave.industries;
+      if (dataToSave.grades !== undefined) payload.grades = dataToSave.grades;
+      if (dataToSave.specification !== undefined) payload.specification = dataToSave.specification;
+      if (dataToSave.qualityCertificate !== undefined) payload.qualityCertificate = dataToSave.qualityCertificate;
+      if (dataToSave.brandMarking !== undefined) payload.brandMarking = dataToSave.brandMarking;
+      if (dataToSave.brandMarkingOther !== undefined) payload.brandMarkingOther = dataToSave.brandMarkingOther;
+      if (dataToSave.diesAndTools !== undefined) payload.diesAndTools = dataToSave.diesAndTools;
+      if (dataToSave.estimatedToolCost !== undefined) payload.estimatedToolCost = dataToSave.estimatedToolCost;
+      if (dataToSave.toolOwnership !== undefined) payload.toolOwnership = dataToSave.toolOwnership;
+      if (dataToSave.toolLeadTime !== undefined) payload.toolLeadTime = dataToSave.toolLeadTime;
 
       // Phase 2
       if (dataToSave.moq !== undefined) payload.moq = Number(dataToSave.moq) || null;
@@ -212,12 +222,26 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       if (dataToSave.productionCapacityUnit !== undefined) payload.productionCapacityUnit = dataToSave.productionCapacityUnit;
       if (dataToSave.leadTime !== undefined) payload.leadTime = dataToSave.leadTime;
       if (dataToSave.freeSample !== undefined) payload.freeSample = dataToSave.freeSample;
+      if (dataToSave.sampleShippingCost !== undefined) payload.sampleShippingCost = dataToSave.sampleShippingCost;
+      if (dataToSave.thirdPartyInspection !== undefined) payload.thirdPartyInspection = dataToSave.thirdPartyInspection;
+      if (dataToSave.incoterms !== undefined) payload.incoterms = dataToSave.incoterms;
+      if (dataToSave.deliveryTerms !== undefined) payload.deliveryTerms = dataToSave.deliveryTerms;
       
       // Convert arrays for legacy string[] cols
       if (dataToSave.paymentTerms !== undefined) payload.paymentTerms = dataToSave.paymentTerms;
       
       // Phase 3
       if (dataToSave.weightValue !== undefined) payload.quantityAvailable = Number(dataToSave.weightValue) || null;
+      if (dataToSave.weightValue !== undefined) payload.weightValue = dataToSave.weightValue;
+      if (dataToSave.weightUnit !== undefined) payload.weightUnit = dataToSave.weightUnit;
+      if (dataToSave.dimLength !== undefined) payload.dimLength = dataToSave.dimLength;
+      if (dataToSave.dimWidth !== undefined) payload.dimWidth = dataToSave.dimWidth;
+      if (dataToSave.dimHeight !== undefined) payload.dimHeight = dataToSave.dimHeight;
+      if (dataToSave.dimUnit !== undefined) payload.dimUnit = dataToSave.dimUnit;
+      if (dataToSave.shippingType !== undefined) payload.shippingType = dataToSave.shippingType;
+      if (dataToSave.primaryPackaging !== undefined) payload.primaryPackaging = dataToSave.primaryPackaging;
+      if (dataToSave.secondaryPackaging !== undefined) payload.secondaryPackaging = dataToSave.secondaryPackaging;
+      if (dataToSave.packagingNotes !== undefined) payload.packagingNotes = dataToSave.packagingNotes;
 
       const res = await fetch(`/api/dashboard/seller/products?id=${idToUse}`, {
         method: "PATCH",
@@ -228,8 +252,12 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       if (!res.ok) throw new Error("Autosave failed");
 
       setLastSaved(new Date());
+      return true;
     } catch (err) {
       console.error("Autosave failed", err);
+      setDraftError(true);
+      setDraftErrorMessage(err instanceof Error ? err.message : "Unable to save this product draft.");
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -242,6 +270,27 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     }
     triggerAutosave(dataRef.current);
   }, [triggerAutosave, activePhase]);
+
+  const saveDraft = async () => {
+    if (isSaving || !draftId) return false;
+    return triggerAutosave(dataRef.current);
+  };
+
+  const saveAndContinue = async () => {
+    if (isSaving || !draftId) return;
+    const nextPhase = Math.min(4, activePhase + 1);
+    if (nextPhase === activePhase) return;
+    if (!canEnterPhase(dataRef.current, nextPhase)) {
+      setDraftError(true);
+      setDraftErrorMessage("Complete the required fields in this phase before continuing.");
+      return;
+    }
+    const saved = await saveDraft();
+    if (saved) {
+      setDraftError(false);
+      setActivePhase(nextPhase);
+    }
+  };
 
   if (isLoadingDraft) {
     return (
@@ -349,6 +398,29 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       {activePhase === 4 && (
         <Phase4Review key={`review-${reviewTrigger}`} data={dataRef.current} draftId={draftId} />
       )}
+
+      <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => void saveDraft().then((saved) => saved && router.push("/dashboard/seller/products"))}
+          disabled={isSaving || !draftId}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Save className="h-4 w-4" />
+          {isSaving ? "Saving..." : "Save Draft"}
+        </button>
+        {activePhase < 4 ? (
+          <button
+            type="button"
+            onClick={() => void saveAndContinue()}
+            disabled={isSaving || !draftId}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {isSaving ? "Saving..." : "Save & Continue"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

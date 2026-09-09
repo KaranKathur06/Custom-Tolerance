@@ -130,7 +130,7 @@ export async function PATCH(request: Request) {
   if (action === 'verification') {
     const requestedValue = body.value?.trim().toLowerCase();
     const verificationStatus = requestedValue === 'verified' || requestedValue === 'approved'
-      ? 'approved'
+      ? 'verified'
       : requestedValue === 'rejected'
         ? 'rejected'
         : null;
@@ -162,8 +162,8 @@ export async function PATCH(request: Request) {
         .update({
           verification_status: verificationStatus,
           review_status: verificationStatus,
-          onboarding_status: verificationStatus === 'approved' ? 'APPROVED' : 'REJECTED',
-          approved_at: verificationStatus === 'approved' ? timestamp : null,
+          onboarding_status: verificationStatus === 'verified' ? 'APPROVED' : 'REJECTED',
+          approved_at: verificationStatus === 'verified' ? timestamp : null,
           rejected_at: verificationStatus === 'rejected' ? timestamp : null,
           updated_at: timestamp,
         })
