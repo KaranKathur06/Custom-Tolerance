@@ -18,6 +18,19 @@ import { normalizeUserRole } from '@/lib/admin/governance-contracts';
 
 export const dynamic = 'force-dynamic';
 
+function databaseErrorDetails(error: unknown) {
+  if (error && typeof error === 'object') {
+    const candidate = error as { code?: string; message?: string; details?: string; hint?: string };
+    return {
+      code: candidate.code || 'DATABASE_FAILURE',
+      message: candidate.message || 'Could not load users',
+      details: candidate.details,
+      hint: candidate.hint,
+    };
+  }
+  return { code: 'DATABASE_FAILURE', message: error instanceof Error ? error.message : 'Could not load users' };
+}
+
 type UserAction = 'status' | 'role' | 'verification' | 'notify' | 'reset_password' | 'force_logout' | 'delete';
 
 export async function GET(request: Request) {
@@ -45,9 +58,10 @@ export async function GET(request: Request) {
     if (error instanceof Error && error.message === 'INVALID_ROLE_FILTER') {
       return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Unsupported role filter.' } }, { status: 400 });
     }
-    console.error('ADMIN_USERS_QUERY_FAILED', { adminUserId: auth.user.id, role, status, search, error: error instanceof Error ? error.message : 'Unknown error' });
+    const databaseError = databaseErrorDetails(error);
+    console.error('ADMIN_USERS_QUERY_FAILED', { adminUserId: auth.user.id, role, status, search, error: databaseError });
     return NextResponse.json(
-      { success: false, error: { code: 'SERVER_ERROR', message: error instanceof Error ? error.message : 'Could not load users' } },
+      { success: false, error: { code: databaseError.code, message: 'Unable to load the user directory.', requestId: request.headers.get('x-request-id') || undefined } },
       { status: 500 },
     );
   }
