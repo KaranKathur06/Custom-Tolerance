@@ -127,8 +127,102 @@ export async function PATCH(request: Request) {
   }
 
   const action = body.action;
-  if (action === 'status' || action === 'role' || action === 'verification') {
-    const column = action === 'status' ? 'enforcement_status' : action === 'role' ? 'role' : 'verification_status';
+  if (action === 'verification') {
+    const requestedValue = body.value?.trim().toLowerCase();
+    const verificationStatus = requestedValue === 'verified' || requestedValue === 'approved'
+      ? 'approved'
+      : requestedValue === 'rejected'
+        ? 'rejected'
+        : null;
+    if (!verificationStatus) {
+      return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Verification value must be verified or rejected.' } }, { status: 400 });
+    }
+
+    const timestamp = new Date().toISOString();
+    const profileUpdate = await auth.supabase
+      .from('profiles')
+      .update({ verification_status: verificationStatus, updated_at: timestamp })
+      .eq('id', target.user.id);
+    if (profileUpdate.error) {
+      return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: profileUpdate.error.message } }, { status: 500 });
+    }
+
+    const { data: sellerProfileRecord, error: sellerProfileLookupError } = await auth.supabase
+      .from('seller_profiles')
+      .select('id, company_id')
+      .eq('profile_id', target.user.id)
+      .maybeSingle();
+    if (sellerProfileLookupError) {
+      return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: 'Could not resolve the seller profile for verification.' } }, { status: 503 });
+    }
+    const sellerProfile = sellerProfileRecord ?? target.sellerProfile;
+    if (sellerProfile?.id) {
+      const sellerUpdate = await auth.supabase
+        .from('seller_profiles')
+        .update({
+          verification_status: verificationStatus,
+          review_status: verificationStatus,
+          onboarding_status: verificationStatus === 'approved' ? 'APPROVED' : 'REJECTED',
+          approved_at: verificationStatus === 'approved' ? timestamp : null,
+          rejected_at: verificationStatus === 'rejected' ? timestamp : null,
+          updated_at: timestamp,
+        })
+        .eq('id', sellerProfile.id);
+      if (sellerUpdate.error) {
+        return NextResponse.json({ success: false, error: { code: 'PARTIAL_UPDATE', message: 'User verification was updated, but the seller profile could not be synchronized. Retry the action.' } }, { status: 503 });
+      }
+
+      if (sellerProfile.company_id) {
+        const companyUpdate = await auth.supabase
+          .from('companies')
+          .update({ verification_status: verificationStatus, updated_at: timestamp })
+          .eq('id', sellerProfile.company_id);
+        if (companyUpdate.error) {
+          return NextResponse.json({ success: false, error: { code: 'PARTIAL_UPDATE', message: 'Seller verification was updated, but the company status could not be synchronized. Retry the action.' } }, { status: 503 });
+        }
+
+        const supplierUpdate = await auth.supabase
+          .from('suppliers')
+          .update({ verification_status: verificationStatus })
+          .eq('seller_profile_id', sellerProfile.id);
+        if (supplierUpdate.error) {
+          return NextResponse.json({ success: false, error: { code: 'PARTIAL_UPDATE', message: 'Seller verification was updated, but marketplace visibility could not be synchronized. Retry the action.' } }, { status: 503 });
+        }
+      }
+    }
+
+    const { data: buyerProfileRecord, error: buyerProfileLookupError } = await auth.supabase
+      .from('buyer_profiles')
+      .select('id')
+      .eq('profile_id', target.user.id)
+      .maybeSingle();
+    if (buyerProfileLookupError) {
+      return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: 'Could not resolve the buyer profile for verification.' } }, { status: 503 });
+    }
+    const buyerProfile = buyerProfileRecord ?? target.buyerProfile;
+    if (buyerProfile?.id) {
+      const buyerUpdate = await auth.supabase
+        .from('buyer_profiles')
+        .update({ verification_status: verificationStatus, updated_at: timestamp })
+        .eq('id', buyerProfile.id);
+      if (buyerUpdate.error) {
+        return NextResponse.json({ success: false, error: { code: 'PARTIAL_UPDATE', message: 'Account verification was updated, but the buyer profile could not be synchronized. Retry the action.' } }, { status: 503 });
+      }
+    }
+
+    await logAdminAction(auth.supabase, {
+      userId: auth.user.id,
+      action: 'user.verification_changed',
+      resource: 'profile',
+      resourceId: target.user.id,
+      details: { value: verificationStatus, sellerProfileId: sellerProfile?.id ?? null },
+      request,
+    });
+    return NextResponse.json({ success: true, data: { id: target.user.id, action, value: verificationStatus } });
+  }
+
+  if (action === 'status' || action === 'role') {
+    const column = action === 'status' ? 'enforcement_status' : 'role';
     const value = body.value?.trim();
     if (!value) return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'value is required' } }, { status: 400 });
     if (action === 'status' && !['normal', 'suspended', 'banned'].includes(value)) {
