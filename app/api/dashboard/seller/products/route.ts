@@ -24,25 +24,10 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: sellerProfile, error: sellerProfileError } = await supabase
-    .from("seller_profiles")
-    .select("id")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-
-  if (sellerProfileError) {
-    console.error("[seller/products] seller profile lookup failed:", sellerProfileError.message);
-    return NextResponse.json({ error: "Unable to resolve seller profile" }, { status: 503 });
-  }
-
-  if (!sellerProfile) {
-    return NextResponse.json({ products: [] });
-  }
-
   const { data: baseProducts, error } = await supabase
     .from("seller_products")
     .select("*")
-    .eq("seller_profile_id", sellerProfile.id)
+    .eq("profile_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) {
