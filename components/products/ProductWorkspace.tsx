@@ -28,6 +28,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   
   // A ref to store the latest data so the background autosave can access it
   const dataRef = useRef<ProductData>({});
+  const draftVersionRef = useRef(1);
   const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   
   // Debounce timer for autosave — prevents rapid-fire requests on every keystroke
@@ -109,6 +110,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
 
         if (isMounted) {
           dataRef.current = hydratedData;
+          draftVersionRef.current = Number(product.draft_version ?? 1);
           setActivePhase(product.description || product.moq ? 2 : 1);
           setLastSaved(product.updated_at ? new Date(product.updated_at) : null);
         }
@@ -251,6 +253,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
       if (dataToSave.primaryPackaging !== undefined) payload.primaryPackaging = dataToSave.primaryPackaging;
       if (dataToSave.secondaryPackaging !== undefined) payload.secondaryPackaging = dataToSave.secondaryPackaging;
       if (dataToSave.packagingNotes !== undefined) payload.packagingNotes = dataToSave.packagingNotes;
+      payload.expectedVersion = draftVersionRef.current;
 
         const res = await fetch(`/api/dashboard/seller/products?id=${idToUse}`, {
         method: "PATCH",
@@ -259,10 +262,13 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
         });
 
         if (!res.ok) {
-          const responseBody = await res.json().catch(() => null) as { error?: string } | null;
-          throw new Error(responseBody?.error || `Autosave failed (${res.status})`);
+          const responseBody = await res.json().catch(() => null) as { error?: string | { message?: string } } | null;
+          const message = typeof responseBody?.error === "string" ? responseBody.error : responseBody?.error?.message;
+          throw new Error(message || `Autosave failed (${res.status})`);
         }
 
+        const responseBody = await res.json().catch(() => null) as { product?: { draft_version?: number } } | null;
+        draftVersionRef.current = Number(responseBody?.product?.draft_version ?? draftVersionRef.current + 1);
         setLastSaved(new Date());
         setDraftError(false);
         setDraftErrorMessage(null);

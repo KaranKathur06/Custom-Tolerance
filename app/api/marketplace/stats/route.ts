@@ -4,6 +4,7 @@
  */
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server-client';
+import { applyMarketplaceProductEligibility } from '@/lib/products/eligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export async function GET() {
     supabase.from('companies').select('id', { count: 'exact', head: true }).eq('verification_status', 'approved').is('deleted_at', null),
     supabase.from('listings').select('id', { count: 'exact', head: true }).eq('is_active', true).is('deleted_at', null),
     supabase.from('rfqs').select('id', { count: 'exact', head: true }).eq('status', 'open').is('deleted_at', null),
-    supabase.from('seller_products').select('id', { count: 'exact', head: true }).eq('is_published', true).eq('approval_status', 'approved'),
+    applyMarketplaceProductEligibility(supabase.from('seller_products').select('id', { count: 'exact', head: true })),
   ]);
 
   return NextResponse.json({

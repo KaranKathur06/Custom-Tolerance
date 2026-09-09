@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, Star, Eye, EyeOff, Package, Loader2, AlertCircle,
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FeaturedProductRow } from "@/components/onboarding/seller/types";
+import { formatLeadTime, formatPrecision, formatProductStatus } from "@/lib/products/formatters";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -16,6 +17,9 @@ type Product = FeaturedProductRow & {
   id: string;
   createdAt?: string;
   imageUrl?: string;
+  approvalStatus?: string;
+  lifecycleStatus?: string;
+  draftVersion: number;
 };
 
 type Toast = { id: string; message: string; type: "success" | "error" };
@@ -37,6 +41,8 @@ function ProductCard({
   onToggleFeatured: () => void;
   onToggleVisible: () => void;
 }) {
+  const canToggleVisibility = product.approvalStatus === "approved" && product.lifecycleStatus === "active";
+  const status = formatProductStatus(product);
   return (
     <div
       className={cn(
@@ -72,6 +78,9 @@ function ProductCard({
       <h3 className="mb-2 pr-16 text-sm font-bold text-slate-900 leading-snug">
         {product.productName}
       </h3>
+      <span className="mb-3 inline-flex rounded-full border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">
+        {status.label}
+      </span>
 
       {/* Tags */}
       <div className="mb-3 flex flex-wrap gap-1.5">
@@ -97,7 +106,7 @@ function ProductCard({
         {product.toleranceCapability ? (
           <div>
             <dt className="font-semibold text-slate-400">Tolerance</dt>
-            <dd className="text-slate-700">{product.toleranceCapability}</dd>
+            <dd className="text-slate-700">{formatPrecision(product.toleranceCapability)}</dd>
           </div>
         ) : null}
         {product.moq ? (
@@ -117,7 +126,7 @@ function ProductCard({
         {product.leadTime ? (
           <div>
             <dt className="font-semibold text-slate-400">Lead Time</dt>
-            <dd className="text-slate-700">{product.leadTime}</dd>
+            <dd className="text-slate-700">{formatLeadTime(product.leadTime)}</dd>
           </div>
         ) : null}
       </dl>
@@ -126,24 +135,10 @@ function ProductCard({
       <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
         <button
           type="button"
-          onClick={onToggleFeatured}
-          className={cn(
-            "flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors",
-            product.isFeatured
-              ? "border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
-              : "border-slate-200 text-slate-500 hover:border-yellow-200 hover:bg-yellow-50 hover:text-yellow-700"
-          )}
-          title={product.isFeatured ? "Remove featured" : "Mark as featured"}
-        >
-          <Star className="h-3.5 w-3.5" />
-          {product.isFeatured ? "Unfeature" : "Feature"}
-        </button>
-
-        <button
-          type="button"
           onClick={onToggleVisible}
+          disabled={!canToggleVisibility}
           className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50"
-          title={product.isVisible ? "Hide from buyers" : "Show to buyers"}
+          title={canToggleVisibility ? (product.isVisible ? "Hide from buyers" : "Show to buyers") : "Submit the product and wait for approval before changing buyer visibility."}
         >
           {product.isVisible ? (
             <Eye className="h-3.5 w-3.5" />
@@ -210,7 +205,10 @@ export default function FeaturedProductsPage() {
           moq: String(p.moq ?? ""),
           leadTime: String(p.lead_time ?? p.leadTime ?? ""),
           isFeatured: Boolean(p.is_featured ?? p.isFeatured),
-          isVisible: p.is_visible !== false && p.isVisible !== false,
+          isVisible: p.is_visible === true || p.isVisible === true,
+          approvalStatus: String(p.approval_status ?? "draft"),
+          lifecycleStatus: String(p.lifecycle_status ?? p.approval_status ?? "draft"),
+          draftVersion: Number(p.draft_version ?? 1),
           customTolerance: String(p.custom_tolerance ?? p.customTolerance ?? ""),
           createdAt: String(p.created_at ?? p.createdAt ?? ""),
           imageUrl: (() => {
@@ -255,19 +253,23 @@ export default function FeaturedProductsPage() {
 
   // ── Toggle helpers ──────────────────────────────────────────────────────────
   const toggleField = async (id: string, field: "isFeatured" | "isVisible", current: boolean) => {
+    const product = products.find((item) => item.id === id);
+    if (!product) return;
     // Optimistic update
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: !current } : p)));
     try {
       const res = await fetch(`/api/dashboard/seller/products?id=${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: !current }),
+        body: JSON.stringify({ [field]: !current, expectedVersion: product.draftVersion }),
       });
-      if (!res.ok) throw new Error();
-    } catch {
+      const payload = await res.json().catch(() => null) as { error?: { message?: string }; product?: { draft_version?: number } } | null;
+      if (!res.ok) throw new Error(payload?.error?.message || "Couldn't update product.");
+      setProducts((previous) => previous.map((item) => item.id === id ? { ...item, draftVersion: Number(payload?.product?.draft_version ?? item.draftVersion + 1) } : item));
+    } catch (error) {
       // Revert on failure
       setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: current } : p)));
-      addToast("Failed to update product", "error");
+      addToast(error instanceof Error ? error.message : "Couldn't update product.", "error");
     }
   };
 
@@ -300,7 +302,7 @@ export default function FeaturedProductsPage() {
           {[
             { label: "Total Products", value: products.length },
             { label: "Featured", value: products.filter((p) => p.isFeatured).length },
-            { label: "Visible to Buyers", value: products.filter((p) => p.isVisible).length },
+            { label: "Visible to Buyers", value: products.filter((p) => p.approvalStatus === "approved" && p.lifecycleStatus === "active" && p.isVisible).length },
           ].map((stat) => (
             <div
               key={stat.label}

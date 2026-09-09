@@ -12,6 +12,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server-client';
 import { parseSupplierSearchParams } from '@/lib/marketplace/search';
 import { searchMarketplaceSuppliers } from '@/lib/marketplace/supplier-query';
 import { marketplaceStatusAllowsPublicRead, readBooleanSetting, readEnumSetting } from '@/lib/settings/policy';
+import { applyMarketplaceProductEligibility } from '@/lib/products/eligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
       const offset = (page - 1) * limit;
       const dateFilter = url.searchParams.get('date') || '';
 
-      let query = supabase
+      let query = applyMarketplaceProductEligibility(supabase
         .from('seller_products')
         .select(
           `
@@ -84,9 +85,7 @@ export async function GET(request: NextRequest) {
           seller_profiles!inner(profile_completion_percent, company_id)
           `,
           { count: 'exact' }
-        )
-        .eq('is_published', true)
-        .eq('approval_status', 'approved');
+        ));
 
       if (search) {
         query = query.or(`product_name.ilike.%${search}%,capability.ilike.%${search}%,tolerance_capability.ilike.%${search}%`);

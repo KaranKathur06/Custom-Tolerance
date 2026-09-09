@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { applyMarketplaceProductEligibility } from "@/lib/products/eligibility";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Build search query
-    let searchQuery = supabase
+    let searchQuery = applyMarketplaceProductEligibility(supabase
       .from("seller_products")
       .select(
         `
@@ -41,9 +42,7 @@ export async function GET(request: NextRequest) {
         companies!seller_products_company_id_fk(name, verification_status)
         `,
         { count: "exact" }
-      )
-      .eq("is_published", true)
-      .eq("approval_status", "approved");
+      ));
 
     // Full-text search
     if (query) {

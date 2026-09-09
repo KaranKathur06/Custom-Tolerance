@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     .eq("user_id", user.id)
     .single();
 
-  if (profile?.role !== "admin") {
+  if (!["admin", "super_admin", "superadmin"].includes(String(profile?.role))) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
@@ -107,7 +107,7 @@ export async function PATCH(request: NextRequest) {
     .eq("user_id", user.id)
     .single();
 
-  if (profile?.role !== "admin") {
+  if (!["admin", "super_admin", "superadmin"].includes(String(profile?.role))) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
@@ -159,56 +159,18 @@ export async function PATCH(request: NextRequest) {
       : { data: null };
 
     const newStatus = action === "approve" ? "approved" : "rejected";
-
-    if (action === "approve") {
-      const { data: result, error: publishError } = await supabase.rpc(
-        "publish_product_to_marketplace",
-        { p_seller_product_id: approval.seller_product_id },
+    const { error: moderationError } = await supabase.rpc("review_seller_product_approval", {
+      p_approval_id: String(approval_id),
+      p_action: String(action),
+      p_reason: rejection_reason ? String(rejection_reason) : null,
+      p_notes: notes ? String(notes) : null,
+    });
+    if (moderationError) {
+      const code = moderationError.message.includes("REJECTION_REASON_REQUIRED") ? "REJECTION_REASON_REQUIRED" : moderationError.message.includes("APPROVAL_NOT_PENDING") ? "APPROVAL_NOT_PENDING" : "MODERATION_FAILED";
+      return NextResponse.json(
+        { success: false, error: { code, message: code === "REJECTION_REASON_REQUIRED" ? "A rejection reason is required." : "The approval could not be reviewed in its current state." } },
+        { status: code === "REJECTION_REASON_REQUIRED" ? 422 : 409 },
       );
-
-      if (publishError || (result && !result.success)) {
-        return NextResponse.json(
-          { error: publishError?.message || result?.error || "Failed to publish approved product" },
-          { status: 500 },
-        );
-      }
-    }
-
-    if (action === "reject") {
-      const { error: updateError } = await supabase
-        .from("product_approvals")
-        .update({
-          status: newStatus,
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-          rejection_reason,
-          notes,
-        })
-        .eq("id", approval_id)
-        .eq("status", "pending");
-
-      if (updateError) {
-        return NextResponse.json(
-          { error: updateError.message },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Keep product status aligned for rejection. The approval RPC sets approved state.
-    if (action === "reject") {
-      const { error: prodError } = await supabase
-        .from("seller_products")
-        .update({
-          approval_status: "rejected",
-          is_published: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", approval.seller_product_id);
-
-      if (prodError) {
-        console.error("[admin/approvals] Product update failed:", prodError);
-      }
     }
 
     if (product?.profile_id) {

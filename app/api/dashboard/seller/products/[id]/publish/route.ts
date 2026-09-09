@@ -44,7 +44,8 @@ export async function POST(
       );
     }
 
-    const originalApprovalStatus = product.approval_status;
+    const body = await req.json().catch(() => ({})) as { expectedVersion?: number };
+    const expectedVersion = Number(body.expectedVersion ?? product.draft_version ?? 1);
 
     const phase = getCurrentProductPhase({
       productName: product.product_name,
@@ -67,45 +68,27 @@ export async function POST(
       );
     }
 
-    const { error: productError } = await supabase
-      .from("seller_products")
-      .update({ approval_status: "pending_review", updated_at: new Date().toISOString() })
-      .eq("id", productId)
-      .eq("profile_id", user.id);
-
-    if (productError) {
+    const { data, error } = await supabase.rpc("submit_seller_product_for_review", {
+      p_product_id: productId,
+      p_expected_version: expectedVersion,
+    });
+    if (error) {
+      const code = error.message.includes("CONFLICT_STALE_DRAFT")
+        ? "CONFLICT_STALE_DRAFT"
+        : error.message.includes("PRODUCT_NOT_SUBMITTABLE")
+          ? "PRODUCT_NOT_SUBMITTABLE"
+          : "PRODUCT_SUBMISSION_FAILED";
       return NextResponse.json(
-        { error: productError.message || "Failed to submit product for review" },
-        { status: 500 },
+        { success: false, error: { code, message: code === "CONFLICT_STALE_DRAFT" ? "This product changed in another session. Refresh and try again." : "This product cannot be submitted in its current state." } },
+        { status: code === "CONFLICT_STALE_DRAFT" ? 409 : 422 },
       );
     }
-
-    // Create approval record
-    const { error: approvalError } = await supabase
-      .from("product_approvals")
-      .insert({
-        seller_product_id: productId,
-        submitted_by: user.id,
-        status: "pending",
-      });
-
-    if (approvalError) {
-      console.error("[publish] Approval record creation failed:", approvalError);
-      await supabase
-        .from("seller_products")
-        .update({ approval_status: originalApprovalStatus, updated_at: new Date().toISOString() })
-        .eq("id", productId)
-        .eq("profile_id", user.id);
-      return NextResponse.json(
-        { error: approvalError.message || "Failed to create approval request" },
-        { status: 500 },
-      );
-    }
+    const result = Array.isArray(data) ? data[0] : data;
 
     return NextResponse.json({
       success: true,
       message: "Product submitted for marketplace approval",
-      approval_status: "pending_review",
+      product: result,
     });
   } catch (err: any) {
     console.error("[publish]", err);

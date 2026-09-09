@@ -48,6 +48,54 @@ export async function loadListingBySlug(slug: string): Promise<PublicListing | n
   const supabase = createSupabaseServerClient();
   if (!supabase) return null;
 
+  const { data: sellerProduct } = await supabase
+    .from("seller_products")
+    .select("id, product_name, description, capability, materials, moq, lead_time, monthly_capacity, is_featured, profile_id, published_at, updated_at")
+    .eq("id", slug)
+    .eq("approval_status", "approved")
+    .eq("lifecycle_status", "active")
+    .eq("is_published", true)
+    .eq("is_visible", true)
+    .maybeSingle();
+
+  if (sellerProduct) {
+    const { data: sellerProfile } = await supabase
+      .from("seller_profiles")
+      .select("id, company_id")
+      .eq("user_id", sellerProduct.profile_id)
+      .maybeSingle();
+    const materials = Array.isArray(sellerProduct.materials) ? sellerProduct.materials : [];
+    return {
+      id: sellerProduct.id,
+      title: sellerProduct.product_name,
+      slug: sellerProduct.id,
+      description: sellerProduct.description,
+      metal_type: sellerProduct.capability,
+      grade: null,
+      material_spec: materials.join(", ") || null,
+      price_min: null,
+      price_max: null,
+      price_unit: null,
+      currency: null,
+      is_negotiable: true,
+      moq: sellerProduct.moq == null ? null : String(sellerProduct.moq),
+      lead_time: sellerProduct.lead_time == null ? null : String(sellerProduct.lead_time),
+      production_capacity: sellerProduct.monthly_capacity == null ? null : String(sellerProduct.monthly_capacity),
+      certifications: null,
+      quantity_available: null,
+      unit: null,
+      listing_type: "product",
+      is_featured: sellerProduct.is_featured,
+      views_count: null,
+      inquiry_count: null,
+      seo_title: null,
+      seo_description: null,
+      created_at: sellerProduct.published_at ?? sellerProduct.updated_at,
+      company_id: sellerProfile?.company_id ?? null,
+      seller_profile_id: sellerProfile?.id ?? null,
+    };
+  }
+
   const { data } = await supabase
     .from("listings")
     .select(
@@ -94,21 +142,47 @@ export async function loadSupplierListings(input: {
   if (!supabase) return [];
 
   let query = supabase
-    .from("listings")
-    .select("id, title, slug, metal_type, price_min, price_max, moq, is_featured, created_at")
-    .eq("is_active", true)
-    .is("deleted_at", null)
+    .from("seller_products")
+    .select("id, product_name, capability, materials, moq, is_featured, lead_time, published_at, profile_id")
+    .eq("approval_status", "approved")
+    .eq("lifecycle_status", "active")
+    .eq("is_published", true)
+    .eq("is_visible", true)
     .order("created_at", { ascending: false })
     .limit(input.limit ?? 12);
 
   if (input.sellerProfileId) {
-    query = query.eq("seller_profile_id", input.sellerProfileId);
+    const { data: sellerProfile } = await supabase
+      .from("seller_profiles")
+      .select("user_id")
+      .eq("id", input.sellerProfileId)
+      .maybeSingle();
+    if (!sellerProfile?.user_id) return [];
+    query = query.eq("profile_id", sellerProfile.user_id);
   } else if (input.companyId) {
-    query = query.eq("company_id", input.companyId);
+    const { data: sellerProfiles } = await supabase
+      .from("seller_profiles")
+      .select("user_id")
+      .eq("company_id", input.companyId);
+    const userIds = (sellerProfiles ?? []).map((profile) => profile.user_id).filter(Boolean);
+    if (userIds.length === 0) return [];
+    query = query.in("profile_id", userIds);
   } else {
     return [];
   }
 
   const { data } = await query;
-  return data ?? [];
+  return (data ?? []).map((product) => ({
+    id: product.id,
+    title: product.product_name,
+    slug: product.id,
+    metal_type: product.capability,
+    price_min: null,
+    price_max: null,
+    moq: product.moq,
+    is_featured: product.is_featured,
+    lead_time: product.lead_time,
+    created_at: product.published_at,
+    materials: product.materials,
+  }));
 }

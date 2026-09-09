@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
+      .eq("user_id", user.id)
       .maybeSingle();
 
     const role = resolveEffectiveRole({
