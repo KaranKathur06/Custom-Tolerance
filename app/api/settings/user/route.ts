@@ -30,23 +30,43 @@ export async function GET(request: Request) {
 
   const { data, error } = await query.order('category').order('key');
 
-  if (error) {
+  // Group by category for convenience
+  const grouped: Record<string, Record<string, any>> = {};
+  if (!error) {
+    for (const setting of data || []) {
+      if (!grouped[setting.category]) {
+        grouped[setting.category] = {};
+      }
+      grouped[setting.category][setting.key] = setting.value;
+    }
+  } else {
+    console.error('[settings/user] preferences lookup failed:', error.message);
+  }
+
+  const { data: profile, error: profileError } = await auth.supabase
+    .from('profiles')
+    .select('id, email, full_name, phone, role, profile_status, trust_level, onboarding_step, verification_status, avatar_url')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+
+  if (profileError) {
     return NextResponse.json(
-      { success: false, error: { code: 'SERVER_ERROR', message: error.message } },
-      { status: 500 },
+      { success: false, error: { code: 'PROFILE_LOOKUP_FAILED', message: profileError.message } },
+      { status: 503 },
     );
   }
 
-  // Group by category for convenience
-  const grouped: Record<string, Record<string, any>> = {};
-  for (const setting of data || []) {
-    if (!grouped[setting.category]) {
-      grouped[setting.category] = {};
-    }
-    grouped[setting.category][setting.key] = setting.value;
-  }
-
-  return NextResponse.json({ success: true, data: grouped });
+  return NextResponse.json({
+    success: true,
+    data: grouped,
+    profile: profile ?? {
+      id: auth.user.id,
+      email: auth.user.email ?? null,
+      full_name: typeof auth.user.user_metadata?.full_name === 'string' ? auth.user.user_metadata.full_name : null,
+      phone: typeof auth.user.user_metadata?.phone === 'string' ? auth.user.user_metadata.phone : null,
+      role: auth.user.app_metadata?.role ?? auth.user.user_metadata?.role ?? 'buyer',
+    },
+  });
 }
 
 export async function PUT(request: Request) {

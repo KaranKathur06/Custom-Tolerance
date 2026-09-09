@@ -15,7 +15,7 @@ import { isAdminRole, isSellerRole, requires2FA } from '@/lib/constants/roles';
 type SettingsTab = 'profile' | 'security' | 'notifications' | 'privacy' | 'billing';
 
 export default function SettingsPage() {
-  const { isAuthenticated, profile, loading: authLoading, supabase, signOut, role } = useAuth();
+  const { isAuthenticated, profile, user, loading: authLoading, supabase, signOut, role } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -63,6 +63,13 @@ export default function SettingsPage() {
       try {
         const res = await fetch('/api/settings/user', { credentials: 'include' });
         const json = await res.json();
+        if (json.profile) {
+          setFormData({
+            fullName: json.profile.full_name || '',
+            phone: json.profile.phone || '',
+            bio: json.profile.bio || '',
+          });
+        }
         if (json.success && json.data) {
           if (json.data.notifications) {
             setNotifPrefs(prev => ({ ...prev, ...json.data.notifications }));
@@ -234,7 +241,7 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-bold text-slate-900">Profile Information</h2>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-500">Email</label>
-                  <Input value={profile?.email || ''} disabled className="bg-slate-50" />
+                  <Input value={profile?.email || user?.email || ''} disabled className="bg-slate-50" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-500">Full Name</label>
@@ -246,7 +253,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-500">Role</label>
-                  <Input value={role || 'buyer'} disabled className="bg-slate-50 capitalize" />
+                  <Input value={role || profile?.role || user?.app_metadata?.role || user?.user_metadata?.role || 'buyer'} disabled className="bg-slate-50 capitalize" />
                 </div>
                 <div className="flex items-center gap-3 pt-2">
                   <Button onClick={handleSaveProfile} disabled={saving} className="bg-gradient-to-r from-[#1e3a8a] to-[#3b82f6] text-white font-bold">

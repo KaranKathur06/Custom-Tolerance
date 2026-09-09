@@ -14,7 +14,7 @@ import {
   resolveEntityAuthority,
 } from "@/lib/services/entity-authority";
 import { getBuyerEligibility } from "@/lib/services/rfq-service";
-import { canEnterPhase } from "@/lib/services/product-service";
+import { canEnterPhase, getMissingPhaseFields } from "@/lib/services/product-service";
 import { canTransitionQuoteLifecycle } from "@/lib/services/quote-lifecycle";
 import { canResumeDraft, canPublishDraft, normalizeDraftState, filterDrafts, getResumeUrl } from "@/lib/services/rfq-draft-service";
 import { canPublishRfq, normalizePublishedState, validatePublishTransition, getPublishedUrl } from "@/lib/services/rfq-publish-service";
@@ -135,6 +135,29 @@ test("canEnterPhase prevents skipping incomplete product phases", () => {
   assert.equal(canEnterPhase(validDraft, 2), true);
   assert.equal(canEnterPhase({ ...validDraft, productName: "" }, 2), false);
   assert.equal(canEnterPhase({ ...validDraft, minPrice: undefined }, 2), false);
+});
+
+test("product phase validation reports the missing maximum for price ranges", () => {
+  const missing = getMissingPhaseFields({
+    productName: "Engine Assembly",
+    priceType: "price_range",
+    minPrice: "100",
+    currency: "USD",
+    capabilities: ["CNC Milling"],
+    materials: ["Aluminum"],
+    tolerance: "pm0_1mm",
+  }, 2);
+
+  assert.deepEqual(missing, ["Maximum price"]);
+  assert.equal(canEnterPhase({
+    productName: "Engine Assembly",
+    priceType: "price_range",
+    minPrice: "100",
+    currency: "USD",
+    capabilities: ["CNC Milling"],
+    materials: ["Aluminum"],
+    tolerance: "pm0_1mm",
+  }, 2), false);
 });
 
 test("canTransitionQuoteLifecycle enforces the quote state machine", () => {

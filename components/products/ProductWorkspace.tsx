@@ -8,7 +8,7 @@ import { Phase3Packaging, Phase3Data } from "./Phase3Packaging";
 import { Phase4Review } from "./Phase4Review";
 import { CheckCircle2, Loader2, Save, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { canEnterPhase } from "@/lib/services/product-service";
+import { canEnterPhase, getMissingPhaseFields } from "@/lib/services/product-service";
 import { canResumeProductDraft } from "@/lib/services/product-draft-service";
 
 type ProductData = Partial<Phase1Data> & Partial<Phase2Data> & Partial<Phase3Data>;
@@ -317,7 +317,12 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     if (nextPhase === activePhase) return;
     if (!canEnterPhase(dataRef.current, nextPhase)) {
       setDraftError(true);
-      setDraftErrorMessage("Complete the required fields in this phase before continuing.");
+      const missing = getMissingPhaseFields(dataRef.current, nextPhase);
+      setDraftErrorMessage(
+        missing.length > 0
+          ? `Complete these fields before continuing: ${missing.join(", ")}.`
+          : "Complete the required fields in this phase before continuing.",
+      );
       return;
     }
     const saved = await saveDraft();

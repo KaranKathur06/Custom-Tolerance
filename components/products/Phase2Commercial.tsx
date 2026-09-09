@@ -44,12 +44,9 @@ export function Phase2Commercial({
     ...initialData,
   });
 
-  // Debounced onChange to trigger autosave in the parent
+  // Keep the parent snapshot current; the parent debounces network autosave.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onChange(data);
-    }, 1000);
-    return () => clearTimeout(timer);
+    onChange(data);
   }, [data, onChange]);
 
   const updateField = <K extends keyof Phase2Data>(field: K, value: Phase2Data[K]) => {

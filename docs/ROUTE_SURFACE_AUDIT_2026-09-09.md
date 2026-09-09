@@ -270,3 +270,23 @@ The repository contains route-scoped error boundaries for `/ops/admin` and `/ops
 - Confirm whether supplier-success needs a distinct `/ops/suppliers` workspace or should use verification/admin routes.
 - Confirm whether messages should be a query-driven inbox or a dynamic thread page.
 - Remote deployment route verification and production database/API checks require deployed credentials and cannot be proven from the local workspace alone.
+
+## Implemented In This Pass
+
+- Added role-aware `/dashboard` resolution with authenticated fallback.
+- Added `/account/profile` and `/account/settings` compatibility redirects to the existing tabbed settings workflow.
+- Added compatibility redirects for `/membership`, `/seller/listings/new`, `/onboarding`, `/ops/verification`, and `/ops/suppliers`.
+- Updated account dropdown, supplier-success navigation, settings constants, email links, quote notifications, and message notifications to avoid stale destinations.
+- Made `/messages?thread=<id>` select the existing inbox thread instead of generating an unimplemented `/messages/[id]` route.
+- Added root `loading.tsx` and `not-found.tsx` boundaries.
+- Added `npm run route:smoke` to check critical route entry points and audited stale destinations.
+- Repaired CRM projection/API schema drift: profiles use `company_name`, leads use `stage`, and lead activities use actual columns.
+- Added `supabase/migrations/202609090005_repair_crm_permissions.sql` for CRM table grants.
+
+## Validation
+
+- `npm run route:smoke`: passed — 12 critical route entry points and no audited stale page destinations.
+- `npx tsc --noEmit`: passed.
+- `npm run lint`: passed with existing warnings for image optimization, an ARIA attribute, and a pre-existing autosave hook dependency.
+- `npm run build`: passed; 122 pages generated and no CRM schema errors during generation.
+- Local Supabase SQL execution was not available; production migrations must still be applied to the target project.
