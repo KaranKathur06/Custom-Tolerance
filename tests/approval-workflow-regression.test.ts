@@ -25,6 +25,6 @@ test('canonical approval RPC is defined only once across migration files', () =>
 test('admin approval route invokes the canonical RPC through the service-role client', () => {
   const routeSource = fs.readFileSync(routePath, 'utf8');
 
-  assert.match(routeSource, /adminDatabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/s, 'Approval route must use the canonical RPC via the admin client.');
-  assert.doesNotMatch(routeSource, /supabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/s, 'Approval route must not use the user-scoped Supabase client for the final moderation RPC.');
+  assert.match(routeSource, /adminDatabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/, 'Approval route must use the canonical RPC via the admin client.');
+  assert.doesNotMatch(routeSource, /supabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/, 'Approval route must not use the user-scoped Supabase client for the final moderation RPC.');
 });
