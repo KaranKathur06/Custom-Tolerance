@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
 import { createNotification } from "@/lib/marketplace/notifications";
 import { sendEmail } from "@/lib/services/email";
 
@@ -90,6 +91,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
+  const adminDatabase = createSupabaseServiceRoleClient() || supabase;
 
   const {
     data: { user },
@@ -130,7 +132,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     // Get approval record
-    let { data: approval } = await supabase
+    let { data: approval } = await adminDatabase
       .from("product_approvals")
       .select("*")
       .eq("id", approval_id)
@@ -139,7 +141,7 @@ export async function PATCH(request: NextRequest) {
     // Older queue payloads used the product id in this field. Resolve that
     // safely while the queue is being migrated to approval ids.
     if (!approval) {
-      const { data: pendingApproval } = await supabase
+      const { data: pendingApproval } = await adminDatabase
         .from("product_approvals")
         .select("*")
         .eq("seller_product_id", approval_id)
@@ -154,18 +156,20 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: false, error: { code: "APPROVAL_NOT_FOUND", message: "This approval is no longer available. Refresh the moderation queue." } }, { status: 404 });
     }
 
+    const canonicalApprovalId = String(approval.id);
+
     if (approval.status !== "pending") {
       return NextResponse.json({ success: false, error: { code: "APPROVAL_NOT_PENDING", message: "This approval has already been reviewed. Refresh the moderation queue." } }, { status: 409 });
     }
 
-    const { data: product } = await supabase
+    const { data: product } = await adminDatabase
       .from("seller_products")
       .select("id, product_name, profile_id")
       .eq("id", approval.seller_product_id)
       .maybeSingle();
 
     const { data: sellerProfile } = product?.profile_id
-      ? await supabase
+      ? await adminDatabase
           .from("profiles")
           .select("email, full_name")
           .eq("id", product.profile_id)
@@ -174,7 +178,7 @@ export async function PATCH(request: NextRequest) {
 
     const newStatus = action === "approve" ? "approved" : "rejected";
     const { error: moderationError } = await supabase.rpc("review_seller_product_approval", {
-      p_approval_id: String(approval_id),
+      p_approval_id: canonicalApprovalId,
       p_action: String(action),
       p_reason: rejection_reason ? String(rejection_reason) : null,
       p_notes: notes ? String(notes) : null,
@@ -196,7 +200,7 @@ export async function PATCH(request: NextRequest) {
     if (product?.profile_id) {
       try {
         const isApproved = action === "approve";
-        await supabase.from("notifications").insert(
+        await adminDatabase.from("notifications").insert(
           createNotification({
             profileId: product.profile_id,
             title: isApproved ? "Product approved" : "Product requires revision",
@@ -207,7 +211,7 @@ export async function PATCH(request: NextRequest) {
             href: `/dashboard/seller/products/${product.id}`,
             metadata: {
               seller_product_id: product.id,
-              approval_id,
+              approval_id: canonicalApprovalId,
               action,
             },
           }),
@@ -245,7 +249,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `Product ${newStatus}`,
-      approval_id,
+      approval_id: canonicalApprovalId,
     });
   } catch (err: any) {
     console.error("[admin/approvals]", err);

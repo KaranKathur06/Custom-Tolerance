@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic';
 function asStringList(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap((item) => typeof item === 'string' ? [item] : []).filter(Boolean);
   if (typeof value === 'string') {
+    const postgresArray = value.match(/^\{([\s\S]*)\}$/);
+    if (postgresArray) return postgresArray[1].split(',').map((item) => item.trim().replace(/^"|"$/g, '')).filter(Boolean);
     try {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) return asStringList(parsed);
@@ -24,7 +26,15 @@ function relationValues(rows: unknown[] | null, key: string, fallback: unknown):
     const value = (row as Record<string, unknown>)[key];
     return typeof value === 'string' && value ? [value] : [];
   });
-  return normalized.length ? normalized : asStringList(fallback);
+  if (normalized.length) return normalized;
+  if (Array.isArray(fallback) && fallback.some((item) => item && typeof item === 'object')) {
+    return fallback.flatMap((item) => {
+      if (!item || typeof item !== 'object') return [];
+      const value = (item as Record<string, unknown>)[key];
+      return typeof value === 'string' && value ? [value] : [];
+    });
+  }
+  return asStringList(fallback);
 }
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
