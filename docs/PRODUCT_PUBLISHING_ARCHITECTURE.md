@@ -8,11 +8,13 @@
  * Seller Product Lifecycle:
  * 1. **Draft** - Seller creates product in dashboard (seller_products table)
  * 2. **Pending Review** - Seller clicks "Publish to Marketplace" → Approval record created
- * 3. **Admin Review** - Admin reviews in approval queue
- * 4. **Approved** - Admin approves → Product published to marketplace (published=true)
- * 5. **Rejected** - Admin rejects with reason → Product stays draft, seller can edit
- * 6. **Published** - Product visible in /marketplace/products
- * 7. **Archived** - Seller removes from marketplace (unpublish)
+ * 3. **Admin Review** - Admin reviews the current product data in the approval queue
+ * 4. **Pending Review Improvements** - Seller may continue editing while the submission remains pending
+ * 5. **Approved** - Admin approves with optional notes; product becomes approved, paused, and hidden
+ * 6. **Seller Publish** - Seller explicitly publishes the approved product, then chooses visible/hidden
+ * 7. **Rejected** - Admin rejects with a required reason; seller can edit the product and resubmit
+ * 8. **Published** - Product is visible in /marketplace/products only when approved, active, published, and visible
+ * 9. **Archived** - Seller removes from marketplace (unpublish)
  * 
  * ## Database Schema
  * 

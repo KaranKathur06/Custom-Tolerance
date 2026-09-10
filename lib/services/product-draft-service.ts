@@ -32,6 +32,16 @@ export function canResumeProductDraft(product: {
   return product.status === "draft" || product.status === "rejected";
 }
 
+/** Products that sellers may improve before the next moderation decision. */
+export function canEditProductDraft(product: {
+  id: string;
+  status?: string;
+  deletedAt?: string | null;
+}): boolean {
+  if (!product || !product.id || product.deletedAt) return false;
+  return product.status === "draft" || product.status === "pending_review" || product.status === "rejected";
+}
+
 /**
  * Determine if a product draft is ready to be published.
  * Product must be draft and have minimum data:

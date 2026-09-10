@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   const { data: product } = await supabase.from("seller_products").select("id, approval_status, is_published").eq("id", productId).eq("profile_id", user.id).maybeSingle();
   if (!product) return NextResponse.json({ success: false, error: { code: "PRODUCT_ACCESS_DENIED", message: "Product draft not found." } }, { status: 404 });
-  if (product.is_published || !["draft", "rejected"].includes(product.approval_status)) return NextResponse.json({ success: false, error: { code: "PRODUCT_NOT_EDITABLE", message: "This product can no longer be edited." } }, { status: 409 });
+  if (product.is_published || !["draft", "pending_review", "rejected"].includes(product.approval_status)) return NextResponse.json({ success: false, error: { code: "PRODUCT_NOT_EDITABLE", message: "This product can no longer be edited." } }, { status: 409 });
 
   const { count } = await supabase.from("product_images").select("id", { count: "exact", head: true }).eq("seller_product_id", productId);
   if ((count ?? 0) >= 3) return NextResponse.json({ success: false, error: { code: "PRODUCT_MEDIA_LIMIT_REACHED", message: "A product can have up to three images." } }, { status: 409 });

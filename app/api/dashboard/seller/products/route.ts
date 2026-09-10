@@ -37,7 +37,7 @@ export async function GET() {
 
   const productIds = (baseProducts ?? []).map((product) => product.id);
   const relationResults = productIds.length === 0 ? [] : await Promise.all([
-    supabase.from("product_approvals").select("id, seller_product_id, status, created_at, rejection_reason, notes").in("seller_product_id", productIds),
+    supabase.from("product_approvals").select("id, seller_product_id, status, created_at, reviewed_at, rejection_reason, notes").in("seller_product_id", productIds).order("created_at", { ascending: false }),
     supabase.from("product_images").select("seller_product_id, url, storage_path, is_primary").in("seller_product_id", productIds).order("display_order", { ascending: true }),
     supabase.from("product_capabilities").select("seller_product_id, capability_id").in("seller_product_id", productIds),
     supabase.from("product_industries").select("seller_product_id, industry_id").in("seller_product_id", productIds),
@@ -60,9 +60,14 @@ export async function GET() {
     return grouped;
   };
   const groupedRelations = relationResults.map((_, index) => relationByProduct(index));
-  const products = (baseProducts ?? []).map((product) => ({
+  const products = (baseProducts ?? []).map((product) => {
+    const approvals = groupedRelations[0]?.get(product.id) ?? [];
+    const latestApproval = approvals[0] ?? null;
+    return ({
     ...product,
-    product_approvals: groupedRelations[0]?.get(product.id) ?? [],
+    product_approvals: approvals,
+    latest_approval: latestApproval,
+    review_feedback: latestApproval ? { reason: (latestApproval as any).rejection_reason ?? null, notes: (latestApproval as any).notes ?? null } : null,
     product_images: groupedRelations[1]?.get(product.id) ?? [],
     product_capabilities: groupedRelations[2]?.get(product.id) ?? [],
     product_industries: groupedRelations[3]?.get(product.id) ?? [],
@@ -70,7 +75,8 @@ export async function GET() {
     product_grades: groupedRelations[5]?.get(product.id) ?? [],
     product_payment_terms: groupedRelations[6]?.get(product.id) ?? [],
     product_incoterms: groupedRelations[7]?.get(product.id) ?? [],
-  }));
+    });
+  });
 
   return NextResponse.json({ 
     products: products ?? [],
@@ -230,9 +236,9 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, product: Array.isArray(data) ? data[0] : data });
   }
 
-  if (existingProduct.is_published || !["draft", "rejected"].includes(existingProduct.approval_status)) {
+  if (existingProduct.is_published || !["draft", "pending_review", "rejected"].includes(existingProduct.approval_status)) {
     return NextResponse.json(
-      { success: false, error: { code: "PRODUCT_NOT_EDITABLE", message: existingProduct.approval_status === "pending_review" ? "This product is awaiting moderation." : "Only draft or rejected products can be edited." } },
+      { success: false, error: { code: "PRODUCT_NOT_EDITABLE", message: "Only draft, pending-review, or rejected products can be edited." } },
       { status: 422 },
     );
   }
@@ -307,16 +313,22 @@ export async function PATCH(req: NextRequest) {
   // In a real production app we'd do this via a transaction RPC.
   // For PIM drafts, deleting and re-inserting is a standard autosave pattern.
   
-  const handleRelation = async (table: string, field: string, items: any[]) => {
-    if (!items) return;
-    const uniqueItems = Array.from(new Set(items.filter((item) => typeof item === "string" && item.trim())));
+  const hasField = (field: string) => Object.prototype.hasOwnProperty.call(body, field);
+  const relationItems = (field: string): string[] | null => {
+    if (!hasField(field)) return null;
+    if (!Array.isArray(body[field])) throw new Error(`${field} must be an array`);
+    return Array.from(new Set(body[field].filter((item: unknown): item is string => typeof item === "string" && item.trim().length > 0)));
+  };
+
+  const handleRelation = async (table: string, field: string, items: string[] | null) => {
+    if (items === null) return;
     const { error: deleteError } = await supabase
       .from(table)
       .delete()
       .eq("seller_product_id", productId);
     if (deleteError) throw new Error(`${table}: ${deleteError.message}`);
-    if (uniqueItems.length > 0) {
-      const inserts = uniqueItems.map(item => ({ seller_product_id: productId, [field]: item }));
+    if (items.length > 0) {
+      const inserts = items.map((item) => ({ seller_product_id: productId, [field]: item }));
       const { error: insertError } = await supabase.from(table).insert(inserts);
       if (insertError) throw new Error(`${table}: ${insertError.message}`);
     }
@@ -324,12 +336,12 @@ export async function PATCH(req: NextRequest) {
 
   try {
     await Promise.all([
-      body.capabilities && handleRelation("product_capabilities", "capability_id", body.capabilities),
-      body.industries && handleRelation("product_industries", "industry_id", body.industries),
-      body.materials && handleRelation("product_materials", "material_name", body.materials),
-      body.grades && handleRelation("product_grades", "grade_name", body.grades),
-      body.paymentTerms && handleRelation("product_payment_terms", "payment_term_id", body.paymentTerms),
-      body.incoterms && handleRelation("product_incoterms", "incoterm_id", body.incoterms),
+      handleRelation("product_capabilities", "capability_id", relationItems("capabilities")),
+      handleRelation("product_industries", "industry_id", relationItems("industries")),
+      handleRelation("product_materials", "material_name", relationItems("materials")),
+      handleRelation("product_grades", "grade_name", relationItems("grades")),
+      handleRelation("product_payment_terms", "payment_term_id", relationItems("paymentTerms")),
+      handleRelation("product_incoterms", "incoterm_id", relationItems("incoterms")),
     ]);
   } catch (relationError) {
     console.error("[seller/products PATCH] relation update failed:", relationError);

@@ -205,7 +205,7 @@ export async function PATCH(request: NextRequest) {
             profileId: product.profile_id,
             title: isApproved ? "Product approved" : "Product requires revision",
             body: isApproved
-              ? `${product.product_name} is now live in the marketplace.`
+              ? `${product.product_name} was approved by the admin. Publish it from your product dashboard when ready.`
               : `${product.product_name} was rejected${rejection_reason ? `: ${rejection_reason}` : "."}`,
             type: "system",
             href: `/dashboard/seller/products/${product.id}`,
@@ -213,6 +213,7 @@ export async function PATCH(request: NextRequest) {
               seller_product_id: product.id,
               approval_id: canonicalApprovalId,
               action,
+              notes: notes ? String(notes) : null,
             },
           }),
         );
@@ -224,11 +225,12 @@ export async function PATCH(request: NextRequest) {
     if (sellerProfile?.email) {
       const isApproved = action === "approve";
       const reason = rejection_reason?.toString().trim();
+      const adminNotes = notes?.toString().trim();
       const subject = isApproved
         ? `Product approved: ${product?.product_name ?? "Your product"}`
         : `Product needs revision: ${product?.product_name ?? "Your product"}`;
       const text = isApproved
-        ? `${product?.product_name ?? "Your product"} has been approved and is now live in the marketplace.`
+        ? `${product?.product_name ?? "Your product"} has been approved. Publish it from your product dashboard when you are ready.`
         : `${product?.product_name ?? "Your product"} needs revision.${reason ? ` Reason: ${reason}` : ""}`;
 
       try {
@@ -236,7 +238,7 @@ export async function PATCH(request: NextRequest) {
           to: sellerProfile.email,
           subject,
           text,
-          html: `<p>Hello ${sellerProfile.full_name || "Seller"},</p><p>${text}</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}`,
+          html: `<p>Hello ${sellerProfile.full_name || "Seller"},</p><p>${text}</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}${adminNotes ? `<p><strong>Admin note:</strong> ${adminNotes}</p>` : ""}`,
         });
         if (!result.success) {
           console.error("[admin/approvals] Seller email failed:", result.error);

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Star, Eye, EyeOff, Package, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Eye, EyeOff, Package, Loader2, AlertCircle, CheckCircle2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FeaturedProductRow } from "@/components/onboarding/seller/types";
@@ -18,6 +18,8 @@ type Product = FeaturedProductRow & {
   imageUrl?: string;
   approvalStatus?: string;
   lifecycleStatus?: string;
+  isPublished?: boolean;
+  reviewFeedback?: { reason?: string | null; notes?: string | null } | null;
   featuredRequested?: boolean;
   draftVersion: number;
 };
@@ -34,14 +36,18 @@ function ProductCard({
   onDelete,
   onToggleFeatured,
   onToggleVisible,
+  onPublish,
+  publishing,
 }: {
   product: Product;
   onEdit: () => void;
   onDelete: () => void;
   onToggleFeatured: () => void;
   onToggleVisible: () => void;
+  onPublish: () => void;
+  publishing: boolean;
 }) {
-  const canToggleVisibility = product.lifecycleStatus !== "archived";
+  const canToggleVisibility = product.approvalStatus === "approved" && product.lifecycleStatus === "active";
   const status = formatProductStatus(product);
   const visibilityLabel = product.isVisible
     ? canToggleVisibility && product.approvalStatus === "approved" && product.lifecycleStatus === "active"
@@ -86,6 +92,14 @@ function ProductCard({
       <span className="mb-3 inline-flex rounded-full border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">
         {status.label}
       </span>
+
+      {product.reviewFeedback?.reason || product.reviewFeedback?.notes ? (
+        <div className={cn("mb-3 rounded-lg border p-3 text-xs", product.approvalStatus === "rejected" ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800")}>
+          <p className="font-semibold">{product.approvalStatus === "rejected" ? "Admin review feedback" : "Admin approval note"}</p>
+          {product.reviewFeedback.reason ? <p className="mt-1">{product.reviewFeedback.reason}</p> : null}
+          {product.reviewFeedback.notes ? <p className="mt-1">{product.reviewFeedback.notes}</p> : null}
+        </div>
+      ) : null}
 
       {/* Tags */}
       <div className="mb-3 flex flex-wrap gap-1.5">
@@ -138,6 +152,18 @@ function ProductCard({
 
       {/* Actions */}
       <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
+        {product.approvalStatus === "approved" && !product.isPublished ? (
+          <button
+            type="button"
+            onClick={onPublish}
+            disabled={publishing}
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Publish approved product"
+          >
+            {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
+            {publishing ? "Publishing" : "Publish"}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onToggleFeatured}
@@ -199,6 +225,7 @@ export default function FeaturedProductsPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
@@ -222,9 +249,11 @@ export default function FeaturedProductsPage() {
           leadTime: String(p.lead_time ?? p.leadTime ?? ""),
           isFeatured: Boolean(p.is_featured ?? p.isFeatured),
           featuredRequested: Boolean(p.featured_requested ?? p.featuredRequested),
+          isPublished: Boolean(p.is_published ?? p.isPublished),
           isVisible: p.is_visible === true || p.isVisible === true,
           approvalStatus: String(p.approval_status ?? "draft"),
           lifecycleStatus: String(p.lifecycle_status ?? p.approval_status ?? "draft"),
+          reviewFeedback: p.review_feedback && typeof p.review_feedback === "object" ? p.review_feedback as Product["reviewFeedback"] : null,
           draftVersion: Number(p.draft_version ?? 1),
           customTolerance: String(p.custom_tolerance ?? p.customTolerance ?? ""),
           createdAt: String(p.created_at ?? p.createdAt ?? ""),
@@ -265,6 +294,30 @@ export default function FeaturedProductsPage() {
       addToast("Product deleted", "success");
     } catch {
       addToast("Failed to delete product", "error");
+    }
+  };
+
+  const handlePublish = async (id: string) => {
+    const product = products.find((item) => item.id === id);
+    if (!product) return;
+    setPublishingId(id);
+    try {
+      const response = await fetch(`/api/dashboard/seller/products/${id}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedVersion: product.draftVersion }),
+      });
+      const payload = await response.json().catch(() => null) as { error?: string | { message?: string }; product?: { draft_version?: number; lifecycle_status?: string; is_published?: boolean } } | null;
+      if (!response.ok) {
+        const message = typeof payload?.error === "string" ? payload.error : payload?.error?.message;
+        throw new Error(message || "Unable to publish product.");
+      }
+      setProducts((previous) => previous.map((item) => item.id === id ? { ...item, lifecycleStatus: "active", isPublished: true, isVisible: false, draftVersion: Number(payload?.product?.draft_version ?? item.draftVersion + 1) } : item));
+      addToast("Approved product published. It is hidden until you make it visible.", "success");
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : "Unable to publish product.", "error");
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -367,6 +420,8 @@ export default function FeaturedProductsPage() {
               onToggleVisible={() =>
                 void toggleField(product.id, "isVisible", product.isVisible !== false)
               }
+              onPublish={() => void handlePublish(product.id)}
+              publishing={publishingId === product.id}
             />
           ))}
 

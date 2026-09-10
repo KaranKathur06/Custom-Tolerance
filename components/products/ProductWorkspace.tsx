@@ -9,7 +9,7 @@ import { Phase4Review } from "./Phase4Review";
 import { CheckCircle2, Loader2, Save, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { canEnterPhase, getMissingPhaseFields } from "@/lib/services/product-service";
-import { canResumeProductDraft } from "@/lib/services/product-draft-service";
+import { canEditProductDraft } from "@/lib/services/product-draft-service";
 
 type ProductData = Partial<Phase1Data> & Partial<Phase2Data> & Partial<Phase3Data>;
 
@@ -27,6 +27,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(existingDraftId));
   const [isEditable, setIsEditable] = useState(true);
   const [productStatus, setProductStatus] = useState<string>('draft');
+  const [reviewFeedback, setReviewFeedback] = useState<{ reason?: string; notes?: string } | null>(null);
   
   // A ref to store the latest data so the background autosave can access it
   const dataRef = useRef<ProductData>({});
@@ -60,7 +61,10 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
           throw new Error("Product draft is unavailable");
         }
 
-        const editable = canResumeProductDraft({ id: product.id, status: product.approval_status });
+        const editable = canEditProductDraft({ id: product.id, status: product.approval_status });
+        const latestApproval = Array.isArray(product.product_approvals)
+          ? [...product.product_approvals].sort((a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at)))[0]
+          : null;
 
         const hydratedData: ProductData = {
           productName: product.product_name ?? "",
@@ -117,6 +121,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
           draftVersionRef.current = Number(product.draft_version ?? 1);
           setIsEditable(editable);
           setProductStatus(String(product.approval_status ?? product.lifecycle_status ?? 'draft'));
+          setReviewFeedback(latestApproval ? { reason: latestApproval.rejection_reason ?? undefined, notes: latestApproval.notes ?? undefined } : null);
           setActivePhase(product.description || product.moq ? 2 : 1);
           setLastSaved(product.updated_at ? new Date(product.updated_at) : null);
         }
@@ -362,10 +367,21 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
             Define your product specifications to match with buyer RFQs.
           </p>
 
-          {!isEditable ? (
+          {productStatus === 'rejected' && reviewFeedback?.reason ? (
+            <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+              <span className="font-semibold block mb-1">Admin requested changes</span>
+              <span>{reviewFeedback.reason}</span>
+              {reviewFeedback.notes ? <p className="mt-2 border-t border-red-200 pt-2">{reviewFeedback.notes}</p> : null}
+            </div>
+          ) : !isEditable ? (
             <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
               <span className="font-semibold block mb-1">This product is {productStatus.replace('_', ' ')}.</span>
-              <span>Your saved details are shown below. Editing is available again after the moderation decision.</span>
+              <span>Your saved details are shown below. Editing is unavailable in this state.</span>
+            </div>
+          ) : productStatus === 'pending_review' ? (
+            <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+              <span className="font-semibold block mb-1">This product is under review.</span>
+              <span>You can improve the saved details while the admin review is in progress.</span>
             </div>
           ) : null}
           

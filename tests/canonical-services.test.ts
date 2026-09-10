@@ -28,6 +28,7 @@ import {
 import {
   canResumeProductDraft,
   canPublishProductDraft,
+  canEditProductDraft,
   normalizeDraftProductState,
   filterDraftProducts,
   getProductResumeUrl,
@@ -374,6 +375,13 @@ test("canResumeProductDraft allows editing of draft products only", () => {
   assert.equal(canResumeProductDraft({ id: "1", status: "rejected", deletedAt: null }), true);
   assert.equal(canResumeProductDraft({ id: "1", status: "draft", deletedAt: "2026-01-01" }), false);
   assert.equal(canResumeProductDraft({ id: "1", status: "published", deletedAt: null }), false);
+});
+
+test("canEditProductDraft allows seller improvements during review and after rejection", () => {
+  assert.equal(canEditProductDraft({ id: "1", status: "draft" }), true);
+  assert.equal(canEditProductDraft({ id: "1", status: "pending_review" }), true);
+  assert.equal(canEditProductDraft({ id: "1", status: "rejected" }), true);
+  assert.equal(canEditProductDraft({ id: "1", status: "approved" }), false);
 });
 
 test("canPublishProductDraft requires draft status and sufficient phase completion", () => {

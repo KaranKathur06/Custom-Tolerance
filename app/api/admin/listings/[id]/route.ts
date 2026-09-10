@@ -45,7 +45,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const productId = params.id;
   const database = createSupabaseServiceRoleClient() || auth.supabase;
 
-  const [
+  let [
     { data: product, error: productError },
     { data: approvals, error: approvalError },
     { data: images, error: imageError },
@@ -83,11 +83,34 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ success: false, error: { code: 'PRODUCT_NOT_FOUND', message: 'Product not found.' } }, { status: 404 });
   }
 
-  // The main product row is authoritative. Relation tables were introduced
-  // incrementally, so a missing table or policy must not hide the review page.
+  // A misconfigured service-role key or a deployment with newer RLS policies
+  // can reject relation reads even though the authenticated admin can read them.
+  // Retry through the already-authorized request client before declaring data
+  // unavailable; never turn a relation query error into an empty review field.
+  if ([capabilitiesError, industriesError, materialsError, gradesError, paymentTermsError, incotermsError].some(Boolean) && database !== auth.supabase) {
+    const [capabilityRetry, industryRetry, materialRetry, gradeRetry, paymentTermsRetry, incotermsRetry] = await Promise.all([
+      auth.supabase.from('product_capabilities').select('capability_id').eq('seller_product_id', productId),
+      auth.supabase.from('product_industries').select('industry_id').eq('seller_product_id', productId),
+      auth.supabase.from('product_materials').select('material_name').eq('seller_product_id', productId),
+      auth.supabase.from('product_grades').select('grade_name').eq('seller_product_id', productId),
+      auth.supabase.from('product_payment_terms').select('payment_term_id').eq('seller_product_id', productId),
+      auth.supabase.from('product_incoterms').select('incoterm_id').eq('seller_product_id', productId),
+    ]);
+    if (!capabilityRetry.error) { capabilities = capabilityRetry.data; capabilitiesError = null; }
+    if (!industryRetry.error) { industries = industryRetry.data; industriesError = null; }
+    if (!materialRetry.error) { materials = materialRetry.data; materialsError = null; }
+    if (!gradeRetry.error) { grades = gradeRetry.data; gradesError = null; }
+    if (!paymentTermsRetry.error) { paymentTerms = paymentTermsRetry.data; paymentTermsError = null; }
+    if (!incotermsRetry.error) { incoterms = incotermsRetry.data; incotermsError = null; }
+  }
+
   const relationErrors = { approvalError, imageError, capabilitiesError, industriesError, materialsError, gradesError, paymentTermsError, incotermsError };
   if (Object.values(relationErrors).some(Boolean)) {
-    console.warn('ADMIN_LISTING_DETAIL_RELATION_FALLBACK', { productId, relationErrors });
+    console.error('ADMIN_LISTING_DETAIL_RELATION_READ_FAILED', { productId, relationErrors });
+    return NextResponse.json({
+      success: false,
+      error: { code: 'DATA_RETRIEVAL_FAILED', message: 'Product review data could not be loaded completely.' },
+    }, { status: 503 });
   }
 
   const { data: profile } = product.profile_id

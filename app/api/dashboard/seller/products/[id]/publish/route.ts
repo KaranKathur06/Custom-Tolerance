@@ -47,6 +47,25 @@ export async function POST(
     const body = await req.json().catch(() => ({})) as { expectedVersion?: number };
     const expectedVersion = Number(body.expectedVersion ?? product.draft_version ?? 1);
 
+    if (product.approval_status === "approved") {
+      const { data, error } = await supabase.rpc("publish_approved_seller_product", {
+        p_product_id: productId,
+        p_expected_version: expectedVersion,
+      });
+      if (error) {
+        const code = error.message.includes("CONFLICT_STALE_DRAFT")
+          ? "CONFLICT_STALE_DRAFT"
+          : error.message.includes("PRODUCT_NOT_APPROVED")
+            ? "PRODUCT_NOT_APPROVED"
+            : "PRODUCT_PUBLICATION_FAILED";
+        return NextResponse.json(
+          { success: false, error: { code, message: code === "CONFLICT_STALE_DRAFT" ? "This product changed in another session. Refresh and try again." : "This product is not ready to be published." } },
+          { status: code === "CONFLICT_STALE_DRAFT" ? 409 : 422 },
+        );
+      }
+      return NextResponse.json({ success: true, message: "Approved product published. Choose Visible when you are ready for buyers to see it.", product: Array.isArray(data) ? data[0] : data });
+    }
+
     const phase = getCurrentProductPhase({
       productName: product.product_name,
       priceType: product.price_type,

@@ -10,6 +10,8 @@ const repoRoot = path.resolve(__dirname, '..');
 
 const migrationDir = path.join(repoRoot, 'supabase', 'migrations');
 const routePath = path.join(repoRoot, 'app', 'api', 'admin', 'products', 'approvals', 'route.ts');
+const sellerProductsRoutePath = path.join(repoRoot, 'app', 'api', 'dashboard', 'seller', 'products', 'route.ts');
+const adminListingDetailRoutePath = path.join(repoRoot, 'app', 'api', 'admin', 'listings', '[id]', 'route.ts');
 
 test('canonical approval RPC is defined only once across migration files', () => {
   const files = fs.readdirSync(migrationDir).filter((file) => file.endsWith('.sql'));
@@ -19,7 +21,11 @@ test('canonical approval RPC is defined only once across migration files', () =>
     return occurrences.length ? [file] : [];
   });
 
-  assert.equal(matches.length, 1, 'There must be a single canonical review_seller_product_approval migration definition.');
+  assert.deepEqual(
+    matches.sort(),
+    ['20260909190000_canonical_product_lifecycle.sql', '20260910120000_seller_approval_publish_flow.sql'],
+    'Approval RPC definitions must be the original canonical definition plus the intentional lifecycle evolution migration.',
+  );
 });
 
 test('admin approval route invokes the canonical RPC through the service-role client', () => {
@@ -27,4 +33,21 @@ test('admin approval route invokes the canonical RPC through the service-role cl
 
   assert.match(routeSource, /adminDatabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/, 'Approval route must use the canonical RPC via the admin client.');
   assert.doesNotMatch(routeSource, /supabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/, 'Approval route must not use the user-scoped Supabase client for the final moderation RPC.');
+});
+
+test('seller product PATCH distinguishes omitted relations from explicit clears', () => {
+  const routeSource = fs.readFileSync(sellerProductsRoutePath, 'utf8');
+
+  assert.match(routeSource, /hasOwnProperty\.call\(body, field\)/, 'Relation persistence must check whether a field was sent.');
+  assert.match(routeSource, /if \(items === null\) return;/, 'Omitted relation fields must leave existing rows unchanged.');
+  assert.match(routeSource, /if \(items\.length > 0\)/, 'Explicit non-empty relation arrays must be persisted.');
+  assert.doesNotMatch(routeSource, /body\.capabilities && handleRelation/, 'Relation persistence must not use truthiness as PATCH semantics.');
+});
+
+test('admin listing detail does not mask relation read failures as empty fields', () => {
+  const routeSource = fs.readFileSync(adminListingDetailRoutePath, 'utf8');
+
+  assert.match(routeSource, /auth\.supabase\.from\('product_capabilities'\)/, 'Admin detail must retry relation reads with the authenticated client.');
+  assert.match(routeSource, /DATA_RETRIEVAL_FAILED/, 'Admin detail must expose incomplete relation retrieval as an error.');
+  assert.doesNotMatch(routeSource, /ADMIN_LISTING_DETAIL_RELATION_FALLBACK/, 'Admin detail must not silently fall back to incomplete product fields.');
 });
