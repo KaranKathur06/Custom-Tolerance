@@ -25,6 +25,8 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activePhase, setActivePhase] = useState<number>(1);
   const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(existingDraftId));
+  const [isEditable, setIsEditable] = useState(true);
+  const [productStatus, setProductStatus] = useState<string>('draft');
   
   // A ref to store the latest data so the background autosave can access it
   const dataRef = useRef<ProductData>({});
@@ -54,9 +56,11 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
 
         const result = (await response.json()) as { products?: Record<string, any>[] };
         const product = result.products?.find((item) => item.id === existingDraftId);
-        if (!product || !canResumeProductDraft({ id: product.id, status: product.approval_status })) {
+        if (!product) {
           throw new Error("Product draft is unavailable");
         }
+
+        const editable = canResumeProductDraft({ id: product.id, status: product.approval_status });
 
         const hydratedData: ProductData = {
           productName: product.product_name ?? "",
@@ -111,6 +115,8 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
         if (isMounted) {
           dataRef.current = hydratedData;
           draftVersionRef.current = Number(product.draft_version ?? 1);
+          setIsEditable(editable);
+          setProductStatus(String(product.approval_status ?? product.lifecycle_status ?? 'draft'));
           setActivePhase(product.description || product.moq ? 2 : 1);
           setLastSaved(product.updated_at ? new Date(product.updated_at) : null);
         }
@@ -183,7 +189,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
 
   const triggerAutosave = useCallback(async (dataToSave: ProductData, targetDraftId?: string): Promise<boolean> => {
     const idToUse = targetDraftId || draftId;
-    if (!idToUse) return false;
+    if (!idToUse || !isEditable) return false;
 
     const saveOperation = async (): Promise<boolean> => {
       setIsSaving(true);
@@ -288,7 +294,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
     const queuedSave = saveQueueRef.current.then(saveOperation, saveOperation);
     saveQueueRef.current = queuedSave.catch(() => false);
     return queuedSave;
-  }, [draftId]);
+  }, [draftId, isEditable]);
 
   const handleDataChange = useCallback((newData: ProductData) => {
     dataRef.current = { ...dataRef.current, ...newData };
@@ -312,7 +318,7 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
   }, [triggerAutosave, activePhase]);
 
   const saveDraft = async () => {
-    if (isSaving || !draftId) return false;
+    if (isSaving || !draftId || !isEditable) return false;
     return triggerAutosave(dataRef.current);
   };
 
@@ -355,6 +361,13 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
           <p className="mt-1 text-sm text-slate-500">
             Define your product specifications to match with buyer RFQs.
           </p>
+
+          {!isEditable ? (
+            <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <span className="font-semibold block mb-1">This product is {productStatus.replace('_', ' ')}.</span>
+              <span>Your saved details are shown below. Editing is available again after the moderation decision.</span>
+            </div>
+          ) : null}
           
           {draftError && (
             <div className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 p-4 rounded-md">
@@ -438,42 +451,44 @@ function WorkspaceContent({ existingDraftId }: { existingDraftId?: string }) {
         })}
       </div>
 
-      {/* Workspace Area */}
-      {activePhase === 1 && (
-        <Phase1Technical initialData={dataRef.current} onChange={handleDataChange} productId={draftId} />
-      )}
-      {activePhase === 2 && (
-        <Phase2Commercial initialData={dataRef.current} onChange={handleDataChange} />
-      )}
-      {activePhase === 3 && (
-        <Phase3Packaging initialData={dataRef.current} onChange={handleDataChange} />
-      )}
-      {activePhase === 4 && (
-        <Phase4Review key={`review-${reviewTrigger}`} data={dataRef.current} draftId={draftId} />
-      )}
+      <fieldset disabled={!isEditable}>
+        {/* Workspace Area */}
+        {activePhase === 1 && (
+          <Phase1Technical initialData={dataRef.current} onChange={handleDataChange} productId={draftId} />
+        )}
+        {activePhase === 2 && (
+          <Phase2Commercial initialData={dataRef.current} onChange={handleDataChange} />
+        )}
+        {activePhase === 3 && (
+          <Phase3Packaging initialData={dataRef.current} onChange={handleDataChange} />
+        )}
+        {activePhase === 4 && (
+          <Phase4Review key={`review-${reviewTrigger}`} data={dataRef.current} draftId={draftId} />
+        )}
 
-      <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={() => void saveDraft().then((saved) => saved && router.push("/dashboard/seller/products"))}
-          disabled={isSaving || !draftId}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save Draft"}
-        </button>
-        {activePhase < 4 ? (
+        <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
-            onClick={() => void saveAndContinue()}
+            onClick={() => void saveDraft().then((saved) => saved && router.push("/dashboard/seller/products"))}
             disabled={isSaving || !draftId}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isSaving ? "Saving..." : "Save & Continue"}
+            <Save className="h-4 w-4" />
+            {isSaving ? "Saving..." : "Save Draft"}
           </button>
-        ) : null}
-      </div>
+          {activePhase < 4 ? (
+            <button
+              type="button"
+              onClick={() => void saveAndContinue()}
+              disabled={isSaving || !draftId}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isSaving ? "Saving..." : "Save & Continue"}
+            </button>
+          ) : null}
+        </div>
+      </fieldset>
     </div>
   );
 }

@@ -282,15 +282,25 @@ export async function PATCH(req: NextRequest) {
   if (body.isVisible !== undefined) patch.is_visible = Boolean(body.isVisible);
   patch.updated_at = new Date().toISOString();
 
-  const { error: updateError } = await supabase
+  const { data: updatedProduct, error: updateError } = await supabase
     .from("seller_products")
-    .update(patch)
+    .update({ ...patch, draft_version: expectedVersion + 1 })
     .eq("id", productId)
-    .eq("profile_id", user.id);
+    .eq("profile_id", user.id)
+    .eq("draft_version", expectedVersion)
+    .select("id, draft_version")
+    .maybeSingle();
 
   if (updateError) {
     console.error("[seller/products PATCH] update error:", updateError.message);
     return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  if (!updatedProduct) {
+    return NextResponse.json(
+      { success: false, error: { code: "CONFLICT_STALE_DRAFT", message: "This product changed in another session. Refresh and try again." } },
+      { status: 409 },
+    );
   }
 
   // 2. Update related many-to-many tables if provided
@@ -353,7 +363,7 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, product: { id: productId, draft_version: expectedVersion + 1 } });
+  return NextResponse.json({ success: true, product: updatedProduct });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
