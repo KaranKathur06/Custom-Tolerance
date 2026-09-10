@@ -12,6 +12,8 @@ const migrationDir = path.join(repoRoot, 'supabase', 'migrations');
 const routePath = path.join(repoRoot, 'app', 'api', 'admin', 'products', 'approvals', 'route.ts');
 const sellerProductsRoutePath = path.join(repoRoot, 'app', 'api', 'dashboard', 'seller', 'products', 'route.ts');
 const adminListingDetailRoutePath = path.join(repoRoot, 'app', 'api', 'admin', 'listings', '[id]', 'route.ts');
+const moderationDraftVersionMigrationPath = path.join(repoRoot, 'supabase', 'migrations', '20260910151000_fix_moderation_draft_version_ambiguity.sql');
+const searchTriggerMigrationPath = path.join(repoRoot, 'supabase', 'migrations', '20260910153000_fix_product_update_search_trigger.sql');
 
 test('canonical approval RPC is defined only once across migration files', () => {
   const files = fs.readdirSync(migrationDir).filter((file) => file.endsWith('.sql'));
@@ -57,4 +59,20 @@ test('admin listing detail does not mask relation read failures as empty fields'
   assert.match(routeSource, /auth\.supabase\.from\('product_capabilities'\)/, 'Admin detail must retry relation reads with the authenticated client.');
   assert.match(routeSource, /DATA_RETRIEVAL_FAILED/, 'Admin detail must expose incomplete relation retrieval as an error.');
   assert.doesNotMatch(routeSource, /ADMIN_LISTING_DETAIL_RELATION_FALLBACK/, 'Admin detail must not silently fall back to incomplete product fields.');
+});
+
+test('moderation RPC qualifies draft_version against the product alias', () => {
+  const migrationSource = fs.readFileSync(moderationDraftVersionMigrationPath, 'utf8');
+
+  assert.match(migrationSource, /update public\.seller_products as sp/, 'Moderation product update must use an explicit table alias.');
+  assert.match(migrationSource, /coalesce\(sp\.draft_version, 1\) \+ 1/, 'The draft version expression must be unambiguous.');
+  assert.doesNotMatch(migrationSource, /draft_version = coalesce\(draft_version, 1\)/, 'The ambiguous draft_version expression must not be reintroduced.');
+});
+
+test('seller product updates do not depend on search indexing for unpublished products', () => {
+  const migrationSource = fs.readFileSync(searchTriggerMigrationPath, 'utf8');
+
+  assert.match(migrationSource, /security definer/i, 'Search indexing must run with controlled database privileges.');
+  assert.match(migrationSource, /if coalesce\(new\.is_published, false\)/i, 'Unpublished moderation updates must skip search indexing.');
+  assert.match(migrationSource, /drop trigger if exists trg_seller_products_reindex/i, 'The stale trigger definition must be replaced.');
 });
