@@ -8,6 +8,7 @@ import { CheckCircle2, AlertCircle, Rocket } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { UploadedImage } from "./FormComponents";
 import { formatLeadTime, formatQuantity, formatTolerance } from "@/lib/products/display";
+import { formatCapability, formatPriceType, formatPriceUnit } from "@/lib/product/display";
 
 type AllData = Partial<Phase1Data> & Partial<Phase2Data> & Partial<Phase3Data>;
 
@@ -122,9 +123,9 @@ export function Phase4Review({
                   <h4 className="text-xl font-bold text-slate-900">{data.productName || "Untitled Product"}</h4>
                   <div className="text-sm text-slate-600">
                     <span className="font-medium text-slate-900">Price:</span>{" "}
-                    {data.priceType === "ask_for_price" ? "Ask for Price (RFQ)" : 
-                     data.priceType === "fixed_price" ? `${data.currency} ${data.minPrice} / ${data.priceUnit}` :
-                     data.priceType === "price_range" ? `${data.currency} ${data.minPrice} - ${data.maxPrice} / ${data.priceUnit}` : "—"}
+                    {data.priceType === "ask_for_price" ? formatPriceType(data.priceType) :
+                     data.priceType === "fixed_price" ? `${data.currency} ${data.minPrice} / ${formatPriceUnit(data.priceUnit)}` :
+                     data.priceType === "price_range" ? `${data.currency} ${data.minPrice} - ${data.maxPrice} / ${formatPriceUnit(data.priceUnit)}` : "—"}
                   </div>
                   <div className="text-sm text-slate-600 line-clamp-3 mt-2">
                     {data.description || "No description provided."}
@@ -155,7 +156,7 @@ export function Phase4Review({
                 <span className="block text-slate-500 mb-2 text-xs uppercase tracking-wider font-semibold">Capabilities</span>
                 <div className="flex flex-wrap gap-1.5">
                   {data.capabilities?.length ? data.capabilities.map(cap => (
-                     <span key={cap} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium border border-blue-100">{cap.replace(/_/g, ' ')}</span>
+                     <span key={cap} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium border border-blue-100">{formatCapability(cap)}</span>
                   )) : <span className="text-slate-400">None selected</span>}
                 </div>
               </div>

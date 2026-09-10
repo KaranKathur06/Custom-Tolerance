@@ -1,17 +1,11 @@
+import { formatLeadTime as formatProductLeadTime, formatPrecision as formatProductPrecision } from "@/lib/product/display";
+
 export function formatLeadTime(value: unknown): string {
-  if (value == null || value === "") return "Not specified";
-  const text = String(value).trim();
-  const range = text.match(/^([0-9]+)_([0-9]+)_weeks?$/i);
-  if (range) return `${range[1]}-${range[2]} weeks`;
-  return text.replace(/_/g, " ");
+  return formatProductLeadTime(value, "Not specified");
 }
 
 export function formatPrecision(value: unknown): string {
-  if (value == null || value === "") return "Not specified";
-  const text = String(value).trim();
-  const encoded = text.match(/^precision_([0-9]+)_([0-9]+)$/i);
-  if (encoded) return `${encoded[1]}.${encoded[2]}`;
-  return text.replace(/_/g, " ");
+  return formatProductPrecision(value, "Not specified");
 }
 
 export function formatProductStatus(product: {

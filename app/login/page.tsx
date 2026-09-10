@@ -55,6 +55,7 @@ function LoginForm() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isLoading) return
     if (!supabase) { setError("Auth service unavailable. Check config."); return }
     setIsLoading(true); setError(null)
     try {
@@ -71,14 +72,14 @@ function LoginForm() {
       if (data.session && data.user) {
         await refreshIdentity()
         const destination = await resolvePostLoginPath(data.user.id, data.user)
-        router.push(destination)
-        router.refresh()
+        router.replace(destination)
       }
     } catch (err: any) { setError(err?.message || "An unexpected error occurred") }
     finally { setIsLoading(false) }
   }
 
   const handleOtpRequest = async () => {
+    if (isLoading) return
     if (!supabase) { setError("Auth service unavailable."); return }
     setIsLoading(true); setError(null)
     try {
@@ -91,6 +92,7 @@ function LoginForm() {
 
   const handleOtpLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isLoading) return
     if (!supabase) { setError("Auth service unavailable."); return }
     setIsLoading(true); setError(null)
     try {
@@ -101,14 +103,14 @@ function LoginForm() {
       if (data.session && data.user) {
         await refreshIdentity()
         const destination = await resolvePostLoginPath(data.user.id, data.user)
-        router.push(destination)
-        router.refresh()
+        router.replace(destination)
       }
     } catch (err: any) { setError(err?.message || "OTP verification failed") }
     finally { setIsLoading(false) }
   }
 
   const handleGoogleLogin = async () => {
+    if (isLoading) return
     if (!supabase) { setError("Auth service unavailable."); return }
     setError(null)
     const redirectTo = searchParams.get("redirect") || "/marketplace"

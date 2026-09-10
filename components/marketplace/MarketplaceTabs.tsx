@@ -405,7 +405,7 @@ export default function MarketplaceTabs() {
           ) : null}
 
           {!error ? (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {loading
                 ? Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="h-[360px] animate-pulse rounded-2xl border border-slate-200 bg-slate-50" />

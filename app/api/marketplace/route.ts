@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Default: Published seller products
-    if (type === 'products' || type === 'buyers') {
+    if (type === 'products') {
       const search = filters.query || '';
       const page = filters.page ?? 1;
       const limit = filters.pageSize ?? 20;
@@ -82,7 +82,11 @@ export async function GET(request: NextRequest) {
           id, product_name, capability, materials, tolerance_capability, moq,
           lead_time, estimated_price_per_unit, quantity_available, is_featured,
           published_at, seller_profile_id, profile_id, listing_id,
-          seller_profiles!inner(profile_completion_percent, company_id)
+          product_images(url, storage_path, is_primary, display_order),
+          seller_profiles!inner(
+            id, profile_completion_percent, company_id, verification_status,
+            companies(name, cities(name))
+          )
           `,
           { count: 'exact' }
         ));
@@ -97,6 +101,10 @@ export async function GET(request: NextRequest) {
 
       if (filters.industries && filters.industries.length > 0) {
         query = query.contains('materials', filters.industries);
+      }
+
+      if (filters.verification === 'verified') {
+        query = query.eq('seller_profiles.verification_status', 'approved');
       }
 
       if (dateFilter) {
@@ -122,11 +130,37 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error('[marketplace/products]', error.message);
+        return NextResponse.json(
+          { type: 'products', products: [], pagination: { page, limit, total: 0, totalPages: 0 }, message: 'Unable to load marketplace products.' },
+          { status: 500 },
+        );
       }
+
+      const normalizedProducts = (products || []).map((product: any) => {
+        const images = Array.isArray(product.product_images) ? product.product_images : [];
+        const primaryImage = [...images]
+          .filter((image) => typeof image?.url === 'string' && image.url.trim())
+          .sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)) || (a.display_order ?? 0) - (b.display_order ?? 0))[0] ?? null;
+        const sellerProfile = Array.isArray(product.seller_profiles) ? product.seller_profiles[0] : product.seller_profiles;
+        const company = sellerProfile && (Array.isArray(sellerProfile.companies) ? sellerProfile.companies[0] : sellerProfile.companies);
+        const city = company && (Array.isArray(company.cities) ? company.cities[0] : company.cities);
+
+        return {
+          ...product,
+          featured_image: primaryImage ? { url: primaryImage.url, alt: product.product_name } : null,
+          seller_profile: sellerProfile ? {
+            id: sellerProfile.id,
+            companyId: sellerProfile.company_id,
+            companyName: company?.name ?? null,
+            location: city?.name ?? null,
+            isVerified: sellerProfile.verification_status === 'approved',
+          } : null,
+        };
+      });
 
       return NextResponse.json({
         type: 'products',
-        products: products || [],
+        products: normalizedProducts,
         pagination: {
           page,
           limit,
@@ -218,8 +252,8 @@ export async function GET(request: NextRequest) {
     const message = err instanceof Error ? err.message : 'Unknown marketplace error';
     console.error('[marketplace] Unhandled error:', message);
     return NextResponse.json(
-      { type: 'products', products: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }, message },
-      { status: 200 },
+      { type: 'products', products: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }, message: 'Unable to load marketplace products.' },
+      { status: 500 },
     );
   }
 }

@@ -6,6 +6,22 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Clock, Image as ImageIcon, Loader2, X, XCircle } from 'lucide-react';
 import { StatusBadge } from '@/components/ops/shared/StatusBadge';
 import type { AdminListingDetailPayload } from '@/types/admin-listing-detail';
+import {
+  formatBooleanField,
+  formatCapability,
+  formatDisplayValue,
+  formatGrade,
+  formatIncoterm,
+  formatIndustry,
+  formatLeadTime,
+  formatList,
+  formatPackaging,
+  formatPaymentTerm,
+  formatPrecision,
+  formatPriceType,
+  formatPriceUnit,
+  formatShippingType,
+} from '@/lib/product/display';
 
 // Type alias for the payload's data property
 type DetailPayload = AdminListingDetailPayload['data'];
@@ -38,6 +54,12 @@ function relation(items: unknown[], key: string) {
     }
     return [];
   });
+}
+
+function formatCollection(value: unknown, formatter: (item: unknown) => string): string[] {
+  if (Array.isArray(value)) return formatList(value, formatter);
+  if (typeof value === 'string' && value.trim()) return value.split(',').map((item) => formatter(item.trim()));
+  return [];
 }
 
 function Field({ label, item }: { label: string; item: unknown }) {
@@ -136,12 +158,12 @@ export default function ListingDetailsPage() {
   
   // The relations are already normalized to string arrays by the admin API's relationValues() function
   // No need to extract keys - they're already primitive values
-  const capabilities = relations.capabilities || [];
-  const industries = relations.industries || [];
-  const materials = relations.materials || [];
-  const grades = relations.grades || [];
-  const paymentTerms = relations.paymentTerms || [];
-  const incoterms = relations.incoterms || [];
+  const capabilities = formatList(relations.capabilities || [], formatCapability);
+  const industries = formatList(relations.industries || [], formatIndustry);
+  const materials = formatList(relations.materials || [], formatDisplayValue);
+  const grades = formatList(relations.grades || [], formatGrade);
+  const paymentTerms = formatList(relations.paymentTerms || [], formatPaymentTerm);
+  const incoterms = formatList(relations.incoterms || [], formatIncoterm);
 
   return <div>
     <div className="ops-section-header">
@@ -156,47 +178,47 @@ export default function ListingDetailsPage() {
     <Section title="Product identity"><Grid>
       <Field label="Seller" item={product.profiles?.full_name || product.profiles?.email} />
       <Field label="Product name" item={product.product_name} />
-      <LongField label="Capabilities" item={capabilities.length > 0 ? capabilities : (product.capabilities ?? product.capability ?? '-')} />
-      <LongField label="Industries served" item={industries.length > 0 ? industries : (product.industries ?? '-')} />
-      <LongField label="Materials" item={materials.length > 0 ? materials : (product.materials ?? '-')} />
-      <LongField label="Grades" item={grades.length > 0 ? grades : (product.grades ?? '-')} />
+      <LongField label="Capabilities" item={capabilities.length > 0 ? capabilities : formatCollection(product.capabilities ?? product.capability, formatCapability)} />
+      <LongField label="Industries served" item={industries.length > 0 ? industries : formatCollection(product.industries, formatIndustry)} />
+      <LongField label="Materials" item={materials.length > 0 ? materials : formatCollection(product.materials, formatDisplayValue)} />
+      <LongField label="Grades" item={grades.length > 0 ? grades : formatCollection(product.grades, formatGrade)} />
       <LongField label="Country of origin" item={product.country_of_origin ?? product.countryOfOrigin ?? product.origin_country ?? 'Not provided'} />
       <LongField label="Description" item={product.description ?? product.product_description ?? 'Not provided'} />
     </Grid></Section>
 
     <Section title="Technical specification"><Grid>
       <Field label="Specification" item={product.specification} />
-      <Field label="Tolerance capability" item={product.tolerance_capability} />
+      <Field label="Tolerance capability" item={product.tolerance_capability ? formatPrecision(product.tolerance_capability) : null} />
       <Field label="Quality certificate" item={product.quality_certificate} />
-      <Field label="Brand marking" item={product.brand_marking === 'other' ? product.brand_marking_other : product.brand_marking} />
-      <Field label="Dies and tools" item={product.dies_and_tools} />
+      <Field label="Brand marking" item={product.brand_marking === 'other' ? product.brand_marking_other : formatDisplayValue(product.brand_marking)} />
+      <Field label="Dies and tools" item={formatDisplayValue(product.dies_and_tools)} />
       <Field label="Estimated tool cost" item={product.estimated_tool_cost} />
       <Field label="Tool ownership" item={product.tool_ownership} />
       <Field label="Tool lead time" item={product.tool_lead_time} />
     </Grid></Section>
 
     <Section title="Commercial terms"><Grid>
-      <Field label="Price type" item={product.price_type} />
+      <Field label="Price type" item={product.price_type ? formatPriceType(product.price_type) : null} />
       <Field label="Minimum price" item={product.min_price != null ? `${product.min_price} ${product.currency ?? ''}` : null} />
       <Field label="Maximum price" item={product.max_price != null ? `${product.max_price} ${product.currency ?? ''}` : null} />
-      <Field label="Price unit" item={product.price_unit} />
+      <Field label="Price unit" item={product.price_unit ? formatPriceUnit(product.price_unit) : null} />
       <Field label="Minimum order quantity" item={product.moq} />
       <Field label="Monthly capacity" item={product.monthly_capacity != null ? `${product.monthly_capacity} ${product.production_capacity_unit ?? ''}` : null} />
-      <Field label="Lead time" item={product.lead_time} />
-      <Field label="Payment terms" item={paymentTerms.length > 0 ? paymentTerms : (product.payment_terms ?? 'Not specified')} />
-      <Field label="Incoterms" item={incoterms.length > 0 ? incoterms : (product.incoterms ?? 'Not specified')} />
+      <Field label="Lead time" item={product.lead_time ? formatLeadTime(product.lead_time) : null} />
+      <Field label="Payment terms" item={paymentTerms.length > 0 ? paymentTerms : formatCollection(product.payment_terms, formatPaymentTerm)} />
+      <Field label="Incoterms" item={incoterms.length > 0 ? incoterms : formatCollection(product.incoterms, formatIncoterm)} />
       <Field label="Delivery terms" item={product.delivery_terms} />
-      <Field label="Free sample" item={product.free_sample ? 'Yes' : 'No'} />
+      <Field label="Free sample" item={formatBooleanField(product.free_sample, 'availability')} />
       <Field label="Sample shipping cost" item={product.sample_shipping_cost} />
-      <Field label="Third-party inspection" item={product.third_party_inspection ? 'Yes' : 'No'} />
+      <Field label="Third-party inspection" item={formatBooleanField(product.third_party_inspection, 'availability')} />
     </Grid></Section>
 
     <Section title="Packaging and logistics"><Grid>
       <Field label="Weight" item={product.weight_value != null ? `${product.weight_value} ${product.weight_unit ?? ''}` : null} />
       <Field label="Dimensions" item={product.dim_length != null ? `${product.dim_length} x ${product.dim_width} x ${product.dim_height} ${product.dim_unit ?? ''}` : null} />
-      <Field label="Shipping type" item={product.shipping_type} />
-      <Field label="Primary packaging" item={product.primary_packaging} />
-      <Field label="Secondary packaging" item={product.secondary_packaging} />
+      <Field label="Shipping type" item={product.shipping_type ? formatShippingType(product.shipping_type) : null} />
+      <Field label="Primary packaging" item={product.primary_packaging ? formatPackaging(product.primary_packaging) : null} />
+      <Field label="Secondary packaging" item={product.secondary_packaging ? formatPackaging(product.secondary_packaging) : null} />
       <Field label="Packaging notes" item={product.packaging_notes} />
     </Grid></Section>
 

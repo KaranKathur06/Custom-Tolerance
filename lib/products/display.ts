@@ -1,14 +1,16 @@
+import { formatLeadTime as formatProductLeadTime, formatPrecision as formatProductPrecision } from "@/lib/product/display";
+
 const isPresent = (value: unknown): value is string | number =>
   value !== null && value !== undefined && value !== "" && !(typeof value === "number" && !Number.isFinite(value));
 
 export function formatTolerance(value: unknown): string | undefined {
   if (!isPresent(value)) return undefined;
-  return String(value).replaceAll("_", " ").replace(/\s+/g, " ").trim();
+  return formatProductPrecision(value);
 }
 
 export function formatLeadTime(value: unknown): string | undefined {
   if (!isPresent(value)) return undefined;
-  return String(value).replaceAll("_", " ").replace(/\s+/g, " ").trim();
+  return formatProductLeadTime(value);
 }
 
 export function formatQuantity(value: unknown, unit?: unknown): string | undefined {

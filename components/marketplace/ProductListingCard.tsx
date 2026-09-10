@@ -5,6 +5,7 @@ import { ArrowRight, Factory, MapPin, Timer } from "lucide-react";
 import { ListingMediaPreview } from "./ListingMediaPreview";
 import { ProductCardTrustChip } from "./ProductCardTrustChip";
 import type { ListingMedia } from "../../lib/marketplace/listing-media";
+import { formatLeadTime } from "@/lib/product/display";
 
 type ProductListingCardProps = {
   href: string;
@@ -72,7 +73,7 @@ export function ProductListingCard({
                 <Timer className="h-3 w-3" aria-hidden="true" />
                 Lead Time
               </div>
-              <div className="truncate font-medium text-zinc-800">{leadTime}</div>
+              <div className="truncate font-medium text-zinc-800">{formatLeadTime(leadTime)}</div>
             </div>
           ) : null}
         </div>

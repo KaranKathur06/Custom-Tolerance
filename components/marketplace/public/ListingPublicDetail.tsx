@@ -3,6 +3,7 @@ import { Building2, CheckCircle, MessageSquare, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import { formatDisplayValue, formatLeadTime, formatPriceUnit } from "@/lib/product/display";
 import { ProductGallery } from "./ProductGallery";
 import type { ListingCompany, PublicListing, PublicProductDetail, ProductSpecification } from "@/lib/marketplace/listing-detail";
 
@@ -39,7 +40,7 @@ export function ListingPublicDetail({
           <ProductGallery media={media} title={title} />
           <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-wrap gap-2">
-              {(product?.category ?? listing.metal_type) ? <Badge variant="secondary">{product?.category ?? listing.metal_type}</Badge> : null}
+              {(product?.category ?? listing.metal_type) ? <Badge variant="secondary">{product?.category ?? formatDisplayValue(listing.metal_type)}</Badge> : null}
               {listing.is_featured ? <Badge className="bg-amber-500 text-white">Featured</Badge> : null}
               {isVerified ? <Badge className="gap-1 bg-emerald-600 text-white"><CheckCircle className="h-3 w-3" /> Verified supplier</Badge> : null}
             </div>
@@ -47,11 +48,11 @@ export function ListingPublicDetail({
             {product?.technical.grades.length ? <p className="mt-2 text-sm text-slate-500">Grades: {product.technical.grades.join(", ")}</p> : listing.grade ? <p className="mt-2 text-sm text-slate-500">Grade: {listing.grade}</p> : null}
             <div className="mt-6 grid grid-cols-2 gap-4 border-y border-slate-100 py-5">
               <Summary label="Minimum order" value={product?.manufacturing.minimumOrderQuantity ?? listing.moq} />
-              <Summary label="Lead time" value={product?.manufacturing.leadTime ?? listing.lead_time} />
+              <Summary label="Lead time" value={product?.manufacturing.leadTime ?? formatLeadTime(listing.lead_time)} />
               <Summary label="Production capacity" value={product?.manufacturing.productionCapacity ? `${product.manufacturing.productionCapacity} ${product.manufacturing.productionCapacityUnit ?? ""}` : listing.production_capacity} />
               <Summary label="Availability" value="Active listing" />
             </div>
-            {product?.commercial.minPrice != null || listing.price_min != null ? <p className="mt-5 text-2xl font-bold text-slate-950">{formatCurrency(product?.commercial.minPrice ?? listing.price_min ?? 0)}{product?.commercial.maxPrice != null && product.commercial.maxPrice !== product.commercial.minPrice ? ` - ${formatCurrency(product.commercial.maxPrice)}` : listing.price_max != null && listing.price_max !== listing.price_min ? ` - ${formatCurrency(listing.price_max)}` : ""}<span className="ml-1 text-sm font-medium text-slate-500">{product?.commercial.priceUnit ?? listing.price_unit ?? ""}</span></p> : <p className="mt-5 text-sm font-medium text-slate-500">Pricing available on inquiry</p>}
+            {product?.commercial.minPrice != null || listing.price_min != null ? <p className="mt-5 text-2xl font-bold text-slate-950">{formatCurrency(product?.commercial.minPrice ?? listing.price_min ?? 0)}{product?.commercial.maxPrice != null && product.commercial.maxPrice !== product.commercial.minPrice ? ` - ${formatCurrency(product.commercial.maxPrice)}` : listing.price_max != null && listing.price_max !== listing.price_min ? ` - ${formatCurrency(listing.price_max)}` : ""}<span className="ml-1 text-sm font-medium text-slate-500">{product?.commercial.priceUnit ?? (listing.price_unit ? formatPriceUnit(listing.price_unit) : "")}</span></p> : <p className="mt-5 text-sm font-medium text-slate-500">Pricing available on inquiry</p>}
             <div className="mt-auto pt-6"><Link href={`/post-requirement?listing=${listing.id}`}><Button className="h-12 w-full rounded-xl bg-blue-700 text-base font-semibold text-white hover:bg-blue-800"><MessageSquare className="mr-2 h-5 w-5" /> Send inquiry</Button></Link></div>
           </div>
         </section>

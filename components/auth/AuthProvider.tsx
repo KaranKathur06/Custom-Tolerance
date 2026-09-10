@@ -247,6 +247,7 @@ export function AuthProvider({ children, initialAuth = null }: AuthProviderProps
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("unknown");
   const [isSigningOut, setIsSigningOut] = useState(false);
   const signingOutRef = useRef(false);
+  const authTransitionRef = useRef(0);
   const identityRequestId = useRef(0);
 
   const loadFullIdentity = useCallback(
@@ -308,9 +309,13 @@ export function AuthProvider({ children, initialAuth = null }: AuthProviderProps
   const refreshIdentity = useCallback(async () => {
     if (!supabase || signingOutRef.current) return;
 
+    const transitionId = authTransitionRef.current;
+
     const { data: { user: validatedUser } } = await supabase.auth.getUser();
     const { data: sessionData } = await supabase.auth.getSession();
     const currentUser = validatedUser ?? sessionData.session?.user ?? null;
+
+    if (transitionId !== authTransitionRef.current || signingOutRef.current) return;
 
     applySession(sessionData.session ?? null, currentUser);
     await loadFullIdentity(currentUser);
@@ -318,6 +323,7 @@ export function AuthProvider({ children, initialAuth = null }: AuthProviderProps
 
   useEffect(() => {
     let mounted = true;
+    const transitionId = authTransitionRef.current;
 
     async function hydrate() {
       if (!supabase) {
@@ -337,7 +343,7 @@ export function AuthProvider({ children, initialAuth = null }: AuthProviderProps
       const { data: { user: validatedUser } } = await supabase.auth.getUser();
       const currentUser = validatedUser ?? cachedSession?.user ?? null;
 
-      if (!mounted || signingOutRef.current) return;
+      if (!mounted || signingOutRef.current || transitionId !== authTransitionRef.current) return;
 
       if (!currentUser) {
         applySession(null, null);
@@ -393,7 +399,10 @@ export function AuthProvider({ children, initialAuth = null }: AuthProviderProps
       if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         applySession(nextSession, nextUser);
         setLoading(false);
-        await loadFullIdentity(nextUser);
+        // Keep auth event delivery synchronous. Supabase can emit events while
+        // another auth operation is completing; deferred identity hydration
+        // prevents a second transition from blocking or re-entering the client.
+        void Promise.resolve().then(() => loadFullIdentity(nextUser));
         return;
       }
 
@@ -410,6 +419,7 @@ export function AuthProvider({ children, initialAuth = null }: AuthProviderProps
     if (!supabase || signingOutRef.current) return;
 
     signingOutRef.current = true;
+    authTransitionRef.current += 1;
     setIsSigningOut(true);
     identityRequestId.current += 1;
 
