@@ -36,6 +36,9 @@ test('admin approval route invokes the server-only RPC with the verified admin i
   assert.match(routeSource, /supabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/, 'Approval route must support rolling deployments before the new RPC is available.');
   assert.match(routeSource, /permission denied/i, 'Approval route must recover from incomplete RPC grants during deployment.');
   assert.match(routeSource, /MODERATION_RPC_UNAVAILABLE/, 'Missing moderation RPCs must be surfaced as a deployment error.');
+  assert.match(routeSource, /APPROVAL_UPDATE_FAILED/, 'Approval write failures must be classified explicitly.');
+  assert.match(routeSource, /PRODUCT_UPDATE_FAILED/, 'Product write failures must be classified explicitly.');
+  assert.match(routeSource, /AUDIT_INSERT_FAILED/, 'Audit write failures must be classified explicitly.');
   assert.match(routeSource, /: 500;/, 'Unexpected moderation failures must not be reported as concurrency conflicts.');
 });
 

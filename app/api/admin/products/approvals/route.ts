@@ -231,6 +231,12 @@ export async function PATCH(request: NextRequest) {
                   ? "PRODUCT_NOT_FOUND"
                   : moderationError.message.includes("INVALID_MODERATION_ACTION")
                     ? "INVALID_MODERATION_ACTION"
+                    : moderationError.message.includes("APPROVAL_UPDATE_FAILED")
+                      ? "APPROVAL_UPDATE_FAILED"
+                    : moderationError.message.includes("PRODUCT_UPDATE_FAILED")
+                      ? "PRODUCT_UPDATE_FAILED"
+                    : moderationError.message.includes("AUDIT_INSERT_FAILED")
+                      ? "AUDIT_INSERT_FAILED"
                     : canUseLegacyRpc
                       ? "MODERATION_RPC_UNAVAILABLE"
                       : "MODERATION_DATABASE_ERROR";
@@ -242,6 +248,8 @@ export async function PATCH(request: NextRequest) {
             ? 409
               : code === "ADMIN_ACCESS_REQUIRED"
               ? 403
+              : code === "APPROVAL_UPDATE_FAILED" || code === "PRODUCT_UPDATE_FAILED" || code === "AUDIT_INSERT_FAILED"
+                ? 500
                 : code === "MODERATION_RPC_UNAVAILABLE"
                   ? 503
               : 500;
@@ -253,6 +261,12 @@ export async function PATCH(request: NextRequest) {
             ? "This approval has already been reviewed. Refresh the moderation queue."
             : code === "ADMIN_ACCESS_REQUIRED"
               ? "Admin authorization was not accepted by the moderation database function."
+              : code === "APPROVAL_UPDATE_FAILED"
+                ? `The approval record could not be updated. No review decision was recorded. Reference: ${requestId}`
+              : code === "PRODUCT_UPDATE_FAILED"
+                ? `The product state could not be updated. No review decision was recorded. Reference: ${requestId}`
+              : code === "AUDIT_INSERT_FAILED"
+                ? `The audit record could not be written. No review decision was recorded. Reference: ${requestId}`
               : code === "MODERATION_RPC_UNAVAILABLE"
                 ? "The moderation database function is not deployed. Apply the latest Supabase migration."
                 : `The moderation database operation failed. No review decision was recorded. Reference: ${requestId}`;

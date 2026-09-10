@@ -1,6 +1,5 @@
--- Use the server-verified admin identity for moderation RPC authorization.
--- The existing RPC depends on auth.uid(), which is not reliable when invoked
--- from a server route using service-role database access.
+-- Forward-only hardening for moderation diagnostics.
+-- Every write remains in the same transaction; labeled exceptions roll back all writes.
 
 create or replace function public.review_seller_product_approval_as_admin(
   p_approval_id uuid,
@@ -19,10 +18,7 @@ declare
   v_product public.seller_products%rowtype;
   v_actor_role text;
 begin
-  select role::text into v_actor_role
-  from public.profiles
-  where id = p_actor_id;
-
+  select role::text into v_actor_role from public.profiles where id = p_actor_id;
   if v_actor_role not in ('admin', 'super_admin', 'superadmin') then
     raise exception 'ADMIN_ACCESS_REQUIRED' using errcode = 'P0001';
   end if;
@@ -33,32 +29,17 @@ begin
     raise exception 'REJECTION_REASON_REQUIRED' using errcode = 'P0001';
   end if;
 
-  select * into v_approval
-  from public.product_approvals
-  where id = p_approval_id
-  for update;
+  select * into v_approval from public.product_approvals where id = p_approval_id for update;
+  if not found then raise exception 'APPROVAL_NOT_FOUND' using errcode = 'P0001'; end if;
+  if v_approval.status <> 'pending' then raise exception 'APPROVAL_NOT_PENDING' using errcode = 'P0001'; end if;
 
-  if not found then
-    raise exception 'APPROVAL_NOT_FOUND' using errcode = 'P0001';
-  end if;
-  if v_approval.status <> 'pending' then
-    raise exception 'APPROVAL_NOT_PENDING' using errcode = 'P0001';
-  end if;
-
-  select * into v_product
-  from public.seller_products
-  where id = v_approval.seller_product_id
-  for update;
-
-  if not found then
-    raise exception 'PRODUCT_NOT_FOUND' using errcode = 'P0001';
-  end if;
+  select * into v_product from public.seller_products where id = v_approval.seller_product_id for update;
+  if not found then raise exception 'PRODUCT_NOT_FOUND' using errcode = 'P0001'; end if;
 
   begin
     update public.product_approvals
     set status = case when p_action = 'approve' then 'approved' else 'rejected' end,
-        reviewed_by = p_actor_id,
-        reviewed_at = now(),
+        reviewed_by = p_actor_id, reviewed_at = now(),
         rejection_reason = case when p_action = 'reject' then p_reason else null end,
         notes = p_notes
     where id = p_approval_id;
@@ -71,15 +52,12 @@ begin
     set lifecycle_status = case when p_action = 'approve' then 'paused' else 'rejected' end,
         approval_status = case when p_action = 'approve' then 'approved' else 'rejected' end,
         approval_notes = coalesce(nullif(btrim(p_notes), ''), nullif(btrim(p_reason), '')),
-        is_published = false,
-        is_visible = false,
+        is_published = false, is_visible = false,
         published_at = case when p_action = 'approve' then null else published_at end,
         approved_by = case when p_action = 'approve' then p_actor_id else null end,
         approved_at = case when p_action = 'approve' then now() else null end,
-        updated_at = now(),
-        draft_version = coalesce(draft_version, 1) + 1
-    where id = v_product.id
-    returning * into v_product;
+        updated_at = now(), draft_version = coalesce(draft_version, 1) + 1
+    where id = v_product.id returning * into v_product;
   exception when others then
     raise exception 'PRODUCT_UPDATE_FAILED: %', sqlerrm using errcode = 'P0001';
   end;
@@ -87,9 +65,7 @@ begin
   begin
     insert into public.product_audit_events (seller_product_id, approval_id, actor_id, action, metadata)
     values (
-      v_product.id,
-      p_approval_id,
-      p_actor_id,
+      v_product.id, p_approval_id, p_actor_id,
       case when p_action = 'approve' then 'product_approved' else 'product_rejected' end,
       jsonb_build_object('reason', p_reason, 'notes', p_notes, 'publication_required', p_action = 'approve')
     );
