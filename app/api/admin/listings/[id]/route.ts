@@ -5,6 +5,28 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role-cli
 
 export const dynamic = 'force-dynamic';
 
+function asStringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap((item) => typeof item === 'string' ? [item] : []).filter(Boolean);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return asStringList(parsed);
+    } catch {
+      return value.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function relationValues(rows: unknown[] | null, key: string, fallback: unknown): string[] {
+  const normalized = (rows ?? []).flatMap((row) => {
+    if (!row || typeof row !== 'object') return [];
+    const value = (row as Record<string, unknown>)[key];
+    return typeof value === 'string' && value ? [value] : [];
+  });
+  return normalized.length ? normalized : asStringList(fallback);
+}
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const auth = await protectApiRoute(request, { permissions: [PERMISSIONS.LISTINGS_READ] });
   if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
@@ -61,13 +83,22 @@ export async function GET(request: Request, { params }: { params: { id: string }
     ? await database.from('profiles').select('id, full_name, email').eq('id', product.profile_id).maybeSingle()
     : { data: null };
 
+  const normalizedRelations = {
+    capabilities: relationValues(capabilities, 'capability_id', product.capabilities ?? product.capability),
+    industries: relationValues(industries, 'industry_id', product.industries),
+    materials: relationValues(materials, 'material_name', product.materials),
+    grades: relationValues(grades, 'grade_name', product.grades),
+    paymentTerms: relationValues(paymentTerms, 'payment_term_id', product.payment_terms ?? product.paymentTerms),
+    incoterms: relationValues(incoterms, 'incoterm_id', product.incoterms),
+  };
+
   return NextResponse.json({
     success: true,
     data: {
       product: { ...product, profiles: profile },
       approvals: approvalError ? [] : approvals ?? [],
       images: imageError ? [] : images ?? [],
-      relations: { capabilities: capabilities ?? [], industries: industries ?? [], materials: materials ?? [], grades: grades ?? [], paymentTerms: paymentTerms ?? [], incoterms: incoterms ?? [] },
+      relations: normalizedRelations,
     },
   }, { headers: { 'Cache-Control': 'no-store' } });
 }

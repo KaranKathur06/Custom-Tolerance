@@ -11,12 +11,12 @@ type DetailPayload = {
   approvals: Array<Record<string, any>>;
   images: Array<{ id: string; url: string; is_primary: boolean; display_order: number }>;
   relations: {
-    capabilities: Array<{ capability_id: string }>;
-    industries: Array<{ industry_id: string }>;
-    materials: Array<{ material_name: string }>;
-    grades: Array<{ grade_name: string }>;
-    paymentTerms: Array<{ payment_term_id: string }>;
-    incoterms: Array<{ incoterm_id: string }>;
+    capabilities: string[];
+    industries: string[];
+    materials: string[];
+    grades: string[];
+    paymentTerms: string[];
+    incoterms: string[];
   };
 };
 
@@ -26,12 +26,23 @@ function display(item: unknown) {
   return String(item);
 }
 
-function relation(items: Array<Record<string, string>>, key: string) {
-  return items.map((item) => item[key]).filter(Boolean);
+function relation(items: unknown[], key: string) {
+  return items.flatMap((item) => {
+    if (typeof item === 'string') return item ? [item] : [];
+    if (item && typeof item === 'object') {
+      const value = (item as Record<string, unknown>)[key];
+      return typeof value === 'string' && value ? [value] : [];
+    }
+    return [];
+  });
 }
 
 function Field({ label, item }: { label: string; item: unknown }) {
-  return <div style={{ borderTop: '1px solid var(--ops-border)', paddingTop: 10 }}><dt className="ops-mini-label">{label}</dt><dd style={{ margin: '5px 0 0', color: item == null || item === '' ? 'var(--ops-text-muted)' : 'var(--ops-text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{display(item)}</dd></div>;
+  return <div style={{ borderTop: '1px solid var(--ops-border)', paddingTop: 10, minWidth: 0 }}><dt className="ops-mini-label">{label}</dt><dd style={{ margin: '5px 0 0', color: item == null || item === '' ? 'var(--ops-text-muted)' : 'var(--ops-text-secondary)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.55 }}>{display(item)}</dd></div>;
+}
+
+function LongField({ label, item }: { label: string; item: unknown }) {
+  return <div style={{ gridColumn: '1 / -1' }}><Field label={label} item={item} /></div>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -99,12 +110,12 @@ export default function ListingDetailsPage() {
   const { product, approvals, images, relations } = data;
   const latestApproval = approvals[0];
   const pending = approvals.some((approval) => approval.status === 'pending');
-  const capabilities = relation(relations.capabilities as unknown as Array<Record<string, string>>, 'capability_id');
-  const industries = relation(relations.industries as unknown as Array<Record<string, string>>, 'industry_id');
-  const materials = relation(relations.materials as unknown as Array<Record<string, string>>, 'material_name');
-  const grades = relation(relations.grades as unknown as Array<Record<string, string>>, 'grade_name');
-  const paymentTerms = relation(relations.paymentTerms as unknown as Array<Record<string, string>>, 'payment_term_id');
-  const incoterms = relation(relations.incoterms as unknown as Array<Record<string, string>>, 'incoterm_id');
+  const capabilities = relation(relations.capabilities, 'capability_id');
+  const industries = relation(relations.industries, 'industry_id');
+  const materials = relation(relations.materials, 'material_name');
+  const grades = relation(relations.grades, 'grade_name');
+  const paymentTerms = relation(relations.paymentTerms, 'payment_term_id');
+  const incoterms = relation(relations.incoterms, 'incoterm_id');
 
   return <div>
     <div className="ops-section-header">
@@ -119,12 +130,12 @@ export default function ListingDetailsPage() {
     <Section title="Product identity"><Grid>
       <Field label="Seller" item={product.profiles?.full_name || product.profiles?.email} />
       <Field label="Product name" item={product.product_name} />
-      <Field label="Capabilities" item={capabilities.length ? capabilities : product.capability} />
-      <Field label="Industries served" item={industries} />
-      <Field label="Materials" item={materials.length ? materials : product.materials} />
-      <Field label="Grades" item={grades} />
-      <Field label="Country of origin" item={product.country_of_origin} />
-      <Field label="Description" item={product.description} />
+      <LongField label="Capabilities" item={capabilities.length ? capabilities : product.capabilities ?? product.capability} />
+      <LongField label="Industries served" item={industries.length ? industries : product.industries} />
+      <LongField label="Materials" item={materials.length ? materials : product.materials} />
+      <LongField label="Grades" item={grades.length ? grades : product.grades} />
+      <LongField label="Country of origin" item={product.country_of_origin ?? product.countryOfOrigin ?? product.origin_country} />
+      <LongField label="Description" item={product.description ?? product.product_description} />
     </Grid></Section>
 
     <Section title="Technical specification"><Grid>
