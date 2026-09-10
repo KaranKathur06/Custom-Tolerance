@@ -1,5 +1,76 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 
+export type ProductMedia = {
+  url: string;
+  path: string | null;
+  isPrimary: boolean;
+  sortOrder: number;
+};
+
+export type ProductSpecification = {
+  label: string;
+  value: string;
+};
+
+export type PublicProductDetail = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  category: string | null;
+  subcategory: string | null;
+  productType: string | null;
+  status: "active";
+  media: ProductMedia[];
+  technical: {
+    capabilities: string[];
+    industries: string[];
+    materials: string[];
+    grades: string[];
+    specification: string | null;
+    tolerance: string | null;
+    dimensions: ProductSpecification[];
+    weight: ProductSpecification[];
+    qualityCertificate: string | null;
+    tooling: ProductSpecification[];
+  };
+  manufacturing: {
+    productionCapacity: string | null;
+    productionCapacityUnit: string | null;
+    minimumOrderQuantity: string | null;
+    leadTime: string | null;
+    inspection: string | null;
+  };
+  commercial: {
+    priceType: string | null;
+    minPrice: number | null;
+    maxPrice: number | null;
+    currency: string | null;
+    priceUnit: string | null;
+    paymentTerms: string[];
+    incoterms: string[];
+    deliveryTerms: string | null;
+    negotiable: boolean;
+    freeSample: string | null;
+    sampleShippingCost: string | null;
+  };
+  packaging: {
+    shippingType: string | null;
+    primary: string | null;
+    secondary: string | null;
+    notes: string | null;
+  };
+  seller: {
+    companyId: string | null;
+    profileId: string | null;
+  };
+  metadata: {
+    createdAt: string;
+    updatedAt: string;
+    publishedAt: string | null;
+  };
+};
+
 export type PublicListing = {
   id: string;
   title: string;
@@ -28,6 +99,7 @@ export type PublicListing = {
   created_at: string;
   company_id: string | null;
   seller_profile_id: string | null;
+  product: PublicProductDetail | null;
 };
 
 export type ListingCompany = {
@@ -44,13 +116,164 @@ export type ListingCompany = {
   marketplace_supplier_id: string | null;
 };
 
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function asNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function humanize(value: string): string {
+  return value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function specification(label: string, value: unknown, suffix?: unknown): ProductSpecification | null {
+  const normalized = asString(value) ?? (asNumber(value) != null ? String(asNumber(value)) : null);
+  if (!normalized) return null;
+  const unit = asString(suffix);
+  return { label, value: unit ? `${normalized} ${unit}` : normalized };
+}
+
+export function toPublicProductDetail(
+  product: Record<string, unknown>,
+  relations: {
+    images?: Record<string, unknown>[] | null;
+    capabilities?: Record<string, unknown>[] | null;
+    industries?: Record<string, unknown>[] | null;
+    materials?: Record<string, unknown>[] | null;
+    grades?: Record<string, unknown>[] | null;
+    paymentTerms?: Record<string, unknown>[] | null;
+    incoterms?: Record<string, unknown>[] | null;
+  } = {},
+): PublicProductDetail {
+  const images = (relations.images ?? [])
+    .map((image, index) => {
+      const url = asString(image.url);
+      return url
+        ? {
+            url,
+            path: asString(image.storage_path),
+            isPrimary: Boolean(image.is_primary),
+            sortOrder: asNumber(image.display_order) ?? index,
+          }
+        : null;
+    })
+    .filter((image): image is ProductMedia => Boolean(image))
+    .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.sortOrder - b.sortOrder);
+
+  const dimensions = [
+    specification("Length", product.dim_length, product.dim_unit),
+    specification("Width", product.dim_width, product.dim_unit),
+    specification("Height", product.dim_height, product.dim_unit),
+  ].filter((item): item is ProductSpecification => Boolean(item));
+
+  const weight = [specification("Product weight", product.weight_value, product.weight_unit)].filter(
+    (item): item is ProductSpecification => Boolean(item),
+  );
+  const tooling = [
+    specification("Dies and tools", product.dies_and_tools),
+    specification("Estimated tool cost", product.estimated_tool_cost, product.currency),
+    specification("Tool ownership", product.tool_ownership),
+    specification("Tool lead time", product.tool_lead_time),
+  ].filter((item): item is ProductSpecification => Boolean(item));
+
+  return {
+    id: String(product.id ?? ""),
+    title: asString(product.product_name) ?? "Untitled product",
+    slug: String(product.id ?? ""),
+    description: asString(product.description),
+    category: asString(product.capability),
+    subcategory: null,
+    productType: asString(product.specification),
+    status: "active",
+    media: images,
+    technical: {
+      capabilities: (relations.capabilities ?? [])
+        .map((item) => asString(item.capability_id))
+        .filter((item): item is string => Boolean(item))
+        .map(humanize),
+      industries: (relations.industries ?? [])
+        .map((item) => asString(item.industry_id))
+        .filter((item): item is string => Boolean(item))
+        .map(humanize),
+      materials: (relations.materials ?? [])
+        .map((item) => asString(item.material_name))
+        .filter((item): item is string => Boolean(item)),
+      grades: (relations.grades ?? [])
+        .map((item) => asString(item.grade_name))
+        .filter((item): item is string => Boolean(item)),
+      specification: asString(product.specification),
+      tolerance: asString(product.tolerance_capability),
+      dimensions,
+      weight,
+      qualityCertificate: asString(product.quality_certificate),
+      tooling,
+    },
+    manufacturing: {
+      productionCapacity: asString(product.monthly_capacity) ?? (asNumber(product.monthly_capacity) != null ? String(asNumber(product.monthly_capacity)) : null),
+      productionCapacityUnit: asString(product.production_capacity_unit),
+      minimumOrderQuantity: asString(product.moq) ?? (asNumber(product.moq) != null ? String(asNumber(product.moq)) : null),
+      leadTime: asString(product.lead_time),
+      inspection: product.third_party_inspection === true ? "Third-party inspection available" : null,
+    },
+    commercial: {
+      priceType: asString(product.price_type),
+      minPrice: asNumber(product.min_price),
+      maxPrice: asNumber(product.max_price),
+      currency: asString(product.currency),
+      priceUnit: asString(product.price_unit),
+      paymentTerms: (relations.paymentTerms ?? [])
+        .map((item) => asString(item.payment_term_id))
+        .filter((item): item is string => Boolean(item))
+        .map(humanize),
+      incoterms: (relations.incoterms ?? [])
+        .map((item) => asString(item.incoterm_id))
+        .filter((item): item is string => Boolean(item))
+        .map(humanize),
+      deliveryTerms: asString(product.delivery_terms),
+      negotiable: true,
+      freeSample: product.free_sample === true ? "Available" : product.free_sample === false ? "Not available" : null,
+      sampleShippingCost: asString(product.sample_shipping_cost),
+    },
+    packaging: {
+      shippingType: asString(product.shipping_type),
+      primary: asString(product.primary_packaging),
+      secondary: asString(product.secondary_packaging),
+      notes: asString(product.packaging_notes),
+    },
+    seller: {
+      companyId: asString(product.company_id),
+      profileId: asString(product.profile_id),
+    },
+    metadata: {
+      createdAt: asString(product.created_at) ?? new Date(0).toISOString(),
+      updatedAt: asString(product.updated_at) ?? asString(product.created_at) ?? new Date(0).toISOString(),
+      publishedAt: asString(product.published_at),
+    },
+  };
+}
+
 export async function loadListingBySlug(slug: string): Promise<PublicListing | null> {
   const supabase = createSupabaseServerClient();
   if (!supabase) return null;
 
   const { data: sellerProduct } = await supabase
     .from("seller_products")
-    .select("id, product_name, description, capability, materials, moq, lead_time, monthly_capacity, is_featured, profile_id, published_at, updated_at")
+    .select("*")
     .eq("id", slug)
     .eq("approval_status", "approved")
     .eq("lifecycle_status", "active")
@@ -59,12 +282,30 @@ export async function loadListingBySlug(slug: string): Promise<PublicListing | n
     .maybeSingle();
 
   if (sellerProduct) {
-    const { data: sellerProfile } = await supabase
+    const [{ data: sellerProfile }, ...relationResults] = await Promise.all([
+      supabase
       .from("seller_profiles")
       .select("id, company_id")
       .eq("user_id", sellerProduct.profile_id)
-      .maybeSingle();
-    const materials = Array.isArray(sellerProduct.materials) ? sellerProduct.materials : [];
+      .maybeSingle(),
+      supabase.from("product_images").select("url, storage_path, is_primary, display_order").eq("seller_product_id", sellerProduct.id).order("display_order", { ascending: true }),
+      supabase.from("product_capabilities").select("capability_id").eq("seller_product_id", sellerProduct.id),
+      supabase.from("product_industries").select("industry_id").eq("seller_product_id", sellerProduct.id),
+      supabase.from("product_materials").select("material_name").eq("seller_product_id", sellerProduct.id),
+      supabase.from("product_grades").select("grade_name").eq("seller_product_id", sellerProduct.id),
+      supabase.from("product_payment_terms").select("payment_term_id").eq("seller_product_id", sellerProduct.id),
+      supabase.from("product_incoterms").select("incoterm_id").eq("seller_product_id", sellerProduct.id),
+    ]);
+    const product = toPublicProductDetail(sellerProduct as Record<string, unknown>, {
+      images: relationResults[0].data as Record<string, unknown>[] | null,
+      capabilities: relationResults[1].data as Record<string, unknown>[] | null,
+      industries: relationResults[2].data as Record<string, unknown>[] | null,
+      materials: relationResults[3].data as Record<string, unknown>[] | null,
+      grades: relationResults[4].data as Record<string, unknown>[] | null,
+      paymentTerms: relationResults[5].data as Record<string, unknown>[] | null,
+      incoterms: relationResults[6].data as Record<string, unknown>[] | null,
+    });
+    const materials = product.technical.materials.length > 0 ? product.technical.materials : asStringArray(sellerProduct.materials);
     return {
       id: sellerProduct.id,
       title: sellerProduct.product_name,
@@ -93,6 +334,7 @@ export async function loadListingBySlug(slug: string): Promise<PublicListing | n
       created_at: sellerProduct.published_at ?? sellerProduct.updated_at,
       company_id: sellerProfile?.company_id ?? null,
       seller_profile_id: sellerProfile?.id ?? null,
+      product,
     };
   }
 
@@ -114,7 +356,7 @@ export async function loadListingBySlug(slug: string): Promise<PublicListing | n
     .is("deleted_at", null)
     .maybeSingle();
 
-  return data;
+  return data ? { ...data, product: null } : null;
 }
 
 export async function loadListingCompany(companyId: string | null): Promise<ListingCompany | null> {

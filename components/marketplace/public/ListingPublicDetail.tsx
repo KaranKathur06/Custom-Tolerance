@@ -1,16 +1,10 @@
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Building2,
-  CheckCircle,
-  MessageSquare,
-  Package,
-  Shield,
-} from "lucide-react";
+import { Building2, CheckCircle, MessageSquare, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import type { ListingCompany, PublicListing } from "@/lib/marketplace/listing-detail";
+import { ProductGallery } from "./ProductGallery";
+import type { ListingCompany, PublicListing, PublicProductDetail, ProductSpecification } from "@/lib/marketplace/listing-detail";
 
 type ListingPublicDetailProps = {
   listing: PublicListing;
@@ -25,157 +19,80 @@ export function ListingPublicDetail({
   backHref = "/marketplace",
   backLabel = "Marketplace",
 }: ListingPublicDetailProps) {
+  const product = listing.product;
   const isVerified = company?.verification_status === "approved";
-  const certs = listing.certifications ?? [];
-  const supplierHref = company?.slug
-    ? `/suppliers/${company.slug}`
-    : company?.marketplace_supplier_id
-      ? `/suppliers/${company.marketplace_supplier_id}`
-      : null;
+  const supplierHref = company?.slug ? `/suppliers/${company.slug}` : company?.marketplace_supplier_id ? `/suppliers/${company.marketplace_supplier_id}` : null;
+  const title = product?.title ?? listing.title;
+  const description = product?.description ?? listing.description;
+  const media = product?.media ?? [];
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="border-b bg-white">
         <div className="container flex items-center gap-2 py-3 text-sm text-slate-500">
-          <Link href={backHref} className="inline-flex items-center gap-1 hover:text-primary">
-            <ArrowLeft className="h-3.5 w-3.5" /> {backLabel}
-          </Link>
-          <span>/</span>
-          <span className="truncate font-medium text-slate-900">{listing.title}</span>
+          <Link href={backHref} className="hover:text-primary">{backLabel}</Link><span>/</span><span className="truncate font-medium text-slate-900">{title}</span>
         </div>
       </div>
 
-      <div className="container py-8">
-        <div className="grid gap-8 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-slate-200">
-              <div className="absolute inset-0 flex items-center justify-center text-slate-400">
-                <Package className="h-16 w-16" />
-              </div>
-              <div className="absolute left-4 top-4 flex gap-2">
-                <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
-                  {listing.metal_type || "Metal"}
-                </Badge>
-                {listing.is_featured ? (
-                  <Badge className="border-0 bg-gradient-to-r from-yellow-500 to-amber-500 text-white">
-                    Premium
-                  </Badge>
-                ) : null}
-              </div>
-              {isVerified ? (
-                <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white">
-                  <CheckCircle className="h-3 w-3" /> Verified
-                </div>
-              ) : null}
+      <main className="container space-y-8 py-8">
+        <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <ProductGallery media={media} title={title} />
+          <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap gap-2">
+              {(product?.category ?? listing.metal_type) ? <Badge variant="secondary">{product?.category ?? listing.metal_type}</Badge> : null}
+              {listing.is_featured ? <Badge className="bg-amber-500 text-white">Featured</Badge> : null}
+              {isVerified ? <Badge className="gap-1 bg-emerald-600 text-white"><CheckCircle className="h-3 w-3" /> Verified supplier</Badge> : null}
             </div>
-
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">{listing.title}</h1>
-              {listing.grade ? <p className="mt-1 text-sm text-slate-500">Grade: {listing.grade}</p> : null}
-              <div className="mt-4 flex flex-wrap items-baseline gap-4">
-                {listing.price_min != null ? (
-                  <div className="text-3xl font-bold text-slate-900">
-                    {formatCurrency(listing.price_min)}
-                    {listing.price_max && listing.price_max !== listing.price_min ? (
-                      <span> — {formatCurrency(listing.price_max)}</span>
-                    ) : null}
-                    <span className="ml-1 text-base font-medium text-slate-500">
-                      {listing.price_unit || "/ MT"}
-                    </span>
-                  </div>
-                ) : null}
-                {listing.is_negotiable ? (
-                  <Badge variant="outline" className="border-emerald-200 text-emerald-600">
-                    Negotiable
-                  </Badge>
-                ) : null}
-              </div>
+            <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-950">{title}</h1>
+            {product?.technical.grades.length ? <p className="mt-2 text-sm text-slate-500">Grades: {product.technical.grades.join(", ")}</p> : listing.grade ? <p className="mt-2 text-sm text-slate-500">Grade: {listing.grade}</p> : null}
+            <div className="mt-6 grid grid-cols-2 gap-4 border-y border-slate-100 py-5">
+              <Summary label="Minimum order" value={product?.manufacturing.minimumOrderQuantity ?? listing.moq} />
+              <Summary label="Lead time" value={product?.manufacturing.leadTime ?? listing.lead_time} />
+              <Summary label="Production capacity" value={product?.manufacturing.productionCapacity ? `${product.manufacturing.productionCapacity} ${product.manufacturing.productionCapacityUnit ?? ""}` : listing.production_capacity} />
+              <Summary label="Availability" value="Active listing" />
             </div>
-
-            <div className="rounded-xl border bg-white p-6">
-              <h2 className="mb-4 text-lg font-bold">Specifications</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {listing.material_spec ? (
-                  <Spec label="Material spec" value={listing.material_spec} />
-                ) : null}
-                {listing.moq ? <Spec label="Minimum order" value={listing.moq} /> : null}
-                {listing.lead_time ? <Spec label="Lead time" value={listing.lead_time} /> : null}
-                {listing.production_capacity ? (
-                  <Spec label="Production capacity" value={listing.production_capacity} />
-                ) : null}
-              </div>
-            </div>
-
-            {listing.description ? (
-              <div className="rounded-xl border bg-white p-6">
-                <h2 className="mb-3 text-lg font-bold">Description</h2>
-                <p className="whitespace-pre-line text-slate-600">{listing.description}</p>
-              </div>
-            ) : null}
-
-            {certs.length > 0 ? (
-              <div className="rounded-xl border bg-white p-6">
-                <h2 className="mb-3 text-lg font-bold">Certifications</h2>
-                <div className="flex flex-wrap gap-2">
-                  {certs.map((cert) => (
-                    <Badge
-                      key={cert}
-                      variant="outline"
-                      className="border-blue-200 bg-blue-50 text-blue-700"
-                    >
-                      {cert}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            {product?.commercial.minPrice != null || listing.price_min != null ? <p className="mt-5 text-2xl font-bold text-slate-950">{formatCurrency(product?.commercial.minPrice ?? listing.price_min ?? 0)}{product?.commercial.maxPrice != null && product.commercial.maxPrice !== product.commercial.minPrice ? ` - ${formatCurrency(product.commercial.maxPrice)}` : listing.price_max != null && listing.price_max !== listing.price_min ? ` - ${formatCurrency(listing.price_max)}` : ""}<span className="ml-1 text-sm font-medium text-slate-500">{product?.commercial.priceUnit ?? listing.price_unit ?? ""}</span></p> : <p className="mt-5 text-sm font-medium text-slate-500">Pricing available on inquiry</p>}
+            <div className="mt-auto pt-6"><Link href={`/post-requirement?listing=${listing.id}`}><Button className="h-12 w-full rounded-xl bg-blue-700 text-base font-semibold text-white hover:bg-blue-800"><MessageSquare className="mr-2 h-5 w-5" /> Send inquiry</Button></Link></div>
           </div>
+        </section>
 
-          <div className="space-y-6">
-            <div className="rounded-xl border bg-white p-6 shadow-sm">
-              <Link href={`/post-requirement?listing=${listing.id}`}>
-                <Button className="h-12 w-full rounded-xl bg-gradient-to-r from-[#1e3a8a] to-[#3b82f6] text-base font-bold text-white">
-                  <MessageSquare className="mr-2 h-5 w-5" /> Send inquiry
-                </Button>
-              </Link>
-            </div>
+        {description ? <Section title="Product overview"><p className="whitespace-pre-line leading-7 text-slate-600">{description}</p></Section> : null}
+        {product ? <ProductSections product={product} listing={listing} /> : <LegacySections listing={listing} />}
 
-            {company ? (
-              <div className="rounded-xl border bg-white p-6">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
-                    <Building2 className="h-6 w-6 text-slate-500" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-900">{company.name}</p>
-                    {isVerified ? (
-                      <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                        <Shield className="h-3 w-3" /> Verified business
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                {supplierHref ? (
-                  <Link href={supplierHref}>
-                    <Button variant="outline" className="mt-2 w-full">
-                      View supplier profile
-                    </Button>
-                  </Link>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
+        {company ? <Section title="Supplier"><div className="flex flex-wrap items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100"><Building2 className="h-6 w-6 text-slate-500" /></div><div><p className="font-bold text-slate-900">{company.name}</p>{isVerified ? <p className="flex items-center gap-1 text-xs font-semibold text-emerald-600"><Shield className="h-3 w-3" /> Verified business</p> : null}</div></div>{supplierHref ? <Link href={supplierHref}><Button variant="outline">View supplier profile</Button></Link> : null}</div></Section> : null}
+      </main>
     </div>
   );
 }
 
-function Spec({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase text-slate-400">{label}</p>
-      <p className="font-semibold">{value}</p>
-    </div>
-  );
+function ProductSections({ product, listing }: { product: PublicProductDetail; listing: PublicListing }) {
+  const technical = [...product.technical.dimensions, ...product.technical.weight];
+  const materials = [...product.technical.materials, ...product.technical.grades];
+  const commercial = product.commercial;
+  return <>
+    {product.technical.capabilities.length || product.technical.industries.length || product.technical.specification || product.technical.tolerance || technical.length || product.technical.qualityCertificate ? <Section title="Technical specifications"><SpecGrid items={[{ label: "Capabilities", value: product.technical.capabilities.join(", ") }, { label: "Industries", value: product.technical.industries.join(", ") }, { label: "Product standard", value: product.technical.specification }, { label: "Tolerance", value: product.technical.tolerance }, { label: "Quality certificate", value: product.technical.qualityCertificate }, ...technical]} /></Section> : null}
+    {materials.length ? <Section title="Materials & grades"><div className="grid gap-3 sm:grid-cols-2">{materials.map((value, index) => <div key={`${value}-${index}`} className="rounded-lg bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">{value}</div>)}</div></Section> : null}
+    {product.manufacturing.productionCapacity || product.manufacturing.minimumOrderQuantity || product.manufacturing.leadTime || product.manufacturing.inspection || product.technical.tooling.length ? <Section title="Manufacturing"><SpecGrid items={[{ label: "Production capacity", value: product.manufacturing.productionCapacity ? `${product.manufacturing.productionCapacity} ${product.manufacturing.productionCapacityUnit ?? ""}` : null }, { label: "Minimum order", value: product.manufacturing.minimumOrderQuantity }, { label: "Lead time", value: product.manufacturing.leadTime }, { label: "Inspection", value: product.manufacturing.inspection }, ...product.technical.tooling]} /></Section> : null}
+    {product.packaging.shippingType || product.packaging.primary || product.packaging.secondary || product.packaging.notes ? <Section title="Packaging & delivery"><SpecGrid items={[{ label: "Shipping type", value: product.packaging.shippingType }, { label: "Primary packaging", value: product.packaging.primary }, { label: "Secondary packaging", value: product.packaging.secondary }, { label: "Packaging notes", value: product.packaging.notes }, { label: "Delivery terms", value: commercial.deliveryTerms }, { label: "Incoterms", value: commercial.incoterms.join(", ") }]} /></Section> : null}
+    {commercial.priceType || commercial.currency || commercial.paymentTerms.length || commercial.freeSample || commercial.sampleShippingCost ? <Section title="Commercial information"><SpecGrid items={[{ label: "Pricing model", value: commercial.priceType?.replace(/_/g, " ") }, { label: "Currency", value: commercial.currency }, { label: "Price unit", value: commercial.priceUnit }, { label: "Payment terms", value: commercial.paymentTerms.join(", ") }, { label: "Free sample", value: commercial.freeSample }, { label: "Sample shipping", value: commercial.sampleShippingCost }]} /></Section> : null}
+    {listing.certifications?.length ? <Section title="Quality & certifications"><div className="flex flex-wrap gap-2">{listing.certifications.map((cert) => <Badge key={cert} variant="outline">{cert}</Badge>)}</div></Section> : null}
+  </>;
+}
+
+function LegacySections({ listing }: { listing: PublicListing }) {
+  return <>{listing.material_spec || listing.moq || listing.lead_time || listing.production_capacity ? <Section title="Specifications"><SpecGrid items={[{ label: "Material", value: listing.material_spec }, { label: "Minimum order", value: listing.moq }, { label: "Lead time", value: listing.lead_time }, { label: "Production capacity", value: listing.production_capacity }]} /></Section> : null}{listing.certifications?.length ? <Section title="Quality & certifications"><div className="flex flex-wrap gap-2">{listing.certifications.map((cert) => <Badge key={cert} variant="outline">{cert}</Badge>)}</div></Section> : null}</>;
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="mb-5 text-xl font-bold text-slate-950">{title}</h2>{children}</section>;
+}
+
+function SpecGrid({ items }: { items: Array<ProductSpecification | { label: string; value: string | null | undefined }> }) {
+  const visible = items.filter((item) => typeof item.value === "string" && item.value.trim());
+  if (!visible.length) return null;
+  return <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">{visible.map((item) => <div key={item.label}><p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{item.label}</p><p className="mt-1 text-sm font-medium text-slate-800">{item.value}</p></div>)}</div>;
+}
+
+function Summary({ label, value }: { label: string; value: string | null | undefined }) {
+  return <div><p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p><p className="mt-1 text-sm font-semibold text-slate-900">{value?.trim() || "Not specified"}</p></div>;
 }

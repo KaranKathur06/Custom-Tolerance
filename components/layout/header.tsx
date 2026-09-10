@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { BRAND } from '@/config/brand';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
+import { BrandLogo } from '@/components/layout/BrandLogo';
 import { resolveAuthRole, type AppRole } from '@/lib/auth/profile-role';
 import { getAuthenticatedNavItems, getOnboardingHref } from '@/lib/marketplace/auth-navigation';
 import { canPostRequirement } from '@/lib/constants/roles';
@@ -317,9 +318,7 @@ export function Header() {
         <div className="border-b border-slate-200 shadow-sm">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-8">
             {/* Logo */}
-            <Link href="/" className="shrink-0 text-xl font-bold text-slate-900 lg:text-2xl">
-              {BRAND.name}
-            </Link>
+            <BrandLogo className="flex shrink-0 items-center" />
 
             {/* Center Nav */}
             <nav className="hidden items-center lg:flex" role="navigation" aria-label="Main navigation">

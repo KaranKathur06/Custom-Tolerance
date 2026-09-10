@@ -21,11 +21,18 @@ export const metadata: Metadata = {
     siteName: BRAND.name,
     url: brandSiteUrl(),
     type: "website",
+    images: [{ url: "/logo.png", width: 1920, height: 768, alt: BRAND.name }],
   },
   twitter: {
     card: "summary_large_image",
     title: brandPageTitle(),
     description: `${BRAND.name} — verified B2B industrial procurement marketplace.`,
+    images: ["/logo.png"],
+  },
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 }
 
