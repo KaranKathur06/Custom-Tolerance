@@ -177,14 +177,15 @@ export async function PATCH(request: NextRequest) {
       : { data: null };
 
     const newStatus = action === "approve" ? "approved" : "rejected";
-    // The RPC authorizes the actor with auth.uid(). Invoke it through the
-    // authenticated request client so the database sees the actual admin,
-    // while retaining the service-role client for protected reads/notifications.
-    const { error: moderationError } = await supabase.rpc("review_seller_product_approval", {
+    // The route has already authenticated and authorized this actor. The
+    // server-only RPC revalidates that actor inside the transaction while the
+    // service-role client supplies the required database write context.
+    const { error: moderationError } = await adminDatabase.rpc("review_seller_product_approval_as_admin", {
       p_approval_id: canonicalApprovalId,
       p_action: String(action),
       p_reason: rejection_reason ? String(rejection_reason) : null,
       p_notes: notes ? String(notes) : null,
+      p_actor_id: user.id,
     });
     if (moderationError) {
       const code = moderationError.message.includes("REJECTION_REASON_REQUIRED")

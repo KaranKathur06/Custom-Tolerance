@@ -28,11 +28,11 @@ test('canonical approval RPC is defined only once across migration files', () =>
   );
 });
 
-test('admin approval route invokes the canonical RPC with the authenticated admin identity', () => {
+test('admin approval route invokes the server-only RPC with the verified admin identity', () => {
   const routeSource = fs.readFileSync(routePath, 'utf8');
 
-  assert.match(routeSource, /supabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/, 'Approval route must invoke the canonical RPC with the authenticated admin client.');
-  assert.doesNotMatch(routeSource, /adminDatabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/, 'Approval route must not invoke the actor-authorized RPC with a service-role identity.');
+  assert.match(routeSource, /adminDatabase\.rpc\(\s*["']review_seller_product_approval_as_admin["']\s*,/, 'Approval route must invoke the server-only moderation RPC.');
+  assert.match(routeSource, /p_actor_id:\s*user\.id/, 'Approval route must pass the server-verified admin identity.');
   assert.match(routeSource, /: 500;/, 'Unexpected moderation failures must not be reported as concurrency conflicts.');
 });
 
