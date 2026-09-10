@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { protectApiRoute } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role-client';
+import type { AdminListingDetailPayload } from '@/types/admin-listing-detail';
 
 export const dynamic = 'force-dynamic';
 

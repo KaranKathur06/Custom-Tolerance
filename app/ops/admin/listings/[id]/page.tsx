@@ -5,24 +5,27 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, CheckCircle2, Clock, Image as ImageIcon, Loader2, XCircle } from 'lucide-react';
 import { StatusBadge } from '@/components/ops/shared/StatusBadge';
+import type { AdminListingDetailPayload } from '@/types/admin-listing-detail';
 
-type DetailPayload = {
-  product: Record<string, any> & { profiles?: { full_name?: string | null; email?: string | null } };
-  approvals: Array<Record<string, any>>;
-  images: Array<{ id: string; url: string; is_primary: boolean; display_order: number }>;
-  relations: {
-    capabilities: string[];
-    industries: string[];
-    materials: string[];
-    grades: string[];
-    paymentTerms: string[];
-    incoterms: string[];
-  };
-};
+// Type alias for the payload's data property
+type DetailPayload = AdminListingDetailPayload['data'];
+
+/**
+ * Convert array of strings to comma-separated display value
+ * The relations from the API are already normalized to string arrays by relationValues()
+ */
+function formatRelationArray(values: string[] | undefined | null): string | string[] {
+  if (!values || values.length === 0) return '-';
+  return values;
+}
 
 function display(item: unknown) {
-  if (item == null || item === '') return '-';
-  if (Array.isArray(item)) return item.join(', ') || '-';
+  if (item == null || item === '') return 'Not provided';
+  if (Array.isArray(item)) {
+    if (item.length === 0) return 'Not provided';
+    // For admin review, show all items joined with comma and space
+    return item.join(', ');
+  }
   return String(item);
 }
 
@@ -94,7 +97,19 @@ export default function ListingDetailsPage() {
         body: JSON.stringify({ approval_id: approvalId, action, rejection_reason: rejectionReason.trim() || undefined }),
       });
       const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? 'The moderation action could not be completed.');
+      if (!response.ok) {
+        // Handle specific error codes with better messages
+        if (response.status === 409 || payload?.error?.code === 'APPROVAL_NOT_PENDING') {
+          throw new Error('This product was already reviewed by another team member. Refresh the page to see the latest decision.');
+        }
+        if (response.status === 404 || payload?.error?.code === 'APPROVAL_NOT_FOUND') {
+          throw new Error('This approval is no longer available. The moderation queue may have been updated.');
+        }
+        throw new Error(payload?.error?.message ?? 'The moderation action could not be completed.');
+      }
+      if (!payload?.success) {
+        throw new Error(payload?.error?.message ?? 'The moderation action could not be completed.');
+      }
       router.push('/ops/admin/listings');
       router.refresh();
     } catch (reviewError) {
@@ -110,12 +125,15 @@ export default function ListingDetailsPage() {
   const { product, approvals, images, relations } = data;
   const latestApproval = approvals[0];
   const pending = approvals.some((approval) => approval.status === 'pending');
-  const capabilities = relation(relations.capabilities, 'capability_id');
-  const industries = relation(relations.industries, 'industry_id');
-  const materials = relation(relations.materials, 'material_name');
-  const grades = relation(relations.grades, 'grade_name');
-  const paymentTerms = relation(relations.paymentTerms, 'payment_term_id');
-  const incoterms = relation(relations.incoterms, 'incoterm_id');
+  
+  // The relations are already normalized to string arrays by the admin API's relationValues() function
+  // No need to extract keys - they're already primitive values
+  const capabilities = relations.capabilities || [];
+  const industries = relations.industries || [];
+  const materials = relations.materials || [];
+  const grades = relations.grades || [];
+  const paymentTerms = relations.paymentTerms || [];
+  const incoterms = relations.incoterms || [];
 
   return <div>
     <div className="ops-section-header">
@@ -130,12 +148,12 @@ export default function ListingDetailsPage() {
     <Section title="Product identity"><Grid>
       <Field label="Seller" item={product.profiles?.full_name || product.profiles?.email} />
       <Field label="Product name" item={product.product_name} />
-      <LongField label="Capabilities" item={capabilities.length ? capabilities : product.capabilities ?? product.capability} />
-      <LongField label="Industries served" item={industries.length ? industries : product.industries} />
-      <LongField label="Materials" item={materials.length ? materials : product.materials} />
-      <LongField label="Grades" item={grades.length ? grades : product.grades} />
-      <LongField label="Country of origin" item={product.country_of_origin ?? product.countryOfOrigin ?? product.origin_country} />
-      <LongField label="Description" item={product.description ?? product.product_description} />
+      <LongField label="Capabilities" item={capabilities.length > 0 ? capabilities : (product.capabilities ?? product.capability ?? '-')} />
+      <LongField label="Industries served" item={industries.length > 0 ? industries : (product.industries ?? '-')} />
+      <LongField label="Materials" item={materials.length > 0 ? materials : (product.materials ?? '-')} />
+      <LongField label="Grades" item={grades.length > 0 ? grades : (product.grades ?? '-')} />
+      <LongField label="Country of origin" item={product.country_of_origin ?? product.countryOfOrigin ?? product.origin_country ?? 'Not provided'} />
+      <LongField label="Description" item={product.description ?? product.product_description ?? 'Not provided'} />
     </Grid></Section>
 
     <Section title="Technical specification"><Grid>
@@ -157,8 +175,8 @@ export default function ListingDetailsPage() {
       <Field label="Minimum order quantity" item={product.moq} />
       <Field label="Monthly capacity" item={product.monthly_capacity != null ? `${product.monthly_capacity} ${product.production_capacity_unit ?? ''}` : null} />
       <Field label="Lead time" item={product.lead_time} />
-      <Field label="Payment terms" item={paymentTerms} />
-      <Field label="Incoterms" item={incoterms} />
+      <Field label="Payment terms" item={paymentTerms.length > 0 ? paymentTerms : (product.payment_terms ?? 'Not specified')} />
+      <Field label="Incoterms" item={incoterms.length > 0 ? incoterms : (product.incoterms ?? 'Not specified')} />
       <Field label="Delivery terms" item={product.delivery_terms} />
       <Field label="Free sample" item={product.free_sample ? 'Yes' : 'No'} />
       <Field label="Sample shipping cost" item={product.sample_shipping_cost} />
