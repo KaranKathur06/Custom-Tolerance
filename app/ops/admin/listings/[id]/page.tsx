@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArrowLeft, CheckCircle2, Clock, Image as ImageIcon, Loader2, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Clock, Image as ImageIcon, Loader2, X, XCircle } from 'lucide-react';
 import { StatusBadge } from '@/components/ops/shared/StatusBadge';
 import type { AdminListingDetailPayload } from '@/types/admin-listing-detail';
 
@@ -63,6 +63,7 @@ export default function ListingDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -193,7 +194,36 @@ export default function ListingDetailsPage() {
     </Grid></Section>
 
     <Section title={`Product media (${images.length})`}>
-      {images.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>{images.map((image) => <img key={image.id} src={image.url} alt={`${display(product.product_name)} product media`} style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 8, border: image.is_primary ? '2px solid var(--ops-accent-admin)' : '1px solid var(--ops-border)' }} />)}</div> : <div className="ops-muted-cell" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ImageIcon className="h-4 w-4" /> No product media submitted.</div>}
+      {images.length ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+          {images.map((image, index) => (
+            <button
+              key={image.id}
+              type="button"
+              onClick={() => setActiveImageIndex(index)}
+              style={{ padding: 0, border: image.is_primary ? '2px solid var(--ops-accent-admin)' : '1px solid var(--ops-border)', borderRadius: 8, overflow: 'hidden', background: 'transparent', cursor: 'pointer' }}
+              aria-label={`Open image ${index + 1} of ${images.length}`}
+            >
+              <img
+                src={image.url}
+                alt={`${display(product.product_name)} product media`}
+                style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block' }}
+              />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="ops-muted-cell" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ImageIcon className="h-4 w-4" /> No product media submitted.</div>
+      )}
+      {activeImageIndex !== null && images[activeImageIndex] ? (
+        <ProductMediaLightbox
+          images={images}
+          index={activeImageIndex}
+          onClose={() => setActiveImageIndex(null)}
+          onPrev={() => setActiveImageIndex((index) => index === null ? null : (index - 1 + images.length) % images.length)}
+          onNext={() => setActiveImageIndex((index) => index === null ? null : (index + 1) % images.length)}
+        />
+      ) : null}
     </Section>
 
     <Section title="Approval history">
@@ -206,4 +236,71 @@ export default function ListingDetailsPage() {
       {pending ? <><label className="ops-mini-label" htmlFor="rejection-reason">Rejection reason (required when rejecting)</label><textarea id="rejection-reason" value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} placeholder="Explain what the seller needs to correct..." rows={3} style={{ display: 'block', width: '100%', margin: '8px 0 14px', padding: 10, color: 'var(--ops-text)', background: 'var(--ops-bg)', border: '1px solid var(--ops-border)', borderRadius: 8, resize: 'vertical' }} /><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><button type="button" onClick={() => void review('reject')} disabled={acting} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 7, border: '1px solid rgba(239,68,68,.45)', background: 'rgba(239,68,68,.1)', color: 'var(--ops-danger)', fontWeight: 700 }}>{acting ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />} Reject product</button><button type="button" onClick={() => void review('approve')} disabled={acting} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 7, border: '1px solid rgba(34,197,94,.45)', background: 'rgba(34,197,94,.1)', color: 'var(--ops-success)', fontWeight: 700 }}>{acting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Approve product</button></div></> : <p className="ops-muted-cell">This product has already been reviewed. The decision is recorded above.</p>}
     </section>
   </div>;
+}
+
+function ProductMediaLightbox({
+  images,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  images: { id: string; url: string; is_primary?: boolean | null }[];
+  index: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const activeImage = images[index];
+  if (!activeImage) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Product media gallery"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 24 }}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close image gallery"
+        style={{ position: 'absolute', top: 20, right: 20, width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={onPrev}
+        aria-label="Previous image"
+        style={{ position: 'absolute', left: 20, width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={onNext}
+        aria-label="Next image"
+        style={{ position: 'absolute', right: 70, width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+      >
+        <ChevronRight className="h-5 w-5" />
+      </button>
+
+      <div style={{ maxWidth: '90vw', maxHeight: '85vh', width: 'min(1100px, 90vw)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <img
+          src={activeImage.url}
+          alt="Product media preview"
+          style={{ maxHeight: '80vh', maxWidth: '100%', borderRadius: 12, objectFit: 'contain', boxShadow: '0 30px 80px rgba(0,0,0,0.45)' }}
+        />
+        <div style={{ color: '#f3f4f6', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>
+          {index + 1} / {images.length}
+        </div>
+      </div>
+    </div>
+  );
 }

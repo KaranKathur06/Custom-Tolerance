@@ -177,7 +177,7 @@ export async function PATCH(request: NextRequest) {
       : { data: null };
 
     const newStatus = action === "approve" ? "approved" : "rejected";
-    const { error: moderationError } = await supabase.rpc("review_seller_product_approval", {
+    const { error: moderationError } = await adminDatabase.rpc("review_seller_product_approval", {
       p_approval_id: canonicalApprovalId,
       p_action: String(action),
       p_reason: rejection_reason ? String(rejection_reason) : null,
