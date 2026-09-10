@@ -50,9 +50,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ success: false, error: { code: 'PRODUCT_NOT_FOUND', message: 'Product not found.' } }, { status: 404 });
   }
 
-  if (approvalError || imageError || capabilitiesError || industriesError || materialsError || gradesError || paymentTermsError || incotermsError) {
-    console.error('ADMIN_LISTING_DETAIL_FAILED', { productId, approvalError, imageError, capabilitiesError, industriesError, materialsError, gradesError, paymentTermsError, incotermsError });
-    return NextResponse.json({ success: false, error: { code: 'DATABASE_FAILURE', message: 'Unable to load product details.' } }, { status: 500 });
+  // The main product row is authoritative. Relation tables were introduced
+  // incrementally, so a missing table or policy must not hide the review page.
+  const relationErrors = { approvalError, imageError, capabilitiesError, industriesError, materialsError, gradesError, paymentTermsError, incotermsError };
+  if (Object.values(relationErrors).some(Boolean)) {
+    console.warn('ADMIN_LISTING_DETAIL_RELATION_FALLBACK', { productId, relationErrors });
   }
 
   const { data: profile } = product.profile_id
@@ -63,8 +65,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
     success: true,
     data: {
       product: { ...product, profiles: profile },
-      approvals: approvals ?? [],
-      images: images ?? [],
+      approvals: approvalError ? [] : approvals ?? [],
+      images: imageError ? [] : images ?? [],
       relations: { capabilities: capabilities ?? [], industries: industries ?? [], materials: materials ?? [], grades: grades ?? [], paymentTerms: paymentTerms ?? [], incoterms: incoterms ?? [] },
     },
   }, { headers: { 'Cache-Control': 'no-store' } });
