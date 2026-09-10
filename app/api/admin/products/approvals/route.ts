@@ -177,16 +177,31 @@ export async function PATCH(request: NextRequest) {
       : { data: null };
 
     const newStatus = action === "approve" ? "approved" : "rejected";
-    // The route has already authenticated and authorized this actor. The
-    // server-only RPC revalidates that actor inside the transaction while the
-    // service-role client supplies the required database write context.
-    const { error: moderationError } = await adminDatabase.rpc("review_seller_product_approval_as_admin", {
+    // Prefer the actor-aware RPC. During rolling deployments the function may
+    // not exist yet, so fall back to the authenticated legacy RPC, which still
+    // preserves the database row locks and current-state check.
+    const moderationArgs = {
       p_approval_id: canonicalApprovalId,
       p_action: String(action),
       p_reason: rejection_reason ? String(rejection_reason) : null,
       p_notes: notes ? String(notes) : null,
       p_actor_id: user.id,
-    });
+    };
+    let { error: moderationError } = await adminDatabase.rpc("review_seller_product_approval_as_admin", moderationArgs);
+    const canUseLegacyRpc = moderationError && (
+      /function .*review_seller_product_approval_as_admin.*does not exist/i.test(moderationError.message) ||
+      /could not find the function/i.test(moderationError.message) ||
+      /schema cache/i.test(moderationError.message)
+    );
+    if (canUseLegacyRpc) {
+      const legacyResult = await supabase.rpc("review_seller_product_approval", {
+        p_approval_id: canonicalApprovalId,
+        p_action: String(action),
+        p_reason: moderationArgs.p_reason,
+        p_notes: moderationArgs.p_notes,
+      });
+      moderationError = legacyResult.error;
+    }
     if (moderationError) {
       const code = moderationError.message.includes("REJECTION_REASON_REQUIRED")
         ? "REJECTION_REASON_REQUIRED"
@@ -200,18 +215,22 @@ export async function PATCH(request: NextRequest) {
                   ? "PRODUCT_NOT_FOUND"
                   : moderationError.message.includes("INVALID_MODERATION_ACTION")
                     ? "INVALID_MODERATION_ACTION"
-                    : "MODERATION_FAILED";
+                    : canUseLegacyRpc
+                      ? "MODERATION_RPC_UNAVAILABLE"
+                      : "MODERATION_FAILED";
       const status = code === "REJECTION_REASON_REQUIRED" || code === "INVALID_MODERATION_ACTION"
         ? 422
         : code === "APPROVAL_NOT_FOUND" || code === "PRODUCT_NOT_FOUND"
           ? 404
           : code === "APPROVAL_NOT_PENDING"
             ? 409
-            : code === "ADMIN_ACCESS_REQUIRED"
+              : code === "ADMIN_ACCESS_REQUIRED"
               ? 403
+                : code === "MODERATION_RPC_UNAVAILABLE"
+                  ? 503
               : 500;
       return NextResponse.json(
-        { success: false, error: { code, message: code === "REJECTION_REASON_REQUIRED" ? "A rejection reason is required." : code === "APPROVAL_NOT_FOUND" ? "This approval is no longer available. Refresh the moderation queue." : code === "APPROVAL_NOT_PENDING" ? "This approval has already been reviewed. Refresh the moderation queue." : code === "ADMIN_ACCESS_REQUIRED" ? "Admin authorization was not accepted by the moderation database function." : "The moderation operation failed. No review decision was recorded." } },
+        { success: false, error: { code, message: code === "REJECTION_REASON_REQUIRED" ? "A rejection reason is required." : code === "APPROVAL_NOT_FOUND" ? "This approval is no longer available. Refresh the moderation queue." : code === "APPROVAL_NOT_PENDING" ? "This approval has already been reviewed. Refresh the moderation queue." : code === "ADMIN_ACCESS_REQUIRED" ? "Admin authorization was not accepted by the moderation database function." : code === "MODERATION_RPC_UNAVAILABLE" ? "The moderation database function is not deployed. Apply the latest Supabase migration." : "The moderation operation failed. No review decision was recorded." } },
         { status },
       );
     }

@@ -33,6 +33,8 @@ test('admin approval route invokes the server-only RPC with the verified admin i
 
   assert.match(routeSource, /adminDatabase\.rpc\(\s*["']review_seller_product_approval_as_admin["']\s*,/, 'Approval route must invoke the server-only moderation RPC.');
   assert.match(routeSource, /p_actor_id:\s*user\.id/, 'Approval route must pass the server-verified admin identity.');
+  assert.match(routeSource, /supabase\.rpc\(\s*["']review_seller_product_approval["']\s*,/, 'Approval route must support rolling deployments before the new RPC is available.');
+  assert.match(routeSource, /MODERATION_RPC_UNAVAILABLE/, 'Missing moderation RPCs must be surfaced as a deployment error.');
   assert.match(routeSource, /: 500;/, 'Unexpected moderation failures must not be reported as concurrency conflicts.');
 });
 
