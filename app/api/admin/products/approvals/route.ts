@@ -191,7 +191,9 @@ export async function PATCH(request: NextRequest) {
     const canUseLegacyRpc = moderationError && (
       /function .*review_seller_product_approval_as_admin.*does not exist/i.test(moderationError.message) ||
       /could not find the function/i.test(moderationError.message) ||
-      /schema cache/i.test(moderationError.message)
+      /schema cache/i.test(moderationError.message) ||
+      /permission denied/i.test(moderationError.message) ||
+      /execute privilege/i.test(moderationError.message)
     );
     if (canUseLegacyRpc) {
       const legacyResult = await supabase.rpc("review_seller_product_approval", {
