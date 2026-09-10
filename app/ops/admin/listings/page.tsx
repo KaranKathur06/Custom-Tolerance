@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/components/ops/shared/StatusBadge';
 import { AlertTriangle, CheckCircle2, Eye, Clock, XCircle } from 'lucide-react';
 
@@ -49,6 +50,7 @@ function formatMoneyINR(n: number | null | undefined) {
 }
 
 export default function ListingsPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<'pending' | 'all'>('pending');
   const [page] = useState(1);
   const [limit] = useState(20);
@@ -260,7 +262,7 @@ export default function ListingsPage() {
                   <>
                     <button
                       onClick={() => void reviewListing(listing.approvalId, 'approve')}
-                      disabled={actingId === listing.id}
+                      disabled={actingId === listing.approvalId}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -281,7 +283,7 @@ export default function ListingsPage() {
 
                     <button
                       onClick={() => void reviewListing(listing.approvalId, 'reject')}
-                      disabled={actingId === listing.id}
+                      disabled={actingId === listing.approvalId}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -302,7 +304,13 @@ export default function ListingsPage() {
                   </>
                 ) : null}
 
-                <button className="ops-icon-btn" title="View Details" type="button">
+                <button
+                  className="ops-icon-btn"
+                  title="View Details"
+                  aria-label={`View details for ${listing.title}`}
+                  type="button"
+                  onClick={() => router.push(`/ops/admin/listings/${encodeURIComponent(listing.id)}`)}
+                >
                   <Eye className="w-4 h-4" />
                 </button>
               </div>

@@ -130,18 +130,32 @@ export async function PATCH(request: NextRequest) {
 
   try {
     // Get approval record
-    const { data: approval } = await supabase
+    let { data: approval } = await supabase
       .from("product_approvals")
       .select("*")
       .eq("id", approval_id)
-      .single();
+      .maybeSingle();
+
+    // Older queue payloads used the product id in this field. Resolve that
+    // safely while the queue is being migrated to approval ids.
+    if (!approval) {
+      const { data: pendingApproval } = await supabase
+        .from("product_approvals")
+        .select("*")
+        .eq("seller_product_id", approval_id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      approval = pendingApproval;
+    }
 
     if (!approval) {
-      return NextResponse.json({ error: "Approval not found" }, { status: 404 });
+      return NextResponse.json({ success: false, error: { code: "APPROVAL_NOT_FOUND", message: "This approval is no longer available. Refresh the moderation queue." } }, { status: 404 });
     }
 
     if (approval.status !== "pending") {
-      return NextResponse.json({ error: "Approval has already been reviewed" }, { status: 400 });
+      return NextResponse.json({ success: false, error: { code: "APPROVAL_NOT_PENDING", message: "This approval has already been reviewed. Refresh the moderation queue." } }, { status: 409 });
     }
 
     const { data: product } = await supabase
@@ -166,10 +180,16 @@ export async function PATCH(request: NextRequest) {
       p_notes: notes ? String(notes) : null,
     });
     if (moderationError) {
-      const code = moderationError.message.includes("REJECTION_REASON_REQUIRED") ? "REJECTION_REASON_REQUIRED" : moderationError.message.includes("APPROVAL_NOT_PENDING") ? "APPROVAL_NOT_PENDING" : "MODERATION_FAILED";
+      const code = moderationError.message.includes("REJECTION_REASON_REQUIRED")
+        ? "REJECTION_REASON_REQUIRED"
+        : moderationError.message.includes("APPROVAL_NOT_FOUND")
+          ? "APPROVAL_NOT_FOUND"
+          : moderationError.message.includes("APPROVAL_NOT_PENDING")
+            ? "APPROVAL_NOT_PENDING"
+            : "MODERATION_FAILED";
       return NextResponse.json(
-        { success: false, error: { code, message: code === "REJECTION_REASON_REQUIRED" ? "A rejection reason is required." : "The approval could not be reviewed in its current state." } },
-        { status: code === "REJECTION_REASON_REQUIRED" ? 422 : 409 },
+        { success: false, error: { code, message: code === "REJECTION_REASON_REQUIRED" ? "A rejection reason is required." : code === "APPROVAL_NOT_FOUND" ? "This approval is no longer available. Refresh the moderation queue." : "The approval could not be reviewed in its current state." } },
+        { status: code === "REJECTION_REASON_REQUIRED" ? 422 : code === "APPROVAL_NOT_FOUND" ? 404 : 409 },
       );
     }
 
