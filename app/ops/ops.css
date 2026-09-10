@@ -83,23 +83,11 @@ body:has(.ops-shell) main.min-h-screen {
 .ops-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  font-size: 15px;
+  width: 32px;
+  height: 32px;
 }
 
-.ops-logo-icon {
-  width: 30px; height: 30px;
-  border-radius: 8px;
-  display: grid; place-items: center;
-  font-weight: 800; font-size: 14px;
-  color: white;
-  transition: background var(--ops-transition);
-}
-.ops-logo-icon.admin { background: var(--ops-accent-admin); color: #050505; }
-.ops-logo-icon.crm { background: var(--ops-accent-crm); color: #050505; }
-.ops-logo-text { color: var(--ops-text); }
-.ops-logo-suffix { color: var(--ops-text-muted); font-weight: 500; }
+.ops-logo-image { width: 32px; height: 32px; object-fit: contain; border-radius: 8px; }
 
 .ops-icon-btn {
   width: 40px; height: 40px;
@@ -220,15 +208,6 @@ body:has(.ops-shell) main.min-h-screen {
   z-index: 40;
 }
 .ops-sidebar.collapsed { width: var(--ops-sidebar-collapsed); }
-
-.ops-sidebar-header {
-  height: var(--ops-topbar-h);
-  padding: 12px 8px;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid var(--ops-border);
-  flex-shrink: 0;
-}
 
 .ops-sidebar-nav {
   flex: 1;
@@ -621,28 +600,6 @@ body:has(.ops-shell) main.min-h-screen {
 .ops-notif-time { font-size: 11px; color: var(--ops-text-muted); margin-top: 4px; }
 
 /* Profile Dropdown */
-.ops-profile-btn {
-  display: flex; align-items: center; gap: 8px;
-  padding: 4px 8px 4px 4px;
-  border-radius: 8px;
-  border: 1px solid var(--ops-border);
-  background: transparent;
-  color: var(--ops-text);
-  cursor: pointer;
-  transition: all var(--ops-transition);
-  font-size: 13px; font-weight: 500;
-}
-.ops-profile-btn:hover { background: var(--ops-surface-hover); }
-.ops-avatar {
-  width: 28px; height: 28px;
-  border-radius: 7px;
-  background: var(--ops-accent-admin);
-  color: #050505;
-  display: grid; place-items: center;
-  font-size: 12px; font-weight: 700;
-}
-.ops-avatar.lg { width: 40px; height: 40px; font-size: 16px; border-radius: 10px; }
-.ops-profile-name { color: var(--ops-text-secondary); }
 .ops-dropdown-profile-header { display: flex; gap: 12px; align-items: center; padding: 16px; }
 .ops-profile-fullname { font-size: 14px; font-weight: 600; color: var(--ops-text); }
 .ops-profile-email { font-size: 12px; color: var(--ops-text-muted); }

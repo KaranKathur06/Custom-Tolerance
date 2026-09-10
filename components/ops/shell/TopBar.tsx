@@ -12,7 +12,7 @@ import { BRAND } from '@/config/brand';
 import { searchOpsRoutes } from '@/lib/ops/route-registry';
 
 export function TopBar() {
-  const { toggleSidebar, mode, commandPaletteOpen, setCommandPaletteOpen } = useOps();
+  const { toggleSidebar, commandPaletteOpen, setCommandPaletteOpen } = useOps();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,12 +55,11 @@ export function TopBar() {
   return (
     <header className="ops-topbar">
       <div className="ops-topbar-left">
-        <button className="ops-icon-btn" onClick={toggleSidebar} title="Toggle Sidebar">
+        <button className="ops-icon-btn" onClick={toggleSidebar} title="Toggle sidebar" aria-label="Toggle sidebar">
           <Menu className="w-5 h-5" />
         </button>
-        <div className="ops-logo">
-          <div className={`ops-logo-icon ${mode}`}>C</div>
-          <span className="ops-logo-text">{BRAND.name}<span className="ops-logo-suffix">Ops</span></span>
+        <div className="ops-logo" aria-label={`${BRAND.name} operations workspace`}>
+          <img className="ops-logo-image" src="/favicon.png" alt={BRAND.name} />
         </div>
         <ModeSwitch />
       </div>

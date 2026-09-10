@@ -1,5 +1,5 @@
--- Public marketplace reads are allowed only for products that have completed
--- the canonical lifecycle. Ownership policies remain responsible for writes.
+-- Repair deployments where the marketplace read policy exists but table grants
+-- were not applied. Keep the public endpoint constrained by RLS.
 
 grant usage on schema public to anon, authenticated;
 grant select on table public.seller_products to anon, authenticated;
@@ -11,6 +11,8 @@ grant select on table public.product_grades to anon, authenticated;
 grant select on table public.product_payment_terms to anon, authenticated;
 grant select on table public.product_incoterms to anon, authenticated;
 
+-- Reassert the product policy so this migration is safe on databases where the
+-- preceding policy migration was skipped or only partially applied.
 drop policy if exists seller_products_public_marketplace_select on public.seller_products;
 create policy seller_products_public_marketplace_select
   on public.seller_products for select to anon, authenticated
