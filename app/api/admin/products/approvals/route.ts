@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
 import { createNotification } from "@/lib/marketplace/notifications";
 import { sendEmail } from "@/lib/services/email";
+import { randomUUID } from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const requestId = randomUUID();
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
   const adminDatabase = createSupabaseServiceRoleClient() || supabase;
@@ -205,6 +207,18 @@ export async function PATCH(request: NextRequest) {
       moderationError = legacyResult.error;
     }
     if (moderationError) {
+      console.error("[admin/approvals] moderation RPC failed", {
+        requestId,
+        approvalId: canonicalApprovalId,
+        productId: approval.seller_product_id,
+        actorId: user.id,
+        actorRole: profile?.role,
+        action,
+        message: moderationError.message,
+        details: moderationError.details,
+        hint: moderationError.hint,
+        code: moderationError.code,
+      });
       const code = moderationError.message.includes("REJECTION_REASON_REQUIRED")
         ? "REJECTION_REASON_REQUIRED"
         : moderationError.message.includes("APPROVAL_NOT_FOUND")
@@ -219,7 +233,7 @@ export async function PATCH(request: NextRequest) {
                     ? "INVALID_MODERATION_ACTION"
                     : canUseLegacyRpc
                       ? "MODERATION_RPC_UNAVAILABLE"
-                      : "MODERATION_FAILED";
+                      : "MODERATION_DATABASE_ERROR";
       const status = code === "REJECTION_REASON_REQUIRED" || code === "INVALID_MODERATION_ACTION"
         ? 422
         : code === "APPROVAL_NOT_FOUND" || code === "PRODUCT_NOT_FOUND"
@@ -231,8 +245,19 @@ export async function PATCH(request: NextRequest) {
                 : code === "MODERATION_RPC_UNAVAILABLE"
                   ? 503
               : 500;
+      const message = code === "REJECTION_REASON_REQUIRED"
+        ? "A rejection reason is required."
+        : code === "APPROVAL_NOT_FOUND"
+          ? "This approval is no longer available. Refresh the moderation queue."
+          : code === "APPROVAL_NOT_PENDING"
+            ? "This approval has already been reviewed. Refresh the moderation queue."
+            : code === "ADMIN_ACCESS_REQUIRED"
+              ? "Admin authorization was not accepted by the moderation database function."
+              : code === "MODERATION_RPC_UNAVAILABLE"
+                ? "The moderation database function is not deployed. Apply the latest Supabase migration."
+                : `The moderation database operation failed. No review decision was recorded. Reference: ${requestId}`;
       return NextResponse.json(
-        { success: false, error: { code, message: code === "REJECTION_REASON_REQUIRED" ? "A rejection reason is required." : code === "APPROVAL_NOT_FOUND" ? "This approval is no longer available. Refresh the moderation queue." : code === "APPROVAL_NOT_PENDING" ? "This approval has already been reviewed. Refresh the moderation queue." : code === "ADMIN_ACCESS_REQUIRED" ? "Admin authorization was not accepted by the moderation database function." : code === "MODERATION_RPC_UNAVAILABLE" ? "The moderation database function is not deployed. Apply the latest Supabase migration." : "The moderation operation failed. No review decision was recorded." } },
+        { success: false, error: { code, message } },
         { status },
       );
     }
