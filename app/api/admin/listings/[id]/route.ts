@@ -12,7 +12,17 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const productId = params.id;
   const database = createSupabaseServiceRoleClient() || auth.supabase;
 
-  const [{ data: product, error: productError }, { data: approvals, error: approvalError }, { data: images, error: imageError }] = await Promise.all([
+  const [
+    { data: product, error: productError },
+    { data: approvals, error: approvalError },
+    { data: images, error: imageError },
+    { data: capabilities, error: capabilitiesError },
+    { data: industries, error: industriesError },
+    { data: materials, error: materialsError },
+    { data: grades, error: gradesError },
+    { data: paymentTerms, error: paymentTermsError },
+    { data: incoterms, error: incotermsError },
+  ] = await Promise.all([
     database
       .from('seller_products')
       .select('*')
@@ -28,14 +38,20 @@ export async function GET(request: Request, { params }: { params: { id: string }
       .select('id, url, is_primary, display_order')
       .eq('seller_product_id', productId)
       .order('display_order', { ascending: true }),
+    database.from('product_capabilities').select('capability_id').eq('seller_product_id', productId),
+    database.from('product_industries').select('industry_id').eq('seller_product_id', productId),
+    database.from('product_materials').select('material_name').eq('seller_product_id', productId),
+    database.from('product_grades').select('grade_name').eq('seller_product_id', productId),
+    database.from('product_payment_terms').select('payment_term_id').eq('seller_product_id', productId),
+    database.from('product_incoterms').select('incoterm_id').eq('seller_product_id', productId),
   ]);
 
   if (productError || !product) {
     return NextResponse.json({ success: false, error: { code: 'PRODUCT_NOT_FOUND', message: 'Product not found.' } }, { status: 404 });
   }
 
-  if (approvalError || imageError) {
-    console.error('ADMIN_LISTING_DETAIL_FAILED', { productId, approvalError, imageError });
+  if (approvalError || imageError || capabilitiesError || industriesError || materialsError || gradesError || paymentTermsError || incotermsError) {
+    console.error('ADMIN_LISTING_DETAIL_FAILED', { productId, approvalError, imageError, capabilitiesError, industriesError, materialsError, gradesError, paymentTermsError, incotermsError });
     return NextResponse.json({ success: false, error: { code: 'DATABASE_FAILURE', message: 'Unable to load product details.' } }, { status: 500 });
   }
 
@@ -45,6 +61,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   return NextResponse.json({
     success: true,
-    data: { product: { ...product, profiles: profile }, approvals: approvals ?? [], images: images ?? [] },
+    data: {
+      product: { ...product, profiles: profile },
+      approvals: approvals ?? [],
+      images: images ?? [],
+      relations: { capabilities: capabilities ?? [], industries: industries ?? [], materials: materials ?? [], grades: grades ?? [], paymentTerms: paymentTerms ?? [], incoterms: incoterms ?? [] },
+    },
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
