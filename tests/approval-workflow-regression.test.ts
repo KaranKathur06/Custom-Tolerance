@@ -13,6 +13,7 @@ const routePath = path.join(repoRoot, 'app', 'api', 'admin', 'products', 'approv
 const sellerProductsRoutePath = path.join(repoRoot, 'app', 'api', 'dashboard', 'seller', 'products', 'route.ts');
 const adminListingDetailRoutePath = path.join(repoRoot, 'app', 'api', 'admin', 'listings', '[id]', 'route.ts');
 const moderationDraftVersionMigrationPath = path.join(repoRoot, 'supabase', 'migrations', '20260910151000_fix_moderation_draft_version_ambiguity.sql');
+const lifecycleVersionMigrationPath = path.join(repoRoot, 'supabase', 'migrations', '20260910152000_fix_product_lifecycle_version_ambiguity.sql');
 const searchTriggerMigrationPath = path.join(repoRoot, 'supabase', 'migrations', '20260910153000_fix_product_update_search_trigger.sql');
 
 test('canonical approval RPC is defined only once across migration files', () => {
@@ -67,6 +68,16 @@ test('moderation RPC qualifies draft_version against the product alias', () => {
   assert.match(migrationSource, /update public\.seller_products as sp/, 'Moderation product update must use an explicit table alias.');
   assert.match(migrationSource, /coalesce\(sp\.draft_version, 1\) \+ 1/, 'The draft version expression must be unambiguous.');
   assert.doesNotMatch(migrationSource, /draft_version = coalesce\(draft_version, 1\)/, 'The ambiguous draft_version expression must not be reintroduced.');
+});
+
+test('approved product lifecycle RPCs qualify draft_version and enforce publication order', () => {
+  const migrationSource = fs.readFileSync(lifecycleVersionMigrationPath, 'utf8');
+  const sellerRouteSource = fs.readFileSync(sellerProductsRoutePath, 'utf8');
+
+  assert.equal((migrationSource.match(/update public\.seller_products as sp/g) ?? []).length, 3, 'Publish, visibility, and feature RPCs must all use explicit product aliases.');
+  assert.equal((migrationSource.match(/coalesce\(sp\.draft_version, 1\) \+ 1/g) ?? []).length, 3, 'All lifecycle version increments must be unambiguous.');
+  assert.equal((migrationSource.match(/PRODUCT_NOT_ACTIVE/g) ?? []).length, 2, 'Visibility and feature must require an active published product.');
+  assert.doesNotMatch(sellerRouteSource, /error\.message\.includes\("PRODUCT_NOT_ACTIVE"\) \|\| error\.message\.includes\("does not exist"/, 'PRODUCT_NOT_ACTIVE must not trigger a direct-update compatibility bypass.');
 });
 
 test('seller product updates do not depend on search indexing for unpublished products', () => {

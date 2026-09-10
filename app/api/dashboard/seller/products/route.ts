@@ -197,8 +197,22 @@ export async function PATCH(req: NextRequest) {
           return NextResponse.json({ success: true, product: fallbackProduct, compatibilityMode: true });
         }
       }
-      const code = error.message.includes("CONFLICT_STALE_DRAFT") ? "CONFLICT_STALE_DRAFT" : "FEATURE_REQUEST_FAILED";
-      return NextResponse.json({ success: false, error: { code, message: code === "CONFLICT_STALE_DRAFT" ? "This product changed in another session. Refresh and try again." : "The feature request could not be saved." } }, { status: code === "CONFLICT_STALE_DRAFT" ? 409 : 503 });
+      const code = error.message.includes("CONFLICT_STALE_DRAFT")
+        ? "CONFLICT_STALE_DRAFT"
+        : error.message.includes("PRODUCT_NOT_ACTIVE")
+          ? "PRODUCT_NOT_ACTIVE"
+          : "FEATURE_REQUEST_FAILED";
+      return NextResponse.json({
+        success: false,
+        error: {
+          code,
+          message: code === "CONFLICT_STALE_DRAFT"
+            ? "This product changed in another session. Refresh and try again."
+            : code === "PRODUCT_NOT_ACTIVE"
+              ? "Publish the approved product before requesting feature placement."
+              : "The feature request could not be saved.",
+        },
+      }, { status: code === "CONFLICT_STALE_DRAFT" ? 409 : code === "PRODUCT_NOT_ACTIVE" ? 422 : 503 });
     }
     return NextResponse.json({ success: true, product: Array.isArray(data) ? data[0] : data });
   }
@@ -209,7 +223,7 @@ export async function PATCH(req: NextRequest) {
       p_is_visible: Boolean(body.isVisible),
     });
     if (error) {
-      const canUseCompatibilityFallback = error.message.includes("PRODUCT_NOT_ACTIVE") || error.message.includes("does not exist") || error.message.includes("42883");
+      const canUseCompatibilityFallback = error.message.includes("does not exist") || error.message.includes("42883") || error.message.includes("schema cache") || error.message.includes("Could not find the function");
       if (canUseCompatibilityFallback) {
         const { data: fallbackProduct, error: fallbackError } = await supabase
           .from("seller_products")
