@@ -99,12 +99,19 @@ export default function ListingDetailsPage() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        // Handle specific error codes with better messages
-        if (response.status === 409 || payload?.error?.code === 'APPROVAL_NOT_PENDING') {
-          throw new Error('This product was already reviewed by another team member. Refresh the page to see the latest decision.');
+        if (payload?.error?.code === 'APPROVAL_NOT_PENDING') {
+          window.location.reload();
+          return;
         }
-        if (response.status === 404 || payload?.error?.code === 'APPROVAL_NOT_FOUND') {
-          throw new Error('This approval is no longer available. The moderation queue may have been updated.');
+        if (payload?.error?.code === 'APPROVAL_NOT_FOUND') {
+          window.location.reload();
+          return;
+        }
+        if (payload?.error?.code === 'ADMIN_ACCESS_REQUIRED') {
+          throw new Error('The moderation database rejected admin authorization. No review decision was recorded.');
+        }
+        if (response.status === 409) {
+          throw new Error('This product was already reviewed by another team member. Refresh the page to see the latest decision.');
         }
         throw new Error(payload?.error?.message ?? 'The moderation action could not be completed.');
       }

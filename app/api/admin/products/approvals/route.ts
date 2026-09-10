@@ -177,7 +177,10 @@ export async function PATCH(request: NextRequest) {
       : { data: null };
 
     const newStatus = action === "approve" ? "approved" : "rejected";
-    const { error: moderationError } = await adminDatabase.rpc("review_seller_product_approval", {
+    // The RPC authorizes the actor with auth.uid(). Invoke it through the
+    // authenticated request client so the database sees the actual admin,
+    // while retaining the service-role client for protected reads/notifications.
+    const { error: moderationError } = await supabase.rpc("review_seller_product_approval", {
       p_approval_id: canonicalApprovalId,
       p_action: String(action),
       p_reason: rejection_reason ? String(rejection_reason) : null,
@@ -190,10 +193,25 @@ export async function PATCH(request: NextRequest) {
           ? "APPROVAL_NOT_FOUND"
           : moderationError.message.includes("APPROVAL_NOT_PENDING")
             ? "APPROVAL_NOT_PENDING"
-            : "MODERATION_FAILED";
+              : moderationError.message.includes("ADMIN_ACCESS_REQUIRED")
+                ? "ADMIN_ACCESS_REQUIRED"
+                : moderationError.message.includes("PRODUCT_NOT_FOUND")
+                  ? "PRODUCT_NOT_FOUND"
+                  : moderationError.message.includes("INVALID_MODERATION_ACTION")
+                    ? "INVALID_MODERATION_ACTION"
+                    : "MODERATION_FAILED";
+      const status = code === "REJECTION_REASON_REQUIRED" || code === "INVALID_MODERATION_ACTION"
+        ? 422
+        : code === "APPROVAL_NOT_FOUND" || code === "PRODUCT_NOT_FOUND"
+          ? 404
+          : code === "APPROVAL_NOT_PENDING"
+            ? 409
+            : code === "ADMIN_ACCESS_REQUIRED"
+              ? 403
+              : 500;
       return NextResponse.json(
-        { success: false, error: { code, message: code === "REJECTION_REASON_REQUIRED" ? "A rejection reason is required." : code === "APPROVAL_NOT_FOUND" ? "This approval is no longer available. Refresh the moderation queue." : "The approval could not be reviewed in its current state." } },
-        { status: code === "REJECTION_REASON_REQUIRED" ? 422 : code === "APPROVAL_NOT_FOUND" ? 404 : 409 },
+        { success: false, error: { code, message: code === "REJECTION_REASON_REQUIRED" ? "A rejection reason is required." : code === "APPROVAL_NOT_FOUND" ? "This approval is no longer available. Refresh the moderation queue." : code === "APPROVAL_NOT_PENDING" ? "This approval has already been reviewed. Refresh the moderation queue." : code === "ADMIN_ACCESS_REQUIRED" ? "Admin authorization was not accepted by the moderation database function." : "The moderation operation failed. No review decision was recorded." } },
+        { status },
       );
     }
 
