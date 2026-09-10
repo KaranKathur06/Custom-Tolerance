@@ -252,6 +252,18 @@ function ProductMediaLightbox({
   onNext: () => void;
 }) {
   const activeImage = images[index];
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+      if (event.key === 'ArrowLeft') onPrev();
+      if (event.key === 'ArrowRight') onNext();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, onNext, onPrev]);
+
   if (!activeImage) return null;
 
   return (
