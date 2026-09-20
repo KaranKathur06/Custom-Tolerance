@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { commitSupplierVerificationProfile } from "@/lib/marketplace/supplier-verification-commit";
 import {
   applySellerOnboardingPatch,
@@ -29,15 +29,9 @@ function mapDbSession(row: Record<string, unknown>): OnboardingSession {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
-  }
-
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ success: false, error: { code: "DB_UNAVAILABLE", message: "Database unavailable" } }, { status: 503 });
-  }
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   const body = await request.json();
   const action = body.action as "save" | "submit";

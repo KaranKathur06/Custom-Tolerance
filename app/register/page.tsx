@@ -36,6 +36,23 @@ export default function RegisterPage() {
 
     setIsLoading(true); setError(null)
     try {
+      // ── Pre-registration lifecycle check ──
+      // Prevents re-registration of deleted/banned accounts
+      try {
+        const checkRes = await fetch("/api/auth/register/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formData.email, phone: formData.phone }),
+        });
+        const checkData = await checkRes.json();
+        if (!checkData.allowed) {
+          setError(checkData.error || "This email or phone cannot be used for registration.");
+          return;
+        }
+      } catch {
+        // Fail open — if check endpoint is down, let signUp proceed
+      }
+
       const { error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,

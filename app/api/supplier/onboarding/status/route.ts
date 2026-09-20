@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { getServerDevelopmentTrustMode } from "@/lib/marketplace/trust-mode-server";
 import {
   buildSupplierProfileDataFromDraft,
@@ -14,31 +14,10 @@ import { getVerificationStrategy } from "@/lib/marketplace/verification-strategi
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  console.log("===== ONBOARDING STATUS =====");
-
-  const user = await getServerUser();
-  const supabase = createSupabaseServerClient();
-
-  if (!user) {
-    console.log("NO USER (getServerUser returned null/undefined)");
-    return NextResponse.json(
-      { success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
-      { status: 401 },
-    );
-  }
-
-  if (!supabase) {
-    console.log("NO SUPABASE CLIENT (createSupabaseServerClient returned falsy)");
-    return NextResponse.json(
-      { success: false, error: { code: "DB_UNAVAILABLE", message: "Database unavailable" } },
-      { status: 503 },
-    );
-  }
-
-  const authUserResult = await supabase.auth.getUser();
-  console.log("AUTH USER", authUserResult?.data?.user ?? null);
-  if (authUserResult?.error) console.log("AUTH USER ERROR", authUserResult.error);
+export async function GET(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   try {
     const cookieNames = cookies()
@@ -48,7 +27,6 @@ export async function GET() {
   } catch (e) {
     console.log("COOKIE READ ERROR", e);
   }
-
 
   const developmentTrustMode = await getServerDevelopmentTrustMode(supabase);
 
@@ -61,7 +39,6 @@ export async function GET() {
   const sellerId = sellerResult.data?.id;
 
   if (!sellerResult.data) {
-    console.log("NO seller_profiles row for user.id", user.id);
     return NextResponse.json(
       {
         success: false,
@@ -74,41 +51,41 @@ export async function GET() {
   const seller = sellerResult.data;
 
   const [sessionResult, companyResult, docsResult, mediaResult, trustResult] = await Promise.all([
-      supabase
-        .from("onboarding_sessions")
-        .select("draft_payload, completion_percentage, current_step, is_completed")
-        .eq("user_id", user.id)
-        .eq("role", "seller")
-        .eq("flow_key", "supplier_verification_v2")
-        .eq("status", "active")
-        .maybeSingle(),
-      supabase
-        .from("companies")
-        .select("id, name, gst_number, email_verified, phone_verified, verification_status, country_id")
-        .or(`owner_id.eq.${user.id},profile_id.eq.${user.id}`)
-        .is("deleted_at", null)
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("supplier_documents")
-        .select("document_type, verification_status")
-        .eq("profile_id", user.id)
-        .is("deleted_at", null),
-      sellerId
-        ? supabase
-            .from("supplier_media")
-            .select("id")
-            .eq("seller_profile_id", sellerId)
-            .is("deleted_at", null)
-        : Promise.resolve({ data: [] as { id: string }[] }),
-      sellerId
-        ? supabase
-            .from("supplier_trust_scores")
-            .select("trust_score, total_score")
-            .eq("seller_profile_id", sellerId)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
+    supabase
+      .from("onboarding_sessions")
+      .select("draft_payload, completion_percentage, current_step, is_completed")
+      .eq("user_id", user.id)
+      .eq("role", "seller")
+      .eq("flow_key", "supplier_verification_v2")
+      .eq("status", "active")
+      .maybeSingle(),
+    supabase
+      .from("companies")
+      .select("id, name, gst_number, email_verified, phone_verified, verification_status, country_id")
+      .or(`owner_id.eq.${user.id},profile_id.eq.${user.id}`)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("supplier_documents")
+      .select("document_type, verification_status")
+      .eq("profile_id", user.id)
+      .is("deleted_at", null),
+    sellerId
+      ? supabase
+          .from("supplier_media")
+          .select("id")
+          .eq("seller_profile_id", sellerId)
+          .is("deleted_at", null)
+      : Promise.resolve({ data: [] as { id: string }[] }),
+    sellerId
+      ? supabase
+          .from("supplier_trust_scores")
+          .select("trust_score, total_score")
+          .eq("seller_profile_id", sellerId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   const draft = (sessionResult.data?.draft_payload ?? {}) as Record<string, unknown>;
   const company = companyResult.data;
@@ -131,7 +108,7 @@ export async function GET() {
   const countryOrigin = company?.country_id?.toString?.() ?? null;
   const strategy = getVerificationStrategy(countryOrigin);
   const registrationDocumentsVerified = strategy.phase1RequiredKycTypes.every((t) => uploadedDocTypes.has(t));
-  const requiredDocumentsUploaded = registrationDocumentsVerified; // backward-compatible alias
+  const requiredDocumentsUploaded = registrationDocumentsVerified;
 
   const onboardingStatus = (seller?.onboarding_status ?? "REGISTERED") as SupplierOnboardingStatus;
 
@@ -183,9 +160,7 @@ export async function GET() {
       remainingItems: remaining,
       emailVerified,
       mobileVerified,
-      // Backward-compatible alias:
       requiredDocumentsUploaded,
-      // New explicit Phase 1 vs Phase 2 semantics:
       registrationDocumentsVerified,
       trustDocumentsVerified: Boolean(bank?.verification_status === "approved"),
       verificationRegion: strategy.verificationRegion,

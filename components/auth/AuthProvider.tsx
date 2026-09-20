@@ -176,7 +176,7 @@ async function loadMarketplaceIdentity(
   const [profileResult, sellerResult, buyerResult, companyResult] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id,email,full_name,phone,role,profile_status,trust_level,onboarding_step,verification_status,avatar_url")
+      .select("id,email,full_name,phone,role,profile_status,trust_level,onboarding_step,verification_status,avatar_url,deleted_at,enforcement_status")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -198,7 +198,13 @@ async function loadMarketplaceIdentity(
       .maybeSingle(),
   ]);
 
-  const profileFromDb = profileResult.data as MarketplaceProfile | null;
+  const profileFromDb = profileResult.data as (MarketplaceProfile & { deleted_at?: string | null; enforcement_status?: string | null }) | null;
+
+  // ── Account lifecycle check: block deleted/banned accounts ──
+  if (profileFromDb?.deleted_at || profileFromDb?.enforcement_status === "banned") {
+    return EMPTY_IDENTITY;
+  }
+
   const fallback = fallbackProfileFromUser(user);
   const mergedProfile = profileFromDb
     ? {

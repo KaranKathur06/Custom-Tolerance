@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { NextRequest, NextResponse } from "next/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import {
   deriveMobileVerificationStatus,
   getMobileVerificationRecord,
@@ -8,19 +8,9 @@ import {
   secondsUntil,
 } from "@/lib/auth/mobile-verification";
 
-export async function GET(request: Request) {
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+export async function GET(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
 
   const url = new URL(request.url);
   const mobile = normalizeMobileNumber(
@@ -40,7 +30,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const record = await getMobileVerificationRecord(supabase, user.id, mobile);
+  const record = await getMobileVerificationRecord(auth.supabase, auth.user.id, mobile);
   const status = deriveMobileVerificationStatus(record);
 
   return NextResponse.json({

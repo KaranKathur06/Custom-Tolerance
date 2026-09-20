@@ -12,31 +12,17 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-cli
 import { createNotification } from "@/lib/marketplace/notifications";
 import { sendEmail } from "@/lib/services/email";
 import { randomUUID } from "node:crypto";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Verify admin role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!["admin", "super_admin", "superadmin"].includes(String(profile?.role))) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  const auth = await protectApiRoute(request, {
+    requiredRoles: ["admin", "super_admin", "moderator"],
+    requireAdmin2FA: false,
+  });
+  if (auth.error) {
+    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
 
   const page = Number(request.nextUrl.searchParams.get("page") || "1");
@@ -45,7 +31,7 @@ export async function GET(request: NextRequest) {
   const offset = (page - 1) * limit;
 
   try {
-    const { data: approvals, count, error } = await supabase
+    const { data: approvals, count, error } = await auth.supabase
       .from("product_approvals")
       .select(
         `
@@ -91,29 +77,14 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const requestId = randomUUID();
-  const supabase = await createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-  const adminDatabase = createSupabaseServiceRoleClient() || supabase;
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await protectApiRoute(request, {
+    requiredRoles: ["admin", "super_admin"],
+    requireAdmin2FA: true,
+  });
+  if (auth.error) {
+    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
-
-  // Verify admin role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!["admin", "super_admin", "superadmin"].includes(String(profile?.role))) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
+  const adminDatabase = createSupabaseServiceRoleClient() || auth.supabase;
 
   const body = (await request.json()) as Record<string, unknown>;
   const { approval_id, action, rejection_reason, notes } = body;
@@ -187,7 +158,7 @@ export async function PATCH(request: NextRequest) {
       p_action: String(action),
       p_reason: rejection_reason ? String(rejection_reason) : null,
       p_notes: notes ? String(notes) : null,
-      p_actor_id: user.id,
+      p_actor_id: auth.user.id,
     };
     let { error: moderationError } = await adminDatabase.rpc("review_seller_product_approval_as_admin", moderationArgs);
     const canUseLegacyRpc = moderationError && (
@@ -198,7 +169,7 @@ export async function PATCH(request: NextRequest) {
       /execute privilege/i.test(moderationError.message)
     );
     if (canUseLegacyRpc) {
-      const legacyResult = await supabase.rpc("review_seller_product_approval", {
+      const legacyResult = await auth.supabase.rpc("review_seller_product_approval", {
         p_approval_id: canonicalApprovalId,
         p_action: String(action),
         p_reason: moderationArgs.p_reason,
@@ -211,8 +182,8 @@ export async function PATCH(request: NextRequest) {
         requestId,
         approvalId: canonicalApprovalId,
         productId: approval.seller_product_id,
-        actorId: user.id,
-        actorRole: profile?.role,
+        actorId: auth.user.id,
+        actorRole: auth.role,
         action,
         message: moderationError.message,
         details: moderationError.details,

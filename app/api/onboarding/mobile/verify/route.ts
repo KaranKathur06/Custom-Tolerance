@@ -1,24 +1,15 @@
-import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { NextRequest, NextResponse } from "next/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import {
   maskMobile,
   normalizeMobileNumber,
   verifyMobileOtp,
 } from "@/lib/auth/mobile-verification";
 
-export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+export async function POST(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   let body: { mobileNumber?: string; countryCode?: string; otp?: string };
   try {

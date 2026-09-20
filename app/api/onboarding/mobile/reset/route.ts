@@ -1,23 +1,13 @@
-import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { NextRequest, NextResponse } from "next/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import {
   normalizeMobileNumber,
   resetMobileVerification,
 } from "@/lib/auth/mobile-verification";
 
-export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+export async function POST(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
 
   let body: { mobileNumber?: string; countryCode?: string };
   try {
@@ -28,7 +18,7 @@ export async function POST(request: Request) {
 
   const mobile = normalizeMobileNumber(body.mobileNumber ?? "", body.countryCode ?? "+91");
   if (mobile) {
-    await resetMobileVerification({ supabase, userId: user.id, mobile });
+    await resetMobileVerification({ supabase: auth.supabase, userId: auth.user.id, mobile });
   }
 
   return NextResponse.json({

@@ -48,9 +48,16 @@ export async function POST(request: Request) {
   }
 
   const crypto = await import("crypto");
-  const expected = crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+  const expectedBuf = Buffer.from(
+    crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex"),
+  );
+  const receivedBuf = Buffer.from(signature);
 
-  if (expected !== signature) {
+  // Constant-time comparison — prevents timing attacks
+  if (
+    expectedBuf.length !== receivedBuf.length ||
+    !crypto.timingSafeEqual(expectedBuf, receivedBuf)
+  ) {
     return NextResponse.json(
       { success: false, error: { code: "INVALID_SIGNATURE", message: "Invalid webhook signature" } },
       { status: 401 },
@@ -80,6 +87,33 @@ export async function POST(request: Request) {
   const paymentId = paymentEntity?.id;
   const orderId = paymentEntity?.order_id ?? event.payload?.order?.entity?.id;
 
+  // ── Idempotency: Check if this event was already processed ──
+  const eventId = event.payload?.payment?.entity?.id
+    ? `${eventType}:${event.payload.payment.entity.id}`
+    : `${eventType}:${Date.now()}`;
+
+  const { data: existingEvent } = await supabase
+    .from("razorpay_events")
+    .select("id")
+    .eq("event_id", eventId)
+    .maybeSingle();
+
+  if (existingEvent) {
+    // Already processed — return success to prevent Razorpay retries
+    return NextResponse.json({ success: true, received: true, duplicate: true });
+  }
+
+  // Log the event for idempotency tracking
+  await supabase.from("razorpay_events").upsert(
+    {
+      event_id: eventId,
+      event_type: eventType,
+      payload: event,
+      processed_at: new Date().toISOString(),
+    },
+    { onConflict: "event_id", ignoreDuplicates: true },
+  );
+
   await supabase.from("admin_audit_logs").insert({
     action: `payment.webhook.${eventType}`,
     details: { paymentId, orderId, receivedAt: new Date().toISOString() },
@@ -89,9 +123,28 @@ export async function POST(request: Request) {
   if (eventType === "payment.captured" && paymentId) {
     const { data: paymentRow } = await supabase
       .from("payments")
-      .select("id, user_id, metadata, plan")
+      .select("id, user_id, metadata, plan, status")
       .or(`razorpay_payment_id.eq.${paymentId},razorpay_order_id.eq.${orderId ?? ""}`)
       .maybeSingle();
+
+    // ── State machine: only allow valid transitions ──
+    const currentStatus = paymentRow?.status;
+    const VALID_CAPTURE_FROM = new Set(["PENDING", "CREATED", "AUTHORIZED", null, undefined]);
+
+    if (currentStatus && !VALID_CAPTURE_FROM.has(currentStatus)) {
+      // Payment is already in a terminal state — log but don't mutate
+      await supabase.from("admin_audit_logs").insert({
+        action: "payment.webhook.state_machine_blocked",
+        details: {
+          paymentId,
+          currentStatus,
+          attemptedTransition: "SUCCESS",
+          reason: "Invalid state transition",
+        },
+        severity: "warning",
+      });
+      return NextResponse.json({ success: true, received: true, skipped: true });
+    }
 
     await supabase
       .from("payments")

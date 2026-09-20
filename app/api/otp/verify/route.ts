@@ -6,31 +6,14 @@
  * Tracks attempts and auto-invalidates after max attempts.
  */
 
-import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server-client';
+import { NextRequest, NextResponse } from 'next/server';
+import { protectApiRoute, logAdminAction } from '@/lib/auth/protect-route';
 import { verifyOTPHash, isValidOTPPurpose } from '@/lib/auth/otp';
-import { logAdminAction } from '@/lib/auth/protect-route';
 
-export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json(
-      { success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'Service unavailable' } },
-      { status: 503 },
-    );
-  }
-
-  // ── Auth check ──
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json(
-      { success: false, error: { code: 'AUTH_REQUIRED', message: 'Authentication required' } },
-      { status: 401 },
-    );
-  }
+export async function POST(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   // ── Parse body ──
   let body: { otp?: string; purpose?: string };
@@ -80,11 +63,7 @@ export async function POST(request: Request) {
 
   // ── Check if max attempts exceeded ──
   if (otpRecord.attempts >= otpRecord.max_attempts) {
-    // Invalidate the OTP
-    await supabase
-      .from('otp_verifications')
-      .update({ is_used: true })
-      .eq('id', otpRecord.id);
+    await supabase.from('otp_verifications').update({ is_used: true }).eq('id', otpRecord.id);
 
     await logAdminAction(supabase, {
       userId: user.id,
@@ -106,11 +85,7 @@ export async function POST(request: Request) {
   const isValid = verifyOTPHash(otp, otpRecord.otp_hash);
 
   if (!isValid) {
-    // Increment attempts
-    await supabase
-      .from('otp_verifications')
-      .update({ attempts: otpRecord.attempts + 1 })
-      .eq('id', otpRecord.id);
+    await supabase.from('otp_verifications').update({ attempts: otpRecord.attempts + 1 }).eq('id', otpRecord.id);
 
     const remaining = otpRecord.max_attempts - otpRecord.attempts - 1;
 
@@ -143,13 +118,11 @@ export async function POST(request: Request) {
     .eq('id', otpRecord.id);
 
   // ── Purpose-specific post-verification actions ──
-  const responseData: Record<string, any> = { verified: true, purpose };
+  const responseData: Record<string, unknown> = { verified: true, purpose };
 
   if (purpose === 'admin_2fa') {
-    // Create an admin session (4 hours)
     const sessionExpiry = new Date();
     sessionExpiry.setHours(sessionExpiry.getHours() + 4);
-
     const sessionToken = crypto.randomUUID();
 
     await supabase.from('admin_sessions').insert({

@@ -38,7 +38,7 @@ const PROTECTED_PREFIXES = [
   "/admin",
 ];
 
-const AUTH_ROUTES = ["/login", "/register", "/verify-email"];
+const AUTH_ROUTES = ["/login", "/register", "/verify-email", "/forgot-password"];
 
 function normalizeEdgeRole(role: unknown): string {
   if (typeof role !== "string" || !role) return "";
@@ -161,6 +161,28 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ── Recovery session boundary: PASSWORD_RECOVERY must not access app ──
+  // Supabase sets a recovery session when a user clicks a password reset link.
+  // This session must ONLY be used to set a new password, not to access the application.
+  const isResetPasswordRoute = pathname === "/reset-password" || pathname.startsWith("/reset-password/");
+  const isForgotPasswordRoute = pathname === "/forgot-password";
+
+  if (user && isProtected && !isResetPasswordRoute) {
+    // Check if this is a recovery session by examining amr claims
+    // Recovery sessions from Supabase have amr containing "recovery"
+    const amr = (user as any).amr as Array<{ method: string }> | undefined;
+    const isRecoverySession = amr?.some((a) => a.method === "recovery");
+
+    if (isRecoverySession) {
+      return NextResponse.redirect(new URL("/reset-password", request.url));
+    }
+  }
+
+  // Allow /reset-password and /forgot-password without full auth checks
+  if (isResetPasswordRoute || isForgotPasswordRoute) {
+    return response;
+  }
+
   // Block unverified users from protected routes — redirect to OTP verification
   const isOAuthUser = Boolean(
     user?.app_metadata?.provider && user.app_metadata.provider !== "email",
@@ -252,5 +274,7 @@ export const config = {
     "/login",
     "/register",
     "/verify-email",
+    "/reset-password",
+    "/forgot-password",
   ],
 };

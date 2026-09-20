@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-import { getServerUser } from "@/lib/supabase/server-client";
-import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { NextRequest, NextResponse } from "next/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { commitBuyerOnboardingV3 } from "@/lib/marketplace/onboarding-v3-commit";
 import {
   BUYER_ONBOARDING_V3_FLOW_KEY,
@@ -66,19 +65,10 @@ function normalizeBuyerPayload(
 /* ─────────────────────────────────────────────────────────────────────────
    GET — load active draft session
    ───────────────────────────────────────────────────────────────────────── */
-export async function GET() {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Database unavailable" },
-      { status: 503 },
-    );
-  }
+export async function GET(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   const { data, error } = await supabase
     .from("onboarding_sessions")
@@ -104,19 +94,10 @@ export async function GET() {
 /* ─────────────────────────────────────────────────────────────────────────
    POST — save draft or commit buyer profile
    ───────────────────────────────────────────────────────────────────────── */
-export async function POST(request: Request) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Database unavailable" },
-      { status: 503 },
-    );
-  }
+export async function POST(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   let body: Record<string, unknown> = {};
   try {

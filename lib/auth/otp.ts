@@ -37,16 +37,14 @@ export function hashOTP(otp: string): string {
 
 /**
  * Verify a submitted OTP against a stored hash.
+ * Uses crypto.timingSafeEqual for constant-time comparison.
  */
 export function verifyOTPHash(submittedOTP: string, storedHash: string): boolean {
   const submittedHash = hashOTP(submittedOTP);
-  // Constant-time comparison to prevent timing attacks
-  if (submittedHash.length !== storedHash.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < submittedHash.length; i++) {
-    mismatch |= submittedHash.charCodeAt(i) ^ storedHash.charCodeAt(i);
-  }
-  return mismatch === 0;
+  const a = Buffer.from(submittedHash);
+  const b = Buffer.from(storedHash);
+  if (a.length !== b.length) return false;
+  return require('crypto').timingSafeEqual(a, b);
 }
 
 /**

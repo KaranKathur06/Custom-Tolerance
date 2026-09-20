@@ -4,24 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { canPublishProductDraft, getCurrentProductPhase } from "@/lib/services/product-draft-service";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await protectApiRoute(req);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase } = auth;
 
   const productId = params.id;
   if (!productId) {
@@ -34,7 +26,7 @@ export async function POST(
       .from("seller_products")
       .select("*")
       .eq("id", productId)
-      .eq("profile_id", user.id)
+      .eq("profile_id", auth.user.id)
       .single();
 
     if (fetchError || !product) {

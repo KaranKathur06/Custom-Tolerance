@@ -3,36 +3,23 @@
  * Does not send email; safe to call for preflight checks.
  */
 
-import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { NextRequest, NextResponse } from "next/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { canRequestAdminOtp, resolveEffectiveRole } from "@/lib/auth/rbac";
 import { getEmailConfigSnapshot } from "@/lib/services/email-diagnostics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "SUPABASE_UNAVAILABLE",
-        message: "Supabase client could not be initialized.",
-      },
-      { status: 503 },
-    );
+export async function GET(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) {
+    return NextResponse.json({ ok: false, code: "AUTH_REQUIRED", message: "Authentication required." }, { status: auth.status });
   }
+  const { supabase, user } = auth;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user?.email) {
-    return NextResponse.json(
-      { ok: false, code: "AUTH_REQUIRED", message: "Authentication required." },
-      { status: 401 },
-    );
+  if (!user.email) {
+    return NextResponse.json({ ok: false, code: "AUTH_REQUIRED", message: "Authentication required." }, { status: 401 });
   }
 
   const { data: profile } = await supabase

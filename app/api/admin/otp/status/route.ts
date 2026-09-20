@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { createAdminOtpDatabaseClient } from "@/lib/auth/admin-otp-db";
 import { canRequestAdminOtp, resolveEffectiveRole } from "@/lib/auth/rbac";
 
@@ -22,24 +22,14 @@ function maskEmail(email: string): string {
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient();
-    if (!supabase) {
-      return NextResponse.json(
-        { error: "Auth service unavailable.", code: "SUPABASE_UNAVAILABLE" },
-        { status: 503 },
-      );
+    const auth = await protectApiRoute(req);
+    if (auth.error) {
+      return NextResponse.json({ status: "UNAUTHENTICATED" }, { status: auth.status });
     }
+    const { supabase, user } = auth;
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user?.email) {
-      return NextResponse.json(
-        { status: "UNAUTHENTICATED" },
-        { status: 401 },
-      );
+    if (!user.email) {
+      return NextResponse.json({ status: "UNAUTHENTICATED" }, { status: 401 });
     }
 
     const { data: profile } = await supabase

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import {
   generateOTP,
   hashOTP,
@@ -15,15 +15,9 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-cli
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
-  }
-
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ success: false, error: { code: "DB_UNAVAILABLE", message: "Database unavailable" } }, { status: 503 });
-  }
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   const body = await request.json();
   const action = body.action as "send" | "verify";
@@ -95,7 +89,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // In production, send via email/SMS service. Return OTP only in development.
     const isDev = process.env.NODE_ENV === "development";
 
     return NextResponse.json({
@@ -136,10 +129,7 @@ export async function POST(request: NextRequest) {
 
   await supabase
     .from("supplier_verifications")
-    .update({
-      attempt_count: (verification.attempt_count ?? 0) + 1,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ attempt_count: (verification.attempt_count ?? 0) + 1, updated_at: new Date().toISOString() })
     .eq("id", verification.id);
 
   if (!valid) {
@@ -148,12 +138,7 @@ export async function POST(request: NextRequest) {
 
   await supabase
     .from("supplier_verifications")
-    .update({
-      is_verified: true,
-      verified_at: new Date().toISOString(),
-      status: "verified",
-      updated_at: new Date().toISOString(),
-    })
+    .update({ is_verified: true, verified_at: new Date().toISOString(), status: "verified", updated_at: new Date().toISOString() })
     .eq("id", verification.id);
 
   if (purpose === OTP_PURPOSES.MOBILE_VERIFICATION && sellerProfile?.company_id) {

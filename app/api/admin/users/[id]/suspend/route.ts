@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { protectApiRoute, logAdminAction } from '@/lib/auth/protect-route';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import { getUserGovernanceContext } from '@/lib/admin/user-governance';
+import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role-client';
 
 type RouteParams = { params: { id: string } };
 
@@ -82,6 +83,17 @@ export async function POST(request: Request, { params }: RouteParams) {
       .from('listings')
       .update({ is_active: false, moderation_status: 'flagged' })
       .eq('seller_profile_id', params.id);
+
+    // ── Invalidate all sessions for suspended user ──
+    const serviceClient = createSupabaseServiceRoleClient();
+    if (serviceClient) {
+      await serviceClient.from('admin_sessions').update({ is_active: false }).eq('user_id', params.id);
+      try {
+        await serviceClient.auth.admin.signOut(params.id, 'global');
+      } catch {
+        // Best-effort
+      }
+    }
   }
 
   // Send notification

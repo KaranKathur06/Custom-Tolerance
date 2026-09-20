@@ -47,7 +47,7 @@ export function applyAdminVerifiedCookie(
     sessionToken: string;
     userId: string;
     expiresAt: Date;
-    bypass?: boolean;
+    bypass?: boolean; // @deprecated — always ignored, kept for backward compat
   },
 ): void {
   response.cookies.set(
@@ -57,7 +57,7 @@ export function applyAdminVerifiedCookie(
       userId: params.userId,
       expires: params.expiresAt.getTime(),
       verified: true,
-      ...(params.bypass ? { bypass: true } : {}),
+      // bypass flag intentionally removed — all admin sessions are equal
     }),
     {
       httpOnly: true,

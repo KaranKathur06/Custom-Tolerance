@@ -8,32 +8,15 @@
  * Rate limited: 3 sends per 10 minutes per email.
  */
 
-import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server-client';
+import { NextRequest, NextResponse } from 'next/server';
+import { protectApiRoute, logAdminAction } from '@/lib/auth/protect-route';
 import { generateOTP, hashOTP, getOTPExpiry, isValidOTPPurpose } from '@/lib/auth/otp';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/auth/rate-limiter';
-import { logAdminAction } from '@/lib/auth/protect-route';
 
-export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json(
-      { success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'Service unavailable' } },
-      { status: 503 },
-    );
-  }
-
-  // ── Auth check ──
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json(
-      { success: false, error: { code: 'AUTH_REQUIRED', message: 'Authentication required' } },
-      { status: 401 },
-    );
-  }
+export async function POST(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   // ── Parse body ──
   let body: { email?: string; purpose?: string };
@@ -150,8 +133,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     success: true,
     data: {
-      expiresIn: 600, // 10 minutes in seconds
-      email: email.replace(/(.{2})(.*)(@.*)/, '$1***$3'), // Mask email
+      expiresIn: 600,
+      email: email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
     },
   });
 }

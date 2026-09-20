@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { commitSellerOnboardingV3 } from "@/lib/marketplace/onboarding-v3-commit";
 import {
   deriveMobileVerificationStatus,
@@ -22,21 +22,10 @@ import { normalizeBuyerServices } from "@/lib/constants/buyer-services";
 
 export const dynamic = "force-dynamic";
 
-async function getAuthUser() {
-  const user = await getServerUser();
-  return user ?? null;
-}
-
-export async function GET() {
-  const user = await getAuthUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
-  }
+export async function GET(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   const { data, error } = await supabase
     .from("onboarding_sessions")
@@ -61,18 +50,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized", message: "Your session has expired. Please log in again." }, { status: 401 });
-    }
-
-    const supabase = createSupabaseServerClient();
-    if (!supabase) {
-      return NextResponse.json(
-        { error: "SERVICE_UNAVAILABLE", message: "Something went wrong while saving your onboarding. Please try again." },
-        { status: 503 },
-      );
-    }
+    const auth = await protectApiRoute(request);
+    if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+    const { supabase, user } = auth;
 
     let body: Record<string, unknown>;
     try {

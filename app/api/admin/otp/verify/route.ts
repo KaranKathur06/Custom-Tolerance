@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { createAdminOtpDatabaseClient } from "@/lib/auth/admin-otp-db";
 import { canRequestAdminOtp, resolveEffectiveRole } from "@/lib/auth/rbac";
 import { hashOTP, verifyOTPHash } from "@/lib/auth/otp";
@@ -55,16 +55,13 @@ async function logAuditEvent(
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient();
-    if (!supabase) {
-      return NextResponse.json({ error: "Server misconfigured" }, { status: 503 });
+    const auth = await protectApiRoute(req);
+    if (auth.error) {
+      return NextResponse.json({ error: "Authentication required" }, { status: auth.status });
     }
+    const { supabase, user } = auth;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user?.email) {
+    if (!user.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 

@@ -97,7 +97,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const auth = await protectApiRoute(request, {
     permissions: [PERMISSIONS.USERS_UPDATE],
-    requireAdmin2FA: false,
+    requireAdmin2FA: true,
   });
   if (auth.error) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
@@ -278,6 +278,20 @@ export async function PATCH(request: Request) {
     }
     const { error } = await auth.supabase.from('profiles').update(updates).eq('id', target.user.id);
     if (error) return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } }, { status: 500 });
+
+    // ── Invalidate sessions for suspended/banned users ──
+    if (value === 'suspended' || value === 'banned') {
+      const serviceClient = createSupabaseServiceRoleClient();
+      if (serviceClient) {
+        await serviceClient.from('admin_sessions').update({ is_active: false }).eq('user_id', target.user.id);
+        try {
+          await serviceClient.auth.admin.signOut(target.user.id, 'global');
+        } catch {
+          // Best-effort
+        }
+      }
+    }
+
     await logAdminAction(auth.supabase, { userId: auth.user.id, action: `user.${action}`, resource: 'profile', resourceId: target.user.id, details: { value }, request });
     return NextResponse.json({ success: true, data: { id: target.user.id, action, value } });
   }
@@ -318,6 +332,21 @@ export async function PATCH(request: Request) {
   if (action === 'delete') {
     const { error } = await auth.supabase.from('profiles').update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', target.user.id);
     if (error) return NextResponse.json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } }, { status: 500 });
+
+    // ── CRITICAL: Invalidate all sessions for the deleted user ──
+    // Prevents deleted users from continuing to use the app
+    const serviceClient = createSupabaseServiceRoleClient();
+    if (serviceClient) {
+      // Deactivate admin elevated sessions
+      await serviceClient.from('admin_sessions').update({ is_active: false }).eq('user_id', target.user.id);
+      // Force global sign-out from Supabase Auth
+      try {
+        await serviceClient.auth.admin.signOut(target.user.id, 'global');
+      } catch (signOutErr) {
+        console.error('[Admin] Failed to invalidate auth sessions for deleted user:', signOutErr);
+      }
+    }
+
     await logAdminAction(auth.supabase, { userId: auth.user.id, action: 'user.deleted', resource: 'profile', resourceId: target.user.id, severity: 'critical', request });
     return NextResponse.json({ success: true });
   }

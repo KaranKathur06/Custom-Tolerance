@@ -95,7 +95,7 @@ function AdminVerifyForm() {
         const res = await fetch('/api/admin/otp/status', { credentials: 'include' });
         if (cancelled) return;
         const data = await res.json();
-        
+
         if (data.status === 'OTP_SENT') {
           setMaskedEmail(data.email || '');
           setExpiresIn(data.expiresIn || 0);
@@ -117,48 +117,6 @@ function AdminVerifyForm() {
 
     return () => { cancelled = true; };
   }, [authLoading, isAdmin, isAuthenticated, isSigningOut, redirectPath, router, sessionStatus]);
-
-  // ── Super Admin OTP bypass (config flag + allowed email only) ──
-  useEffect(() => {
-    if (isSigningOut || authLoading || sessionStatus === "unknown" || !isAuthenticated) return;
-    if (!isAdmin || !profile?.email) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const statusRes = await fetch("/api/admin/otp/bypass/status", { credentials: "include" });
-        const status = (await statusRes.json()) as { bypassEligible?: boolean };
-
-        if (cancelled || !status.bypassEligible) return;
-
-        const bypassRes = await fetch("/api/admin/otp/bypass", {
-          method: "POST",
-          credentials: "include",
-        });
-
-        if (cancelled || !bypassRes.ok) return;
-
-        router.replace(redirectPath);
-        router.refresh();
-      } catch {
-        // OTP flow remains available if bypass fails
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    authLoading,
-    isAdmin,
-    isAuthenticated,
-    isSigningOut,
-    profile?.email,
-    redirectPath,
-    router,
-    sessionStatus,
-  ]);
 
   // ── Send OTP ──
   const handleSendOtp = useCallback(async () => {

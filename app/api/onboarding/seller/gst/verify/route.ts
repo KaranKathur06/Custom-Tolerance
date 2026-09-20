@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
+import { NextRequest, NextResponse } from "next/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { isGstApiEnabled, isGstVerificationDisabled, lookupGstin } from "@/lib/services/gst-client";
 
 export const dynamic = "force-dynamic";
@@ -10,16 +10,10 @@ function isDevelopmentTrustMode() {
   return process.env.NEXT_PUBLIC_DEVELOPMENT_TRUST_MODE !== "false" && process.env.NODE_ENV !== "production";
 }
 
-export async function POST(request: Request) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
-  }
-
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ success: false, error: { code: "DB_UNAVAILABLE", message: "Database unavailable" } }, { status: 503 });
-  }
+export async function POST(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   let body: Record<string, unknown> = {};
   try {

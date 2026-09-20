@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server-client";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { createAdminOtpDatabaseClient } from "@/lib/auth/admin-otp-db";
 import { canRequestAdminOtp, resolveEffectiveRole } from "@/lib/auth/rbac";
 import { authLog } from "@/lib/auth/auth-logger";
@@ -72,21 +72,17 @@ export async function POST(req: NextRequest) {
   try {
     step("STEP 1: request received");
 
-    const supabase = createSupabaseServerClient();
-    if (!supabase) {
+    const auth = await protectApiRoute(req);
+    if (auth.error) {
+      step("STEP 2: session missing", { status: auth.status });
       return NextResponse.json(
-        { error: "Auth service unavailable.", code: "SUPABASE_UNAVAILABLE" },
-        { status: 503 },
+        { error: "Session expired. Please sign in again.", code: "AUTH_REQUIRED" },
+        { status: auth.status },
       );
     }
+    const { supabase, user } = auth;
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user?.email) {
-      step("STEP 2: session missing", { userError: userError?.message });
+    if (!user.email) {
       return NextResponse.json(
         { error: "Session expired. Please sign in again.", code: "AUTH_REQUIRED" },
         { status: 401 },

@@ -25,6 +25,7 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const { supabase, refreshIdentity, roleLoading, loading: authBootLoading, sessionStatus } = useAuth()
   const signedOut = searchParams.get("signedOut") === "1"
+  const passwordResetSuccess = searchParams.get("reset") === "success"
   const [isLoading, setIsLoading] = useState(false)
   const [method, setMethod] = useState<"email" | "otp">("email")
   const [showPassword, setShowPassword] = useState(false)
@@ -143,7 +144,12 @@ function LoginForm() {
         <div className="w-full max-w-[450px]">
           <div className="mb-6">
             <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Login to {BRAND.name}</h2>
-            {signedOut && sessionStatus !== "authenticated" ? (
+            {passwordResetSuccess ? (
+              <div className="mt-2 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                <span>Password updated successfully. Please log in with your new password.</span>
+              </div>
+            ) : signedOut && sessionStatus !== "authenticated" ? (
               <p className="mt-2 text-sm text-slate-600">You have been signed out. Sign in again to continue.</p>
             ) : null}
           </div>

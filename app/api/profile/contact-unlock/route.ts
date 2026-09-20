@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server-client";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 
 export const dynamic = "force-dynamic";
 
 /** Seller grants contact unlock to a buyer (e.g. after inquiry approval) */
 export async function POST(request: NextRequest) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   const body = await request.json();
   const buyerUserId = String(body.buyerUserId ?? "");
@@ -19,11 +18,6 @@ export async function POST(request: NextRequest) {
 
   if (!buyerUserId) {
     return NextResponse.json({ error: "buyerUserId required" }, { status: 400 });
-  }
-
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 
   const { data, error } = await supabase
@@ -49,19 +43,13 @@ export async function POST(request: NextRequest) {
 
 /** Seller revokes contact unlock */
 export async function DELETE(request: NextRequest) {
-  const user = await getServerUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase, user } = auth;
 
   const buyerUserId = request.nextUrl.searchParams.get("buyerUserId");
   if (!buyerUserId) {
     return NextResponse.json({ error: "buyerUserId required" }, { status: 400 });
-  }
-
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 
   const { error } = await supabase

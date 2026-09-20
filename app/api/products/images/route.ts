@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role-client";
 
 const BUCKET = "product-images";
@@ -12,17 +12,9 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await protectApiRoute(req);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase } = auth;
 
   let formData: FormData;
   try {
@@ -55,7 +47,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { data: product } = await supabase.from("seller_products").select("id, approval_status, is_published").eq("id", productId).eq("profile_id", user.id).maybeSingle();
+  const { data: product } = await supabase.from("seller_products").select("id, approval_status, is_published").eq("id", productId).eq("profile_id", auth.user.id).maybeSingle();
   if (!product) return NextResponse.json({ success: false, error: { code: "PRODUCT_ACCESS_DENIED", message: "Product draft not found." } }, { status: 404 });
   if (product.is_published || !["draft", "pending_review", "rejected"].includes(product.approval_status)) return NextResponse.json({ success: false, error: { code: "PRODUCT_NOT_EDITABLE", message: "This product can no longer be edited." } }, { status: 409 });
 
@@ -65,7 +57,7 @@ export async function POST(req: NextRequest) {
   // Build an isolated storage path. The service role is never exposed to the browser.
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
   const safeFilename = `${crypto.randomUUID()}.${ext}`;
-  const folder = `${user.id}/${productId}`;
+  const folder = `${auth.user.id}/${productId}`;
   const path = `${folder}/${safeFilename}`;
 
   const arrayBuffer = await file.arrayBuffer();
@@ -102,17 +94,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const supabase = createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await protectApiRoute(req);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase } = auth;
 
   const { path, productId } = await req.json().catch(() => ({ path: null, productId: null }));
 
@@ -120,12 +104,12 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Path required" }, { status: 400 });
   }
 
-  // Security: ensure path starts with user's id
-  if (!path.startsWith(`${user.id}/`)) {
+  // Security: ensure path starts with user's id (IDOR guard)
+  if (!path.startsWith(`${auth.user.id}/`)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data: product } = await supabase.from("seller_products").select("id").eq("id", productId).eq("profile_id", user.id).maybeSingle();
+  const { data: product } = await supabase.from("seller_products").select("id").eq("id", productId).eq("profile_id", auth.user.id).maybeSingle();
   if (!product) return NextResponse.json({ success: false, error: { code: "PRODUCT_ACCESS_DENIED", message: "Product draft not found." } }, { status: 404 });
   const { data: media } = await supabase.from("product_images").select("id").eq("seller_product_id", productId).eq("storage_path", path).maybeSingle();
   if (!media) return NextResponse.json({ success: false, error: { code: "PRODUCT_NOT_FOUND", message: "Product image not found." } }, { status: 404 });

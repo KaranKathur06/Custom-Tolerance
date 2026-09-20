@@ -6,28 +6,21 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { protectApiRoute } from "@/lib/auth/protect-route";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/dashboard/seller/products
 // Returns all products for the authenticated seller with publishing status
 // ─────────────────────────────────────────────────────────────────────────────
-export async function GET() {
-  const supabase = createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(request: NextRequest) {
+  const auth = await protectApiRoute(request);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase } = auth;
 
   const { data: baseProducts, error } = await supabase
     .from("seller_products")
     .select("*")
-    .eq("profile_id", user.id)
+    .eq("profile_id", auth.user.id)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -89,16 +82,9 @@ export async function GET() {
 // Creates a new product draft using the atomic RPC
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await protectApiRoute(req);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase } = auth;
 
   const body = (await req.json()) as Record<string, unknown>;
 
@@ -132,16 +118,9 @@ export async function POST(req: NextRequest) {
 // Updates a product and its related tables
 // ─────────────────────────────────────────────────────────────────────────────
 export async function PATCH(req: NextRequest) {
-  const supabase = createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await protectApiRoute(req);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase } = auth;
 
   const { searchParams } = new URL(req.url);
   const productId = searchParams.get("id");
@@ -154,7 +133,7 @@ export async function PATCH(req: NextRequest) {
     .from("seller_products")
     .select("id, approval_status, lifecycle_status, is_published, featured_requested, draft_version")
     .eq("id", productId)
-    .eq("profile_id", user.id)
+    .eq("profile_id", auth.user.id)
     .maybeSingle();
 
   if (existingProductError) {
@@ -189,7 +168,7 @@ export async function PATCH(req: NextRequest) {
             draft_version: expectedVersion + 1,
           })
           .eq("id", productId)
-          .eq("profile_id", user.id)
+          .eq("profile_id", auth.user.id)
           .eq("draft_version", expectedVersion)
           .select("id, featured_requested, draft_version")
           .maybeSingle();
@@ -233,7 +212,7 @@ export async function PATCH(req: NextRequest) {
             draft_version: expectedVersion + 1,
           })
           .eq("id", productId)
-          .eq("profile_id", user.id)
+          .eq("profile_id", auth.user.id)
           .eq("draft_version", expectedVersion)
           .select("id, is_visible, draft_version")
           .maybeSingle();
@@ -306,7 +285,7 @@ export async function PATCH(req: NextRequest) {
     .from("seller_products")
     .update({ ...patch, draft_version: expectedVersion + 1 })
     .eq("id", productId)
-    .eq("profile_id", user.id)
+    .eq("profile_id", auth.user.id)
     .eq("draft_version", expectedVersion)
     .select("id, draft_version")
     .maybeSingle();
@@ -397,16 +376,9 @@ export async function PATCH(req: NextRequest) {
 // Deletes a product by id (passed as query param ?id=...)
 // ─────────────────────────────────────────────────────────────────────────────
 export async function DELETE(req: NextRequest) {
-  const supabase = createClient();
-  if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await protectApiRoute(req);
+  if (auth.error) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const { supabase } = auth;
 
   const { searchParams } = new URL(req.url);
   const productId = searchParams.get("id");
@@ -418,7 +390,7 @@ export async function DELETE(req: NextRequest) {
     .from("seller_products")
     .select("is_published, approval_status")
     .eq("id", productId)
-    .eq("profile_id", user.id)
+    .eq("profile_id", auth.user.id)
     .single();
 
   if (!product) {
@@ -433,7 +405,7 @@ export async function DELETE(req: NextRequest) {
     .from("seller_products")
     .delete()
     .eq("id", productId)
-    .eq("profile_id", user.id);
+    .eq("profile_id", auth.user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
