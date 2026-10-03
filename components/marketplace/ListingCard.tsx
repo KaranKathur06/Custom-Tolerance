@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCapability, formatSpecification } from '@/lib/product/display';
 import {
   ArrowRight, Award, CheckCircle2, Clock3, Factory, Gauge, Globe2,
   MapPin, Package, Shield, ShieldCheck, Star, TrendingUp, Zap,
@@ -69,8 +70,8 @@ export default function ListingCard({
   if (tab === 'buyers') {
     const inquiry = item as BuyerInquiry;
     const mappedCaps = (inquiry.capabilityMappings || [])
-      .map((entry) => entry.capability?.name || entry.capability?.slug)
-      .filter(Boolean)
+      .map((entry) => entry.capability?.name || (entry.capability?.slug ? formatCapability(entry.capability.slug) : null))
+      .filter((value): value is string => Boolean(value))
       .slice(0, 3) as string[];
     const urg = urgencyConfig(inquiry.urgency);
 
@@ -99,8 +100,8 @@ export default function ListingCard({
             {/* Tags */}
             <div className="mt-3 flex flex-wrap gap-1.5">
               {(inquiry.category || (inquiry as any).metal_type) ? (
-                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold capitalize text-slate-700">
-                  {(inquiry.category || (inquiry as any).metal_type || '').replace(/-/g, ' ')}
+                <span className="max-w-full break-words rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                  {formatSpecification(inquiry.category || (inquiry as any).metal_type || '')}
                 </span>
               ) : null}
               {inquiry.industry?.name ? (
@@ -109,7 +110,7 @@ export default function ListingCard({
                 </span>
               ) : null}
               {mappedCaps.map((cap) => (
-                <span key={cap} className="rounded-md border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs font-medium capitalize text-blue-700">
+                <span key={cap} className="max-w-full break-words rounded-md border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                   {cap}
                 </span>
               ))}
@@ -285,7 +286,6 @@ export default function ListingCard({
     </Link>
   );
 }
-
 
 
 

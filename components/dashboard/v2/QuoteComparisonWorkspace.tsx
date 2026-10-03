@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Star, BadgeCheck, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatLeadTime, formatPaymentTerms } from "@/lib/product/display";
 
 type SupplierQuote = {
   id: string;
@@ -136,7 +137,7 @@ export function QuoteComparisonWorkspace({ className = "" }: QuoteComparisonWork
                     <div>
                       <p className="text-slate-400">Delivery</p>
                       <p className="font-semibold text-slate-700">
-                        {quote.lead_time || "On request"}
+                        {quote.lead_time ? formatLeadTime(quote.lead_time) : "On request"}
                       </p>
                     </div>
                     <div>
@@ -148,7 +149,7 @@ export function QuoteComparisonWorkspace({ className = "" }: QuoteComparisonWork
                     <div className="col-span-2">
                       <p className="text-slate-400">Payment</p>
                       <p className="font-semibold text-slate-700">
-                        {quote.payment_terms || "On request"}
+                        {quote.payment_terms ? formatPaymentTerms(quote.payment_terms).map((term, index) => <span key={`${term}-${index}`} className="block break-words">{term}</span>) : "On request"}
                       </p>
                     </div>
                   </div>

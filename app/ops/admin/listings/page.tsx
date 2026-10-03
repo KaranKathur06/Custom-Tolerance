@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/components/ops/shared/StatusBadge';
 import { AlertTriangle, CheckCircle2, Eye, Clock, XCircle } from 'lucide-react';
+import { formatPriceUnit, formatSpecification } from '@/lib/product/display';
 
 type ListingRow = {
   id: string;
@@ -80,11 +81,12 @@ export default function ListingsPage() {
       const mapped: ListingRow[] = (payload.data ?? []).map((l: any) => {
         const sellerName = l?.seller?.name ?? '-';
 
-        const metalType = l?.product?.capability ?? l?.metal_type ?? l?.metalType ?? '-';
+        const rawMetalType = l?.product?.capability ?? l?.metal_type ?? l?.metalType ?? null;
+        const metalType = rawMetalType ? formatSpecification(String(rawMetalType)) : '-';
 
         const priceMin = l?.product?.price_min ?? l?.price_min ?? l?.priceMin ?? null;
         const priceMax = l?.product?.price_max ?? l?.price_max ?? l?.priceMax ?? null;
-        const unit = l?.price_unit ?? l?.unit ?? '/MT';
+        const unit = l?.price_unit ? formatPriceUnit(String(l.price_unit)) : l?.unit ?? '/MT';
 
         const price =
           priceMin != null || priceMax != null

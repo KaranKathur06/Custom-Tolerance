@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isApprovedBuyerService } from "@/lib/constants/buyer-services";
+import { formatFieldLabel } from "@/lib/product/display";
 import {
   SELLER_ONBOARDING_V3_STEPS,
   type SellerOnboardingV3StepKey,
@@ -78,65 +79,6 @@ function hasDocument(documents: Record<string, SellerUploadAsset | undefined>, k
 
 function fieldError(field: string, message: string): SellerValidationResult["fieldErrors"][number] {
   return { field, message };
-}
-
-function formatFieldLabel(field: string): string {
-  const labels: Record<string, string> = {
-    countryOrigin: "Country of Origin",
-    businessNature: "Business Nature",
-    gstNumber: "GST Number",
-    gstVerified: "GST Verification",
-    legalBusinessName: "Legal Business Name",
-    addressLine1: "Address Line 1",
-    city: "City",
-    state: "State",
-    postalCode: "Postal Code",
-    verificationType: "Verification Type",
-    dunsNumber: "DUNS Number",
-    companyRegistrationNumber: "Company Registration Number",
-    contactPersonName: "Contact Person",
-    designation: "Designation",
-    mobileNumber: "Mobile Number",
-    mobileVerified: "Mobile Verification",
-    businessEmail: "Business Email",
-    emailVerified: "Email Verification",
-    sellerTypes: "Seller Type",
-    sellerTypeOther: "Seller Type (Other)",
-    industriesServed: "Industries Served",
-    capabilities: "Capabilities",
-    buyerServices: "Buyer Services",
-    supplierInterests: "Supplier Interests",
-    yearsInBusiness: "Years in Business",
-    videoUrls: "Factory Video URLs",
-    capabilityCategories: "Capability Categories",
-    products: "Products",
-    bankName: "Bank Name",
-    accountHolderName: "Account Holder Name",
-    accountNumber: "Account Number",
-    confirmAccountNumber: "Confirm Account Number",
-    ifscCode: "IFSC Code",
-    branchName: "Branch Name",
-    cancelledChequeDocumentId: "Cancelled Cheque",
-    sellerAgreement: "Seller Agreement",
-    termsAccepted: "Terms & Conditions",
-    privacyAccepted: "Privacy Policy",
-    kycConsent: "KYC Consent",
-    companyDescription: "Company Description",
-    factoryPhotos: "Factory Photos",
-    machines: "Machines",
-    certifications: "Certifications",
-    exportExperience: "Export Experience",
-    factoryTourUrl: "Factory Tour URL",
-    factoryTourVideoId: "Factory Tour Video",
-  };
-
-  return (
-    labels[field] ??
-    field
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (char) => char.toUpperCase())
-      .trim()
-  );
 }
 
 export function validateSellerOnboardingStep(

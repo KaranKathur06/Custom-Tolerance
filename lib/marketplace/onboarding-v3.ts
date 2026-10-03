@@ -2,6 +2,7 @@ import {
   BUYER_SERVICES_OPTIONS as APPROVED_BUYER_SERVICES_OPTIONS,
   normalizeBuyerServices,
 } from "@/lib/constants/buyer-services";
+import { formatFieldLabel } from "@/lib/product/display";
 
 export const BUYER_ONBOARDING_V3_FLOW_KEY = "buyer_onboarding_v3";
 export const SELLER_ONBOARDING_V3_FLOW_KEY = "seller_onboarding_v3";
@@ -874,11 +875,4 @@ export function getSellerV3HardGateStatus(values: Record<string, unknown>) {
     canActivate: missingRequirements.length === 0,
     missingRequirements,
   };
-}
-
-function formatFieldLabel(field: string): string {
-  return field
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (char) => char.toUpperCase())
-    .trim();
 }

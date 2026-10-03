@@ -11,6 +11,7 @@ import ProductCard from './ProductCard';
 import { SupplierCard } from './SupplierCard';
 import { getSupabaseBrowserClient } from '../../lib/supabase/browser-client';
 import type { MarketplaceSupplier } from '@/lib/marketplace/supplier-query';
+import { formatCapability, formatIndustry, formatSpecification } from '@/lib/product/display';
 
 const MARKETPLACE_CITIES = [
   { label: 'Rajkot', value: 'Rajkot' },
@@ -105,12 +106,12 @@ export default function MarketplaceTabs() {
   }, [response, activeType]);
 
   const activeChips = useMemo(() => {
-    const chips: Array<{ label: string; value: string; key: string }> = [];
+    const chips: Array<{ label: string; value: string; key: string; displayValue?: string }> = [];
     if (search) chips.push({ label: 'Search', value: search, key: 'search' });
     locations.forEach((v) => chips.push({ label: 'Location', value: v, key: `location:${v}` }));
-    capabilitiesSelected.forEach((v) => chips.push({ label: 'Capability', value: v, key: `capability:${v}` }));
-    categories.forEach((v) => chips.push({ label: 'Category', value: v, key: `category:${v}` }));
-    industries.forEach((v) => chips.push({ label: 'Industry', value: v, key: `industry:${v}` }));
+    capabilitiesSelected.forEach((v) => chips.push({ label: 'Capability', value: v, displayValue: formatCapability(v), key: `capability:${v}` }));
+    categories.forEach((v) => chips.push({ label: 'Category', value: v, displayValue: formatSpecification(v), key: `category:${v}` }));
+    industries.forEach((v) => chips.push({ label: 'Industry', value: v, displayValue: formatIndustry(v), key: `industry:${v}` }));
     if (verified.length > 0) chips.push({ label: 'Verified', value: 'Only', key: 'verified:true' });
     if (moqRange.length > 0) chips.push({ label: 'MOQ', value: moqRange[0], key: `moqRange:${moqRange[0]}` });
     if (date.length > 0) chips.push({ label: 'Date', value: date[0], key: `date:${date[0]}` });
@@ -374,7 +375,7 @@ export default function MarketplaceTabs() {
                   onClick={() => removeChip(chip.key, chip.value)}
                   className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100"
                 >
-                  {chip.label}: <span className="capitalize">{chip.value.replace(/-/g, ' ')}</span>
+                  {chip.label}: <span>{chip.displayValue ?? chip.value}</span>
                   <X className="h-3 w-3" />
                 </button>
               ))}

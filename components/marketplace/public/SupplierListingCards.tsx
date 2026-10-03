@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { formatSpecification } from "@/lib/product/display";
 
 type SupplierListing = {
   id: string;
@@ -40,7 +41,7 @@ export function SupplierListingCards({ listings }: SupplierListingCardsProps) {
             </span>
             <div className="min-w-0">
               <p className="font-semibold text-slate-900 group-hover:text-blue-700">{listing.title}</p>
-              <p className="mt-1 text-xs text-slate-500">{listing.metal_type || "Industrial metal"}</p>
+              <p className="mt-1 break-words text-xs text-slate-500">{listing.metal_type ? formatSpecification(listing.metal_type) : "Industrial metal"}</p>
               {listing.price_min != null ? (
                 <p className="mt-2 text-sm font-medium text-slate-800">
                   {formatCurrency(listing.price_min)}
@@ -49,7 +50,7 @@ export function SupplierListingCards({ listings }: SupplierListingCardsProps) {
                     : ""}
                 </p>
               ) : null}
-              {listing.moq ? <p className="mt-1 text-xs text-slate-500">MOQ: {listing.moq}</p> : null}
+              {listing.moq ? <p className="mt-1 break-words text-xs text-slate-500">MOQ: {listing.moq}</p> : null}
             </div>
           </div>
         </Link>

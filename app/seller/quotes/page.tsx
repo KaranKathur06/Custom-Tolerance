@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { SellerTrustSection } from "@/components/dashboard/SellerTrustSection";
+import { formatLeadTime } from "@/lib/product/display";
 
 type QuoteRow = {
   id: string;
@@ -82,7 +83,7 @@ export default function SellerQuotesPage() {
                 <p className="text-lg font-bold text-slate-900">{quote.price}</p>
               </div>
               <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
-                {quote.lead_time ? <span>Lead time: {quote.lead_time}</span> : null}
+                {quote.lead_time ? <span className="break-words">Lead time: {formatLeadTime(quote.lead_time)}</span> : null}
                 {quote.moq ? <span>MOQ: {quote.moq}</span> : null}
                 {quote.submitted_at ? (
                   <span>Submitted: {new Date(quote.submitted_at).toLocaleDateString()}</span>

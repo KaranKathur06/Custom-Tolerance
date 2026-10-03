@@ -136,7 +136,9 @@ export function Phase4Review({
               <div className="grid grid-cols-2 gap-4 text-sm bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                 <div>
                   <span className="block text-slate-500 mb-1 text-xs uppercase tracking-wider font-semibold">Materials</span>
-                  <span className="font-medium text-slate-900">{data.materials?.join(", ") || "—"}</span>
+                  <span className="flex flex-wrap gap-1.5">
+                    {data.materials?.length ? data.materials.map((material) => <span key={material} className="max-w-full rounded border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-900 break-words">{material}</span>) : "—"}
+                  </span>
                 </div>
                 <div>
                   <span className="block text-slate-500 mb-1 text-xs uppercase tracking-wider font-semibold">Tolerance</span>

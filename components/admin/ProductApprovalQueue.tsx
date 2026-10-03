@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { formatCapability, formatLeadTime } from '@/lib/product/display';
 import {
   CheckCircle2, Clock, X, AlertCircle, RefreshCw, Filter, ChevronRight,
 } from 'lucide-react';
@@ -227,7 +228,7 @@ export default function AdminProductApprovalQueue({
                       </Badge>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-4 text-sm text-slate-600">
-                      <span>{product?.capability}</span>
+                      {product?.capability ? <span>{formatCapability(product.capability)}</span> : null}
                       {seller?.companyName && <span>{seller.companyName}</span>}
                       {seller?.location && <span>{seller.location}</span>}
                     </div>
@@ -254,7 +255,7 @@ export default function AdminProductApprovalQueue({
                     {product?.lead_time && (
                       <div>
                         <p className="text-xs text-slate-600">Lead Time</p>
-                        <p className="font-semibold text-slate-900">{product.lead_time}</p>
+                        <p className="break-words font-semibold text-slate-900">{formatLeadTime(product.lead_time)}</p>
                       </div>
                     )}
                     {product?.estimated_price_per_unit && (

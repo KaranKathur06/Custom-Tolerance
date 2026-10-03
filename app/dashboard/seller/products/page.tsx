@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FeaturedProductRow } from "@/components/onboarding/seller/types";
 import { formatLeadTime, formatPrecision, formatProductStatus } from "@/lib/products/formatters";
+import { formatCapability } from "@/lib/product/display";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -105,7 +106,7 @@ function ProductCard({
       <div className="mb-3 flex flex-wrap gap-1.5">
         {product.capability ? (
           <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-            {product.capability}
+            {formatCapability(product.capability)}
           </span>
         ) : null}
         {product.materials.slice(0, 3).map((m) => (

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   CheckCircle2, Clock, X, AlertCircle, RefreshCw, Package, Send, Edit2, Trash2,
 } from 'lucide-react';
+import { formatCapability, formatLeadTime } from '@/lib/product/display';
 
 type SellerProduct = {
   id: string;
@@ -287,7 +288,7 @@ function ProductRow({
             <h4 className="font-semibold text-slate-900">{product.product_name}</h4>
             {getStatusBadge(product.approval_status)}
           </div>
-          <p className="mt-1 text-sm text-slate-600">{product.capability}</p>
+          <p className="mt-1 break-words text-sm text-slate-600">{product.capability ? formatCapability(product.capability) : '—'}</p>
         </div>
         <ChevronRight className={`h-5 w-5 text-slate-400 transition ${isExpanded ? 'rotate-90' : ''}`} />
       </button>
@@ -305,7 +306,7 @@ function ProductRow({
             {product.lead_time && (
               <div>
                 <p className="text-xs font-medium text-slate-600">Lead Time</p>
-                <p className="font-semibold text-slate-900">{product.lead_time}</p>
+                <p className="break-words font-semibold text-slate-900">{formatLeadTime(product.lead_time)}</p>
               </div>
             )}
             {product.estimated_price_per_unit && (

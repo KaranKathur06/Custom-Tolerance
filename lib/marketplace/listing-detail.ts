@@ -1,16 +1,4 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
-import {
-  formatCapability,
-  formatIncoterm,
-  formatIndustry,
-  formatLeadTime,
-  formatPackaging,
-  formatPaymentTerm,
-  formatPrecision,
-  formatPriceType,
-  formatPriceUnit,
-  formatShippingType,
-} from "@/lib/product/display";
 
 export type ProductMedia = {
   url: string;
@@ -51,7 +39,7 @@ export type PublicProductDetail = {
     productionCapacityUnit: string | null;
     minimumOrderQuantity: string | null;
     leadTime: string | null;
-    inspection: string | null;
+    inspection: boolean | null;
   };
   commercial: {
     priceType: string | null;
@@ -63,7 +51,7 @@ export type PublicProductDetail = {
     incoterms: string[];
     deliveryTerms: string | null;
     negotiable: boolean;
-    freeSample: string | null;
+    freeSample: boolean | null;
     sampleShippingCost: string | null;
   };
   packaging: {
@@ -201,7 +189,7 @@ export function toPublicProductDetail(
     title: asString(product.product_name) ?? "Untitled product",
     slug: String(product.id ?? ""),
     description: asString(product.description),
-    category: asString(product.capability) ? formatCapability(product.capability) : null,
+    category: asString(product.capability),
     subcategory: null,
     productType: asString(product.specification),
     status: "active",
@@ -209,12 +197,10 @@ export function toPublicProductDetail(
     technical: {
       capabilities: (relations.capabilities ?? [])
         .map((item) => asString(item.capability_id))
-        .filter((item): item is string => Boolean(item))
-        .map(formatCapability),
+        .filter((item): item is string => Boolean(item)),
       industries: (relations.industries ?? [])
         .map((item) => asString(item.industry_id))
-        .filter((item): item is string => Boolean(item))
-        .map(formatIndustry),
+        .filter((item): item is string => Boolean(item)),
       materials: (relations.materials ?? [])
         .map((item) => asString(item.material_name))
         .filter((item): item is string => Boolean(item)),
@@ -222,7 +208,7 @@ export function toPublicProductDetail(
         .map((item) => asString(item.grade_name))
         .filter((item): item is string => Boolean(item)),
       specification: asString(product.specification),
-      tolerance: asString(product.tolerance_capability) ? formatPrecision(product.tolerance_capability) : null,
+      tolerance: asString(product.tolerance_capability),
       dimensions,
       weight,
       qualityCertificate: asString(product.quality_certificate),
@@ -232,32 +218,30 @@ export function toPublicProductDetail(
       productionCapacity: asString(product.monthly_capacity) ?? (asNumber(product.monthly_capacity) != null ? String(asNumber(product.monthly_capacity)) : null),
       productionCapacityUnit: asString(product.production_capacity_unit),
       minimumOrderQuantity: asString(product.moq) ?? (asNumber(product.moq) != null ? String(asNumber(product.moq)) : null),
-      leadTime: asString(product.lead_time) ? formatLeadTime(product.lead_time) : null,
-      inspection: product.third_party_inspection === true ? "Third-party inspection available" : null,
+      leadTime: asString(product.lead_time),
+      inspection: typeof product.third_party_inspection === "boolean" ? product.third_party_inspection : null,
     },
     commercial: {
-      priceType: asString(product.price_type) ? formatPriceType(product.price_type) : null,
+      priceType: asString(product.price_type),
       minPrice: asNumber(product.min_price),
       maxPrice: asNumber(product.max_price),
       currency: asString(product.currency),
-      priceUnit: asString(product.price_unit) ? formatPriceUnit(product.price_unit) : null,
+      priceUnit: asString(product.price_unit),
       paymentTerms: (relations.paymentTerms ?? [])
         .map((item) => asString(item.payment_term_id))
-        .filter((item): item is string => Boolean(item))
-        .map(formatPaymentTerm),
+        .filter((item): item is string => Boolean(item)),
       incoterms: (relations.incoterms ?? [])
         .map((item) => asString(item.incoterm_id))
-        .filter((item): item is string => Boolean(item))
-        .map(formatIncoterm),
+        .filter((item): item is string => Boolean(item)),
       deliveryTerms: asString(product.delivery_terms),
       negotiable: true,
-      freeSample: product.free_sample === true ? "Available" : product.free_sample === false ? "Not Available" : null,
+      freeSample: typeof product.free_sample === "boolean" ? product.free_sample : null,
       sampleShippingCost: asString(product.sample_shipping_cost),
     },
     packaging: {
-      shippingType: asString(product.shipping_type) ? formatShippingType(product.shipping_type) : null,
-      primary: asString(product.primary_packaging) ? formatPackaging(product.primary_packaging) : null,
-      secondary: asString(product.secondary_packaging) ? formatPackaging(product.secondary_packaging) : null,
+      shippingType: asString(product.shipping_type),
+      primary: asString(product.primary_packaging),
+      secondary: asString(product.secondary_packaging),
       notes: asString(product.packaging_notes),
     },
     seller: {

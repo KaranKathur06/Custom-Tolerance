@@ -20,7 +20,9 @@ import {
   formatPrecision,
   formatPriceType,
   formatPriceUnit,
+  formatSpecification,
   formatShippingType,
+  formatUnit,
 } from '@/lib/product/display';
 
 // Type alias for the payload's data property
@@ -63,7 +65,9 @@ function formatCollection(value: unknown, formatter: (item: unknown) => string):
 }
 
 function Field({ label, item }: { label: string; item: unknown }) {
-  return <div style={{ borderTop: '1px solid var(--ops-border)', paddingTop: 10, minWidth: 0 }}><dt className="ops-mini-label">{label}</dt><dd style={{ margin: '5px 0 0', color: item == null || item === '' ? 'var(--ops-text-muted)' : 'var(--ops-text-secondary)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.55 }}>{display(item)}</dd></div>;
+  const values = Array.isArray(item) ? item.map((value) => String(value)).filter(Boolean) : null;
+  const isEmpty = values ? values.length === 0 : item == null || item === '';
+  return <div style={{ borderTop: '1px solid var(--ops-border)', paddingTop: 10, minWidth: 0 }}><dt className="ops-mini-label">{label}</dt><dd style={{ margin: '5px 0 0', color: isEmpty ? 'var(--ops-text-muted)' : 'var(--ops-text-secondary)', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'normal', lineHeight: 1.55 }}>{values ? values.length ? <ul style={{ display: 'flex', flexWrap: 'wrap', gap: 6, listStyle: 'none', margin: 0, padding: 0 }}>{values.map((value, index) => <li key={`${value}-${index}`} style={{ maxWidth: '100%', border: '1px solid var(--ops-border)', borderRadius: 999, padding: '2px 8px', overflowWrap: 'anywhere' }}>{value}</li>)}</ul> : 'Not provided' : display(item)}</dd></div>;
 }
 
 function LongField({ label, item }: { label: string; item: unknown }) {
@@ -187,14 +191,14 @@ export default function ListingDetailsPage() {
     </Grid></Section>
 
     <Section title="Technical specification"><Grid>
-      <Field label="Specification" item={product.specification} />
+      <Field label="Specification" item={formatSpecification(product.specification)} />
       <Field label="Tolerance capability" item={product.tolerance_capability ? formatPrecision(product.tolerance_capability) : null} />
-      <Field label="Quality certificate" item={product.quality_certificate} />
-      <Field label="Brand marking" item={product.brand_marking === 'other' ? product.brand_marking_other : formatDisplayValue(product.brand_marking)} />
-      <Field label="Dies and tools" item={formatDisplayValue(product.dies_and_tools)} />
+      <Field label="Quality certificate" item={formatSpecification(product.quality_certificate)} />
+      <Field label="Brand marking" item={product.brand_marking === 'other' ? product.brand_marking_other : formatSpecification(product.brand_marking)} />
+      <Field label="Dies & Tools" item={formatSpecification(product.dies_and_tools)} />
       <Field label="Estimated tool cost" item={product.estimated_tool_cost} />
-      <Field label="Tool ownership" item={product.tool_ownership} />
-      <Field label="Tool lead time" item={product.tool_lead_time} />
+      <Field label="Tool ownership" item={formatSpecification(product.tool_ownership)} />
+      <Field label="Tool lead time" item={product.tool_lead_time ? formatLeadTime(product.tool_lead_time) : null} />
     </Grid></Section>
 
     <Section title="Commercial terms"><Grid>
@@ -203,7 +207,7 @@ export default function ListingDetailsPage() {
       <Field label="Maximum price" item={product.max_price != null ? `${product.max_price} ${product.currency ?? ''}` : null} />
       <Field label="Price unit" item={product.price_unit ? formatPriceUnit(product.price_unit) : null} />
       <Field label="Minimum order quantity" item={product.moq} />
-      <Field label="Monthly capacity" item={product.monthly_capacity != null ? `${product.monthly_capacity} ${product.production_capacity_unit ?? ''}` : null} />
+      <Field label="Monthly Production Capacity" item={product.monthly_capacity != null ? `${product.monthly_capacity} ${product.production_capacity_unit ? formatUnit(product.production_capacity_unit) : ''}` : null} />
       <Field label="Lead time" item={product.lead_time ? formatLeadTime(product.lead_time) : null} />
       <Field label="Payment terms" item={paymentTerms.length > 0 ? paymentTerms : formatCollection(product.payment_terms, formatPaymentTerm)} />
       <Field label="Incoterms" item={incoterms.length > 0 ? incoterms : formatCollection(product.incoterms, formatIncoterm)} />
@@ -214,8 +218,8 @@ export default function ListingDetailsPage() {
     </Grid></Section>
 
     <Section title="Packaging and logistics"><Grid>
-      <Field label="Weight" item={product.weight_value != null ? `${product.weight_value} ${product.weight_unit ?? ''}` : null} />
-      <Field label="Dimensions" item={product.dim_length != null ? `${product.dim_length} x ${product.dim_width} x ${product.dim_height} ${product.dim_unit ?? ''}` : null} />
+      <Field label="Product Weight" item={product.weight_value != null ? `${product.weight_value} ${product.weight_unit ? formatUnit(product.weight_unit) : ''}` : null} />
+      <Field label="Dimensions" item={product.dim_length != null ? `${product.dim_length} x ${product.dim_width} x ${product.dim_height} ${product.dim_unit ? formatUnit(product.dim_unit) : ''}` : null} />
       <Field label="Shipping type" item={product.shipping_type ? formatShippingType(product.shipping_type) : null} />
       <Field label="Primary packaging" item={product.primary_packaging ? formatPackaging(product.primary_packaging) : null} />
       <Field label="Secondary packaging" item={product.secondary_packaging ? formatPackaging(product.secondary_packaging) : null} />

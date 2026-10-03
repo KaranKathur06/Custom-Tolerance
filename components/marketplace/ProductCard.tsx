@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { formatCapability, formatLeadTime, formatMarketplaceValue, formatPrice } from '@/lib/marketplace/display';
+import { formatMaterial, formatSpecification } from '@/lib/product/display';
 import {
   ArrowRight, Award, Box, MapPin, ShieldCheck, Zap,
 } from 'lucide-react';
@@ -58,7 +59,7 @@ export default function ProductCard({ item }: { item: SellerProduct }) {
           <div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
               {seller.isVerified ? <span className="inline-flex items-center gap-1 text-emerald-700"><ShieldCheck className="h-3.5 w-3.5" /> Verified Supplier</span> : null}
-              {item.capability ? <span className="truncate">{formatCapability(item.capability)}</span> : null}
+              {item.capability ? <span className="max-w-full break-words">{formatCapability(item.capability)}</span> : null}
             </div>
             <h3 className="line-clamp-2 text-lg font-bold leading-tight text-slate-900 group-hover:text-blue-700">
               {item.product_name}
@@ -83,8 +84,8 @@ export default function ProductCard({ item }: { item: SellerProduct }) {
           {item.materials && item.materials.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {item.materials.slice(0, 3).map((m) => (
-                <Badge key={m} variant="secondary" className="text-xs">
-                  {m}
+                <Badge key={m} variant="secondary" className="max-w-full whitespace-normal break-words">
+                  {formatMaterial(m)}
                 </Badge>
               ))}
               {item.materials.length > 3 && (
@@ -99,7 +100,7 @@ export default function ProductCard({ item }: { item: SellerProduct }) {
           {item.certifications && item.certifications.length > 0 && (
             <div className="flex items-center gap-1 text-xs text-slate-600">
               <Award className="h-3.5 w-3.5 text-blue-600" />
-              <span>{item.certifications.join(', ')}</span>
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">{item.certifications.map((cert) => formatSpecification(cert)).join(', ')}</span>
             </div>
           )}
 

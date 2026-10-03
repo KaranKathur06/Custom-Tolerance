@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Clock, Edit2, Package, RefreshCw, Rocket, X } from "lucide-react";
 import { canResumeProductDraft } from "@/lib/services/product-draft-service";
+import { formatCapability, formatLeadTime, formatSpecification } from "@/lib/product/display";
 
 export function ProductPublishingUI() {
   const { products, loading, error, refetch } = useSellerProducts();
@@ -125,7 +126,7 @@ export function ProductPublishingUI() {
                     {getStatusIcon(product.approval_status)}
                     <div>
                       <h3 className="font-semibold text-slate-900">{product.product_name}</h3>
-                      <p className="text-sm text-slate-500">{product.capability}</p>
+                      <p className="break-words text-sm text-slate-500">{product.capability ? formatCapability(product.capability) : "—"}</p>
                     </div>
                   </div>
 
@@ -147,7 +148,7 @@ export function ProductPublishingUI() {
                     </div>
                     <div>
                       <p className="text-xs font-medium text-slate-500">Lead Time</p>
-                      <p className="text-slate-900">{product.lead_time || "—"}</p>
+                      <p className="break-words text-slate-900">{product.lead_time ? formatLeadTime(product.lead_time) : "—"}</p>
                     </div>
                     <div>
                       <p className="text-xs font-medium text-slate-500">Est. Price/Unit</p>
@@ -165,8 +166,8 @@ export function ProductPublishingUI() {
                       <p className="text-xs font-medium text-slate-500">Certifications</p>
                       <div className="mt-2 flex flex-wrap gap-1">
                         {product.certifications.map((cert: string) => (
-                          <Badge key={cert} variant="secondary">
-                            {cert}
+                          <Badge key={cert} variant="secondary" className="max-w-full whitespace-normal break-words">
+                            {formatSpecification(cert)}
                           </Badge>
                         ))}
                       </div>

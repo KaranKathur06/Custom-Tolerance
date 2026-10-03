@@ -5,7 +5,7 @@ import { ArrowRight, Factory, MapPin, Timer } from "lucide-react";
 import { ListingMediaPreview } from "./ListingMediaPreview";
 import { ProductCardTrustChip } from "./ProductCardTrustChip";
 import type { ListingMedia } from "../../lib/marketplace/listing-media";
-import { formatLeadTime } from "@/lib/product/display";
+import { formatLeadTime, formatSpecification } from "@/lib/product/display";
 
 type ProductListingCardProps = {
   href: string;
@@ -55,7 +55,7 @@ export function ProductListingCard({
 
         {primarySpec ? (
           <div className="line-clamp-2 rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-            {primarySpec}
+            {formatSpecification(primarySpec)}
           </div>
         ) : null}
 
@@ -97,4 +97,3 @@ export function ProductListingCard({
     </article>
   );
 }
-

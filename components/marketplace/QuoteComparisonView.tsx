@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BadgeCheck, Check, Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatLeadTime, formatPaymentTerms } from "@/lib/product/display";
 
 export type ComparisonQuote = {
   id: string;
@@ -125,7 +126,7 @@ export function QuoteComparisonView({ quotes, onAction }: QuoteComparisonViewPro
                   <td className="px-4 py-3 font-medium text-slate-900">{name}</td>
                   <td className="px-4 py-3">{quote.price ?? "—"}</td>
                   <td className="px-4 py-3">{quote.moq ?? "—"}</td>
-                  <td className="px-4 py-3">{quote.lead_time ?? "—"}</td>
+                  <td className="max-w-48 break-words px-4 py-3">{quote.lead_time ? formatLeadTime(quote.lead_time) : "—"}</td>
                   <td className="px-4 py-3">
                     {rating > 0 ? (
                       <span className="inline-flex items-center gap-1">
@@ -143,7 +144,7 @@ export function QuoteComparisonView({ quotes, onAction }: QuoteComparisonViewPro
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-3">{quote.payment_terms ?? "—"}</td>
+                  <td className="px-4 py-3">{quote.payment_terms ? <ul className="min-w-40 list-disc space-y-1 pl-4">{formatPaymentTerms(quote.payment_terms).map((term, index) => <li key={`${term}-${index}`} className="break-words [overflow-wrap:anywhere]">{term}</li>)}</ul> : "—"}</td>
                   <td className="px-4 py-3">
                     <Badge variant="outline">{quote.status}</Badge>
                   </td>

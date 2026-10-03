@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { formatCapability, formatIndustry, formatSpecification } from "@/lib/product/display"
 
 type ListingRoleType = "buyers" | "suppliers"
 type PageMode = "directory" | ListingRoleType
@@ -138,17 +139,17 @@ export default function ListingsSearchClient({ mode }: { mode: PageMode }) {
   const title = useMemo(() => buildTitle(mode, search || null, country), [mode, search, country])
 
   const activeChips = useMemo(() => {
-    const chips: Array<{ key: string; label: string; value: string }> = []
+    const chips: Array<{ key: string; label: string; value: string; displayValue?: string }> = []
 
     if (search) chips.push({ key: "search", label: "Search", value: search })
     if (country.length > 0) chips.push({ key: "country", label: "Country", value: country.join(", ") })
     if (premium) chips.push({ key: "premium", label: "Premium", value: premium })
     if (listingType) chips.push({ key: "listingType", label: "Type", value: listingType })
     if (dateRange) chips.push({ key: "dateRange", label: "Date", value: dateRange })
-    if (industry.length > 0) chips.push({ key: "industry", label: "Industry", value: industry.join(", ") })
+    if (industry.length > 0) chips.push({ key: "industry", label: "Industry", value: industry.join(", "), displayValue: industry.map(formatIndustry).join(", ") })
     if (capability.length > 0)
-      chips.push({ key: "capability", label: "Capability", value: capability.join(", ") })
-    if (metal.length > 0) chips.push({ key: "metal", label: "Metal", value: metal.join(", ") })
+      chips.push({ key: "capability", label: "Capability", value: capability.join(", "), displayValue: capability.map(formatCapability).join(", ") })
+    if (metal.length > 0) chips.push({ key: "metal", label: "Metal", value: metal.join(", "), displayValue: metal.map((value) => formatSpecification(value)).join(", ") })
 
     return chips
   }, [search, country, premium, listingType, dateRange, industry, capability, metal])
@@ -268,7 +269,7 @@ export default function ListingsSearchClient({ mode }: { mode: PageMode }) {
               className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-sm hover:bg-accent"
             >
               <span className="text-muted-foreground">{chip.label}:</span>
-              <span className="font-medium">{chip.value}</span>
+              <span className="font-medium">{chip.displayValue ?? chip.value}</span>
               <span className="text-muted-foreground">×</span>
             </button>
           ))}
