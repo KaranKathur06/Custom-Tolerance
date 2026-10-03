@@ -26,6 +26,8 @@ Add or complete field-specific formatters for capabilities, industries, material
 
 Unknown enum values must remain renderable and human-readable. For example, an unmapped `robotic_welding` becomes “Robotic Welding”, and acronym segments such as CNC, ISO, ASTM, DIN, IATF, GST, MSME, and URL retain their canonical capitalization.
 
+These are target requirements for subsequent implementation, not claims about current behavior. The existing formatter does not yet cover all future-compatible lead-time patterns, and several current view consumers still display raw or locally transformed product values; resolving these gaps is part of the implementation scope.
+
 ## UI integration
 
 Audit product-value rendering and migrate existing read-only product surfaces that expose controlled product data. Known consumers to verify include:
