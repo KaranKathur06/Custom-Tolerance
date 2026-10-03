@@ -20,7 +20,7 @@ Formatting precedence:
 3. Generic humanization of unknown machine identifiers.
 4. A safe fallback for absent values.
 
-Add or complete field-specific formatters for capabilities, industries, materials, grades, lead times, packaging, shipping types, Incoterms, payment terms, price types, price units, booleans, precision/specifications, and field labels. Use current seller option IDs as the source of truth for supported mappings. Lead-time formatting should cover current options and range patterns such as `1_week`, `2_weeks`, `1_2_weeks`, and `2_4_weeks`, using an en dash for ranges. Incoterms preserve their standard abbreviations. Payment-term mappings use the agreed procurement wording, including `50% Advance, 50% Balance` and `30% Advance, 70% Balance`. Boolean text is applied only to boolean fields and may use contextual availability wording.
+Add or complete field-specific formatters for capabilities, industries, materials, grades, lead times, packaging, shipping types, Incoterms, payment terms, price types, price units, booleans, precision/specifications, and field labels. Use current seller option IDs as the source of truth for supported mappings. Lead-time formatting covers actual current options such as `lt_1_week`, `1_2_weeks`, and `2_4_weeks`; it may also recognize future-compatible patterns such as `1_week` and `2_weeks` without adding those options to seller input. Use an en dash for ranges. Incoterms preserve their standard abbreviations. Payment-term labels preserve the commercial milestones defined by the current seller choices: `advance_50_balance_50` → “50% Advance, 50% Before Shipment” and `advance_30_balance_70` → “30% Advance, 70% Against Documents”. Boolean text is applied only to boolean fields and may use contextual availability wording.
 
 `precision_0_01` is a verified tolerance option: `lib/constants/product-options.ts` defines it as “Precision (±0.01 mm)”. Its display label may therefore preserve that engineering meaning. Technical identifiers such as grades, standards, material grades, units, and seller-authored descriptions must not be generically title-cased or semantically rewritten. Materials and grades remain intact except for safe presentation of controlled values where explicitly defined.
 
@@ -28,11 +28,11 @@ Unknown enum values must remain renderable and human-readable. For example, an u
 
 ## UI integration
 
-Audit product-value rendering and migrate existing read-only product surfaces that expose controlled product data, including:
+Audit product-value rendering and migrate existing read-only product surfaces that expose controlled product data. Known consumers to verify include:
 
-- Public product detail and marketplace/search product cards.
-- Seller product preview and dashboard product lists.
-- Admin listing queue/table and listing review detail.
+- Public product detail (`components/marketplace/public/ListingPublicDetail.tsx`) and marketplace/search product cards (`components/marketplace/ProductCard.tsx` and other listing/search card consumers).
+- Seller product preview (`components/products/Phase4Review.tsx`), dashboard product list (`app/dashboard/seller/products/page.tsx`), and publishing controls (`components/seller/ProductPublishingControls.tsx`).
+- Admin listing queue/table (`app/ops/admin/listings/page.tsx`) and listing review detail (`app/ops/admin/listings/[id]/page.tsx`).
 - Other existing saved-product or inquiry/RFQ product summaries when they display the same controlled fields.
 
 Common product terminology must match across contexts, while public, seller, and admin layouts retain their distinct existing visual identity. Seller form controls, submitted values, and option labels are out of scope for behavior or wording changes.
@@ -52,9 +52,9 @@ Convert machine-oriented field keys to natural title-case labels through the sha
 Extend the formatter test suite to cover:
 
 - Generic and unknown enum humanization, including acronym segments.
-- Canonical capability, industry, commercial, packaging, shipping, Incoterm, payment, and lead-time values present in the current options.
+- Canonical capability, industry, commercial, packaging, shipping, Incoterm, payment, and lead-time values present in the current options, including payment-term milestones and `lt_1_week`.
 - Semantic boolean labels and safe missing-value fallbacks.
 - Verified tolerance mapping and preservation of technical grades/material strings such as `SS304`, `AISI 4140`, and `ASTM A36`.
 - Array formatting that preserves input order and yields individually readable values.
 
-Audit each existing consumer in scope to confirm it uses the canonical formatter rather than raw enum output or local string manipulation. Run focused tests and TypeScript/lint validation, then a production build. Confirm that filtering and search continue to use canonical IDs and that seller input remains unchanged.
+Audit and migrate each existing consumer in scope to use the canonical formatter rather than raw enum output or local string manipulation. Run focused tests and TypeScript/lint validation, then a production build. Confirm that filtering and search continue to use canonical IDs and that seller input remains unchanged.
